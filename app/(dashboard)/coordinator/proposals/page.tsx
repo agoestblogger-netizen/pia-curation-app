@@ -19,6 +19,17 @@ export default async function ProposalsPage() {
     );
   }
 
+  // Get deterministic row numbers for all proposals in this competition first
+  const rnResult = await db.execute(sql`
+    SELECT id, ROW_NUMBER() OVER (PARTITION BY category, region_center ORDER BY id ASC) as rn 
+    FROM proposals 
+    WHERE competition_id = ${activeComp.id}
+  `);
+  const rnMap = new Map();
+  for (const row of rnResult) {
+    rnMap.set(row.id, Number(row.rn));
+  }
+
   // Fetch all proposals and left join with curatorAssignments (assigned/in_review/completed)
   // Since assignments are 1:1 per batch, we can join directly or aggregate.
   // Assuming 1 active batch per competition for simplicity.
@@ -34,7 +45,6 @@ export default async function ProposalsPage() {
       status: proposals.status,
       aiScore: proposals.aiCidaTotal,
       curatorName: users.name,
-      proposalRowNumber: sql<number>`ROW_NUMBER() OVER (PARTITION BY ${proposals.category}, ${proposals.regionCenter} ORDER BY ${proposals.id} ASC)`.mapWith(Number),
     })
     .from(proposals)
     .leftJoin(
@@ -55,7 +65,7 @@ export default async function ProposalsPage() {
     status: r.status,
     aiScore: r.aiScore !== null ? Number(r.aiScore).toFixed(2) : 'N/A',
     curatorName: r.curatorName,
-    proposalRowNumber: r.proposalRowNumber,
+    proposalRowNumber: rnMap.get(r.id) || 0,
   }));
 
   const completedCount = mappedProposals.filter(p => p.status === 'completed').length;

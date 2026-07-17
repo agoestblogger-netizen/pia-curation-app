@@ -26,26 +26,18 @@ export default async function ProposalDetailPage({ params }: { params: Promise<{
   const proposalId = parseInt(id, 10);
   if (isNaN(proposalId)) notFound();
 
-  const rawSql = sql<number>`(
+  const [proposal] = await db.select().from(proposals).where(eq(proposals.id, proposalId)).limit(1);
+  if (!proposal) notFound();
+
+  const rnResult = await db.execute(sql`
     SELECT rn FROM (
       SELECT id, ROW_NUMBER() OVER (PARTITION BY category, region_center ORDER BY id ASC) as rn 
       FROM proposals 
-      WHERE competition_id = ${proposals.competitionId}
-    ) sub WHERE sub.id = ${proposals.id}
-  )`.mapWith(Number);
-
-  const [proposalResult] = await db
-    .select({
-      proposal: proposals,
-      proposalRowNumber: rawSql
-    })
-    .from(proposals)
-    .where(eq(proposals.id, proposalId))
-    .limit(1);
-
-  if (!proposalResult) notFound();
+      WHERE competition_id = ${proposal.competitionId}
+    ) sub WHERE sub.id = ${proposalId}
+  `);
   
-  const { proposal, proposalRowNumber } = proposalResult;
+  const proposalRowNumber = rnResult.length > 0 ? Number(rnResult[0].rn) : 0;
 
   // Get user's assignment
   let assignment = null;
