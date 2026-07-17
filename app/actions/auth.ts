@@ -53,7 +53,7 @@ export async function loginAction(
   await setSessionCookie(token);
 
   if (user.roles.includes('coordinator')) {
-    redirect('/coordinator');
+    redirect('/overview');
   } else if (user.roles.includes('curator')) {
     redirect('/curator');
   } else if (user.roles.includes('promoter')) {

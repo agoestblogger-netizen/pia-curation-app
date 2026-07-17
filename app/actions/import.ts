@@ -66,7 +66,7 @@ export async function clearNeedsReviewAction(proposalId: number): Promise<ClearR
     reason: `Ditandai sudah ditinjau oleh ${session.name}`,
   });
 
-  revalidatePath('/coordinator');
+  revalidatePath('/overview');
   revalidatePath(`/coordinator/proposals/${proposalId}`);
   return { success: true };
 }

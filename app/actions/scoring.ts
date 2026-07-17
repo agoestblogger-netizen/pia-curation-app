@@ -51,7 +51,7 @@ export async function createCriterionAction(
     createdBy: session.userId,
   });
 
-  revalidatePath('/coordinator');
+  revalidatePath('/overview');
   return { success: true };
 }
 
@@ -259,7 +259,7 @@ export async function lockScoringResultsAction(
     .where(eq(competitions.id, competitionId));
 
   await audit.lockScoringResults(competitionId);
-  revalidatePath('/coordinator');
+  revalidatePath('/overview');
 
   return { success: true };
 }

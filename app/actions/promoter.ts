@@ -142,7 +142,7 @@ export async function closePromoterSelectionAction(
     .where(eq(competitions.id, competitionId));
 
   await audit.closePhase(competitionId, 'nomination_filter', overrideReason);
-  revalidatePath('/coordinator');
+  revalidatePath('/overview');
 
   return { success: true };
 }

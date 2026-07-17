@@ -9,7 +9,7 @@ export default async function DashboardRedirect() {
   }
 
   if (session.roles.includes('coordinator')) {
-    redirect('/coordinator');
+    redirect('/overview');
   } else if (session.roles.includes('curator')) {
     redirect('/curator');
   } else if (session.roles.includes('promoter')) {

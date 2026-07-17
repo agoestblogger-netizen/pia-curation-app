@@ -53,7 +53,7 @@ export async function createCompetitionAction(
     createdBy: session.userId,
   });
 
-  revalidatePath('/coordinator');
+  revalidatePath('/overview');
   return { success: true };
 }
 
@@ -89,7 +89,7 @@ export async function advancePhaseAction(
     .where(eq(competitions.id, competitionId));
 
   await audit.closePhase(competitionId, nextPhase, overrideReason);
-  revalidatePath('/coordinator');
+  revalidatePath('/overview');
   return { success: true };
 }
 

@@ -65,7 +65,7 @@ export default function GrandFinalFilterClient({
         if (result.error) {
           setError(result.error);
         } else {
-          router.push('/coordinator');
+          router.push('/overview');
         }
       });
     }

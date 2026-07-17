@@ -99,7 +99,7 @@ export async function importProposalsAction(
   }
 
   await audit.importProposals(competitionId, imported);
-  revalidatePath('/coordinator');
+  revalidatePath('/overview');
 
   return { success: true, imported, skipped };
 }
