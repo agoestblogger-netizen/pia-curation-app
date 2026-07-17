@@ -1,0 +1,22 @@
+#!/usr/bin/expect -f
+set timeout 30
+spawn vercel link
+expect {
+    -glob "Set up*" {
+        send "y\r"
+        exp_continue
+    }
+    -glob "Which scope do you want to deploy to*" {
+        send "\r"
+        exp_continue
+    }
+    -glob "Link to existing project*" {
+        send "y\r"
+        exp_continue
+    }
+    -glob "What's the name of your existing project*" {
+        send "pia-curation-app\r"
+        exp_continue
+    }
+    eof
+}

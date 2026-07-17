@@ -3,7 +3,7 @@ import { getActiveCompetition } from '@/app/actions/competitions';
 import { getRegionalGroups } from '@/app/actions/regional-final';
 import RegionalFinalClient from './RegionalFinalClient';
 
-export default async function RegionalFinalPage() {
+export default async function RegionalTab() {
   await requireRole('coordinator');
   const activeComp = await getActiveCompetition();
 

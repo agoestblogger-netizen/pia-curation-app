@@ -1,9 +1,10 @@
 'use server';
 
 import { db } from '@/lib/db';
-import { proposals, competitions, users } from '@/lib/db/schema';
+import { proposals, competitions, users, regionalLeads } from '@/lib/db/schema';
 import { requireRole } from '@/lib/auth/helpers';
 import { eq, and, inArray, count } from 'drizzle-orm';
+import { KANWIL_CITIES } from '@/lib/constants';
 import { revalidatePath } from 'next/cache';
 import { createAuditLog } from '@/lib/audit';
 
@@ -62,9 +63,13 @@ export async function getRegionalGroups(competitionId: number): Promise<Regional
       ? '__PUSAT__'
       : (p.regionCenter ?? 'Tidak Diketahui');
 
+    const mappedRegionLabel = KANWIL_CITIES.includes(p.regionCenter || '') 
+      ? `Kanwil ${p.regionCenter}` 
+      : (p.regionCenter ?? 'Tidak Diketahui');
+
     if (!groupMap.has(groupKey)) {
       groupMap.set(groupKey, {
-        region: p.category === 'PUSAT' ? 'Kantor Pusat' : (p.regionCenter ?? 'Tidak Diketahui'),
+        region: p.category === 'PUSAT' ? 'Kantor Pusat' : mappedRegionLabel,
         category: p.category as 'WILAYAH' | 'PUSAT',
         totalProposals: 0,
         finalistCount: 0,
@@ -113,7 +118,16 @@ export async function setRegionalFinalistsAction(
   regionKey: string, // 'PUSAT' or regionCenter string
   finalistIds: number[]
 ) {
-  const session = await requireRole('coordinator');
+  const session = await requireRole(['coordinator', 'curator']);
+  const dbRegion = regionKey.replace(/^Kanwil /, '');
+
+  if (!session.roles.includes('coordinator')) {
+    const checkRegion = dbRegion === 'PUSAT' ? 'Kantor Pusat' : dbRegion;
+    const [lead] = await db.select().from(regionalLeads).where(eq(regionalLeads.regionCenter, checkRegion)).limit(1);
+    if (!lead || lead.curatorId !== session.userId) {
+      return { error: 'Akses Ditolak: Hanya Regional Lead yang berwenang untuk submit 10 finalis.' };
+    }
+  }
 
   if (finalistIds.length > 10) {
     return { error: 'Maksimal 10 finalis per grup.' };
@@ -129,7 +143,7 @@ export async function setRegionalFinalistsAction(
         eq(proposals.competitionId, competitionId),
         isKanpus
           ? eq(proposals.category, 'PUSAT')
-          : and(eq(proposals.category, 'WILAYAH'), eq(proposals.regionCenter, regionKey)),
+          : and(eq(proposals.category, 'WILAYAH'), eq(proposals.regionCenter, dbRegion)),
         inArray(proposals.status, ['curation_passed', 'regional_finalist'])
       )
     );
@@ -182,7 +196,16 @@ export async function lockRegionalGroupAction(
   competitionId: number,
   regionKey: string
 ) {
-  const session = await requireRole('coordinator');
+  const session = await requireRole(['coordinator', 'curator']);
+  const dbRegion = regionKey.replace(/^Kanwil /, '');
+
+  if (!session.roles.includes('coordinator')) {
+    const checkRegion = dbRegion === 'PUSAT' ? 'Kantor Pusat' : dbRegion;
+    const [lead] = await db.select().from(regionalLeads).where(eq(regionalLeads.regionCenter, checkRegion)).limit(1);
+    if (!lead || lead.curatorId !== session.userId) {
+      return { error: 'Akses Ditolak: Hanya Regional Lead yang berwenang untuk mengunci grup.' };
+    }
+  }
 
   const isKanpus = regionKey === 'PUSAT';
 
@@ -234,7 +257,16 @@ export async function reopenRegionalGroupAction(
   competitionId: number,
   regionKey: string
 ) {
-  await requireRole('coordinator');
+  const session = await requireRole(['coordinator', 'curator']);
+  const dbRegion = regionKey.replace(/^Kanwil /, '');
+
+  if (!session.roles.includes('coordinator')) {
+    const checkRegion = dbRegion === 'PUSAT' ? 'Kantor Pusat' : dbRegion;
+    const [lead] = await db.select().from(regionalLeads).where(eq(regionalLeads.regionCenter, checkRegion)).limit(1);
+    if (!lead || lead.curatorId !== session.userId) {
+      return { error: 'Akses Ditolak: Hanya Regional Lead yang berwenang untuk membuka grup kembali.' };
+    }
+  }
 
   const isKanpus = regionKey === 'PUSAT';
 
@@ -248,7 +280,7 @@ export async function reopenRegionalGroupAction(
       eq(proposals.competitionId, competitionId),
       isKanpus
         ? eq(proposals.category, 'PUSAT')
-        : and(eq(proposals.category, 'WILAYAH'), eq(proposals.regionCenter, regionKey)),
+        : and(eq(proposals.category, 'WILAYAH'), eq(proposals.regionCenter, dbRegion)),
       eq(proposals.takeoutReason, 'not_selected_regional_final')
     )
   );

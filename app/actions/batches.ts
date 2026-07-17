@@ -34,7 +34,7 @@ import {
 const createBatchSchema = z.object({
   competitionId: z.coerce.number(),
   name: z.string().min(1),
-  assignmentMode: z.enum(['equal', 'manual_quota', 'weighted', 'category_based', 'hybrid']),
+  assignmentMode: z.enum(['equal', 'manual_quota', 'weighted', 'category_based', 'hybrid', 'manual_range']),
 });
 
 type BatchActionState = {
@@ -306,7 +306,16 @@ export async function getBatchWithAssignments(batchId: number) {
 
   if (!batch) return null;
 
+  const rankedProposals = db.$with('ranked_proposals').as(
+    db.select({
+      id: proposals.id,
+      regionCenter: proposals.regionCenter,
+      rowNumber: sql<number>`ROW_NUMBER() OVER (PARTITION BY ${proposals.category}, ${proposals.regionCenter} ORDER BY ${proposals.id} ASC)`.as('row_number')
+    }).from(proposals).where(eq(proposals.competitionId, batch.competitionId))
+  );
+
   const assignments = await db
+    .with(rankedProposals)
     .select({
       id: curatorAssignments.id,
       proposalId: curatorAssignments.proposalId,
@@ -315,9 +324,12 @@ export async function getBatchWithAssignments(batchId: number) {
       status: curatorAssignments.status,
       assignedAt: curatorAssignments.assignedAt,
       curatorName: users.name,
+      proposalRowNumber: rankedProposals.rowNumber,
+      proposalRegionCenter: rankedProposals.regionCenter,
     })
     .from(curatorAssignments)
     .leftJoin(users, eq(curatorAssignments.curatorId, users.id))
+    .innerJoin(rankedProposals, eq(curatorAssignments.proposalId, rankedProposals.id))
     .where(eq(curatorAssignments.batchId, batchId));
 
   return { ...batch, assignments };
@@ -328,4 +340,123 @@ export async function getBatchesByCompetition(competitionId: number) {
     .select()
     .from(curationBatches)
     .where(eq(curationBatches.competitionId, competitionId));
+}
+
+const assignRangeSchema = z.object({
+  batchId: z.coerce.number(),
+  curatorId: z.coerce.number(),
+  category: z.string(),
+  regionCenter: z.string().optional(),
+  startRange: z.coerce.number(),
+  endRange: z.coerce.number(),
+});
+
+export async function assignRangeAction(_prev: BatchActionState, formData: FormData): Promise<BatchActionState> {
+  const session = await requireRole('coordinator');
+  const parsed = assignRangeSchema.safeParse({
+    batchId: formData.get('batchId'),
+    curatorId: formData.get('curatorId'),
+    category: formData.get('category'),
+    regionCenter: formData.get('regionCenter') || undefined,
+    startRange: formData.get('startRange'),
+    endRange: formData.get('endRange'),
+  });
+
+  if (!parsed.success) return { error: 'Data range tidak valid' };
+  
+  const { batchId, curatorId, category, regionCenter, startRange, endRange } = parsed.data;
+  
+  if (startRange > endRange) return { error: 'Range mulai tidak boleh lebih besar dari range akhir' };
+
+  const [batch] = await db.select().from(curationBatches).where(eq(curationBatches.id, batchId)).limit(1);
+  if (!batch) return { error: 'Batch tidak ditemukan' };
+  if (batch.status === 'locked') return { error: 'Batch sudah dikunci' };
+
+  // Get all proposals for this category/region with their row numbers
+  const result = await db.execute(sql`
+    WITH RankedProposals AS (
+      SELECT id, category, region_center,
+        ROW_NUMBER() OVER (
+          PARTITION BY category, region_center 
+          ORDER BY id ASC
+        ) as row_number
+      FROM proposals
+      WHERE competition_id = ${batch.competitionId}
+        AND category = ${category}
+        ${regionCenter ? sql`AND region_center = ${regionCenter}` : sql`AND (region_center IS NULL OR region_center = '')`}
+    )
+    SELECT id, row_number FROM RankedProposals
+    WHERE row_number >= ${startRange} AND row_number <= ${endRange}
+  `);
+
+  const proposalsInRange = result as unknown as { id: number, row_number: number }[];
+  if (proposalsInRange.length === 0) return { error: 'Tidak ada proposal pada range tersebut' };
+
+  const proposalIds = proposalsInRange.map(p => p.id);
+
+  // Check if ANY of these proposals are already assigned in this batch
+  const existing = await db.select({ proposalId: curatorAssignments.proposalId, curatorName: users.name })
+    .from(curatorAssignments)
+    .leftJoin(users, eq(users.id, curatorAssignments.curatorId))
+    .where(
+      and(
+        eq(curatorAssignments.batchId, batchId),
+        inArray(curatorAssignments.proposalId, proposalIds)
+      )
+    );
+
+  if (existing.length > 0) {
+    const conflictId = existing[0].proposalId;
+    const conflictRow = proposalsInRange.find(p => p.id === conflictId)?.row_number;
+    const conflictCurator = existing[0].curatorName ?? 'Kurator Lain';
+    return { error: `Gagal: Proposal No. ${conflictRow} sudah di-assign ke ${conflictCurator}` };
+  }
+
+  // Check if any proposals are already assigned in OTHER batches to this curator?
+  // User spec: "range yang diminta TIDAK BOLEH overlap dengan proposal yang SUDAH di-assign ke kurator lain dalam kategori yang sama"
+  
+  // Insert assignments
+  await db.insert(curatorAssignments).values(
+    proposalIds.map((pid) => ({
+      batchId,
+      proposalId: pid,
+      curatorId,
+      category,
+      assignedBy: session.userId,
+    }))
+  );
+
+  // Update proposal status
+  await db.update(proposals)
+    .set({ status: 'under_curation', updatedAt: new Date() })
+    .where(inArray(proposals.id, proposalIds));
+
+  revalidatePath(`/coordinator/batches/${batchId}`);
+  return { success: true };
+}
+
+export async function deleteRangeAction(batchId: number, proposalIds: number[]) {
+  const session = await requireRole('coordinator');
+  
+  const [batch] = await db.select().from(curationBatches).where(eq(curationBatches.id, batchId)).limit(1);
+  if (!batch) return { error: 'Batch tidak ditemukan' };
+  if (batch.status === 'locked') return { error: 'Batch sudah dikunci' };
+
+  if (proposalIds.length === 0) return { success: true };
+
+  // Remove assignments
+  await db.delete(curatorAssignments).where(
+    and(
+      eq(curatorAssignments.batchId, batchId),
+      inArray(curatorAssignments.proposalId, proposalIds)
+    )
+  );
+
+  // Update proposals status back to imported
+  await db.update(proposals)
+    .set({ status: 'imported', updatedAt: new Date() })
+    .where(inArray(proposals.id, proposalIds));
+
+  revalidatePath(`/coordinator/batches/${batchId}`);
+  return { success: true };
 }

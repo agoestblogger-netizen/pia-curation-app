@@ -179,7 +179,7 @@ export default function CoordinatorBoard({ proposals }: { proposals: ProposalCar
                             className="w-full px-4 py-3 flex items-center justify-between text-left focus:outline-none bg-white hover:bg-gray-50"
                           >
                             <div className="flex items-baseline space-x-2">
-                              <h4 className="text-gray-800 font-semibold text-sm">{region}</h4>
+                              <h4 className="text-gray-800 font-semibold text-sm">Kanwil {region}</h4>
                               <span className="text-gray-500 text-xs">{wItems.length} proposal</span>
                             </div>
                             <div className="text-gray-400">

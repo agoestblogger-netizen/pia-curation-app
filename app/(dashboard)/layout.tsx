@@ -38,16 +38,7 @@ export default async function DashboardLayout({
           {session?.roles?.includes('coordinator') && (
             <>
               <Link href="/coordinator/batches" className="block px-4 py-2 rounded hover:bg-indigo-800 text-sm">
-                Batch Kurasi
-              </Link>
-              <Link href="/coordinator/regional-final" className="block px-4 py-2 rounded hover:bg-indigo-800 text-sm">
-                Final Regional
-              </Link>
-              <Link href="/coordinator/promoter-selection" className="block px-4 py-2 rounded hover:bg-indigo-800 text-sm">
-                Pemilihan Promotor
-              </Link>
-              <Link href="/coordinator/grand-final" className="block px-4 py-2 rounded hover:bg-indigo-800 text-sm">
-                Filter Grand Final
+                Assign Proposal
               </Link>
               <Link href="/coordinator/finalization" className="block px-4 py-2 rounded hover:bg-indigo-800 text-sm">
                 Finalisasi & Ranking
@@ -58,6 +49,9 @@ export default async function DashboardLayout({
               </Link>
               <Link href="/coordinator/users" className="block px-4 py-2 rounded hover:bg-indigo-800 text-sm">
                 Manajemen User
+              </Link>
+              <Link href="/coordinator/regional-leads" className="block px-4 py-2 rounded hover:bg-indigo-800 text-sm">
+                Regional Leads
               </Link>
               <Link href="/coordinator/audit-log" className="block px-4 py-2 rounded hover:bg-indigo-800 text-sm">
                 Audit Log

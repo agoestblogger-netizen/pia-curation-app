@@ -123,12 +123,25 @@ export default function CuratorBoard({ proposals }: { proposals: ProposalCard[] 
       </div>
 
       <div className="space-y-4">
-        {Object.entries(grouped).map(([cat, items]) => {
-          const isExpanded = expandedCategories[cat];
-          const meta = CATEGORY_MAP[cat] || { label: cat, short: cat, bg: 'bg-gray-500' };
+        {displayedProposals.length === 0 ? (
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-12 text-center">
+            <svg className="w-12 h-12 mx-auto text-gray-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
+            <h3 className="text-lg font-medium text-gray-900 mb-2">Belum ada proposal</h3>
+            <p className="text-gray-500">
+              {activeTab === 'assigned' 
+                ? 'Belum ada proposal yang di-assign ke Anda untuk discreening.'
+                : 'Belum ada proposal yang selesai discreening.'}
+            </p>
+          </div>
+        ) : (
+          Object.entries(grouped).map(([cat, items]) => {
+            if (items.length === 0) return null;
 
-          return (
-            <div key={cat} className={`bg-white rounded-xl shadow-sm border ${isExpanded ? 'border-orange-400' : 'border-gray-200'}`}>
+            const isExpanded = expandedCategories[cat];
+            const meta = CATEGORY_MAP[cat] || { label: cat, short: cat, bg: 'bg-gray-500' };
+
+            return (
+              <div key={cat} className={`bg-white rounded-xl shadow-sm border ${isExpanded ? 'border-orange-400' : 'border-gray-200'}`}>
               <button 
                 onClick={() => toggleCategory(cat)}
                 className="w-full px-6 py-4 flex items-center justify-between text-left focus:outline-none"
@@ -173,7 +186,7 @@ export default function CuratorBoard({ proposals }: { proposals: ProposalCard[] 
                             className="w-full px-4 py-3 flex items-center justify-between text-left focus:outline-none bg-white hover:bg-gray-50"
                           >
                             <div className="flex items-baseline space-x-2">
-                              <h4 className="text-gray-800 font-semibold text-sm">{region}</h4>
+                              <h4 className="text-gray-800 font-semibold text-sm">Kanwil {region}</h4>
                               <span className="text-gray-500 text-xs">{wItems.length} proposal</span>
                             </div>
                             <div className="text-gray-400">
@@ -192,14 +205,10 @@ export default function CuratorBoard({ proposals }: { proposals: ProposalCard[] 
                 </div>
               )}
 
-              {isExpanded && items.length === 0 && (
-                <div className="p-6 text-center text-sm text-gray-500 border-t border-gray-100">
-                  Tidak ada proposal di kategori ini.
-                </div>
-              )}
             </div>
-          );
-        })}
+            );
+          })
+        )}
       </div>
     </div>
   );

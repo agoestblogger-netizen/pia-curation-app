@@ -1,8 +1,10 @@
 import { getSession } from '@/lib/auth/session';
 import { getActiveCompetition } from '@/app/actions/competitions';
-import { getBatchesByCompetition } from '@/app/actions/batches';
-import CreateBatchForm from './CreateBatchForm';
-import Link from 'next/link';
+import { getBatchWithAssignments } from '@/app/actions/batches';
+import { db } from '@/lib/db';
+import { curationBatches, users } from '@/lib/db/schema';
+import { eq, and, sql } from 'drizzle-orm';
+import AssignProposalUI from './AssignProposalUI';
 
 export default async function BatchesPage() {
   const session = await getSession();
@@ -14,57 +16,58 @@ export default async function BatchesPage() {
   if (!activeComp) {
     return (
       <div className="p-8">
-        <h1 className="text-2xl font-bold mb-4">Manajemen Batch Kurasi</h1>
+        <h1 className="text-2xl font-bold mb-4">Assign Proposal</h1>
         <p className="text-gray-500">Belum ada kompetisi aktif.</p>
       </div>
     );
   }
 
-  const batches = await getBatchesByCompetition(activeComp.id);
+  // Find active manual_range batch for this competition
+  let [batch] = await db.select().from(curationBatches).where(
+    and(
+      eq(curationBatches.competitionId, activeComp.id),
+      eq(curationBatches.assignmentMode, 'manual_range')
+    )
+  ).limit(1);
+
+  if (!batch) {
+    // Auto-create
+    const [newBatch] = await db.insert(curationBatches).values({
+      competitionId: activeComp.id,
+      name: `Assign Proposal - ${activeComp.name}`,
+      assignmentMode: 'manual_range',
+      status: 'draft',
+      createdBy: session.userId,
+    }).returning();
+    batch = newBatch;
+  }
+
+  const batchDetails = await getBatchWithAssignments(batch.id);
+  
+  // Fetch all proposals with row_number
+  const rankedProposalsResult = await db.execute(sql`
+    SELECT id, title, category, region_center, 
+           ROW_NUMBER() OVER (PARTITION BY category, region_center ORDER BY id ASC) as row_number
+    FROM proposals
+    WHERE competition_id = ${activeComp.id}
+  `);
+  
+  const allProposals = rankedProposalsResult as unknown as any[];
+
+  const curators = await db
+    .select({ id: users.id, name: users.name })
+    .from(users)
+    .where(and(sql`'curator' = ANY(${users.roles})`, eq(users.isActive, true)))
+    .orderBy(users.name);
 
   return (
     <div className="p-8">
-      <h1 className="text-2xl font-bold mb-8">Manajemen Batch Kurasi</h1>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Create Batch Form */}
-        <div className="bg-white rounded-lg shadow border border-gray-200 p-6">
-          <h2 className="text-lg font-bold mb-4">Buat Batch Baru</h2>
-          <CreateBatchForm competitionId={activeComp.id} />
-        </div>
-
-        {/* Existing Batches */}
-        <div>
-          <h2 className="text-lg font-bold mb-4">Batch yang Ada</h2>
-          {batches.length === 0 ? (
-            <div className="bg-gray-50 rounded-lg p-6 text-center text-gray-500 text-sm">
-              Belum ada batch
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {batches.map((batch) => (
-                <div key={batch.id} className="bg-white rounded-lg shadow border border-gray-200 p-4">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <h3 className="font-semibold text-gray-900">{batch.name}</h3>
-                      <div className="text-xs text-gray-500 mt-1 space-x-3">
-                        <span>Mode: <span className="font-medium">{batch.assignmentMode}</span></span>
-                        <span>Status: <span className={`font-medium ${batch.status === 'locked' ? 'text-green-600' : 'text-yellow-600'}`}>{batch.status}</span></span>
-                      </div>
-                    </div>
-                    <Link
-                      href={`/coordinator/batches/${batch.id}`}
-                      className="text-sm text-indigo-600 hover:text-indigo-900 font-medium"
-                    >
-                      Detail &rarr;
-                    </Link>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
+      <AssignProposalUI 
+        batchId={batch.id}
+        curators={curators}
+        assignments={batchDetails?.assignments || []}
+        allProposals={allProposals}
+      />
     </div>
   );
 }

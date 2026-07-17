@@ -3,7 +3,7 @@ import { getActiveCompetition } from '@/app/actions/competitions';
 import { getNominatedProposals, getGrandFinalSelections } from '@/app/actions/grand-final';
 import GrandFinalFilterClient from './GrandFinalFilterClient';
 
-export default async function GrandFinalFilterPage() {
+export default async function GrandFinalTab() {
   const session = await getSession();
   
   if (!session || !session.roles.includes('coordinator')) {

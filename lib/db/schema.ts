@@ -366,6 +366,15 @@ export const pdfExports = pgTable('pdf_exports', {
   documentStatus: text('document_status').notNull().default('DRAFT'), // DRAFT | INTERNAL | FINAL
 });
 
+// ─── REGIONAL LEADS ─────────────────────────────────────────────────────────────
+export const regionalLeads = pgTable('regional_leads', {
+  id: serial('id').primaryKey(),
+  regionCenter: text('region_center').notNull().unique(), // e.g., Kanwil I, Kantor Pusat, dll.
+  curatorId: integer('curator_id').notNull().references(() => users.id),
+  assignedBy: integer('assigned_by').references(() => users.id),
+  assignedAt: timestamp('assigned_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
 // ─── TYPE EXPORTS ─────────────────────────────────────────────────────────────
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
@@ -386,3 +395,4 @@ export type SponsorScore = typeof sponsorScores.$inferSelect;
 export type FinalResult = typeof finalResults.$inferSelect;
 export type AuditLog = typeof auditLogs.$inferSelect;
 export type CuratorQuotaConfig = typeof curatorQuotaConfigs.$inferSelect;
+export type RegionalLead = typeof regionalLeads.$inferSelect;

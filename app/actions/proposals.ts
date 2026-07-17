@@ -3,7 +3,7 @@
 import { db } from '@/lib/db';
 import { proposals, competitions } from '@/lib/db/schema';
 import { requireRole } from '@/lib/auth/helpers';
-import { eq, and, inArray, count } from 'drizzle-orm';
+import { eq, and, inArray, count, sql } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { audit } from '@/lib/audit';
@@ -109,6 +109,23 @@ export async function getProposalsByCompetition(competitionId: number) {
     .select()
     .from(proposals)
     .where(eq(proposals.competitionId, competitionId));
+}
+
+export async function getProposalsWithRowNumber(competitionId: number) {
+  // Using SQL directly for row_number to get stable sequential numbering per category/region
+  const result = await db.execute(sql`
+    SELECT p.*,
+      ROW_NUMBER() OVER (
+        PARTITION BY p.category, p.region_center 
+        ORDER BY p.id ASC
+      ) as row_number
+    FROM proposals p
+    WHERE p.competition_id = ${competitionId}
+  `);
+  
+  // Transform db.execute raw result keys from snake_case to camelCase
+  // or return as is and handle on UI. We will type-cast for now.
+  return result as unknown as any[];
 }
 
 export async function getProposalCountByCategory(competitionId: number) {
