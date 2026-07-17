@@ -1,6 +1,7 @@
 'use client';
 
 import { useActionState } from 'react';
+import Image from 'next/image';
 import { loginAction } from '@/app/actions/auth';
 
 export default function LoginPage() {
@@ -9,7 +10,17 @@ export default function LoginPage() {
   return (
     <div className="flex min-h-full flex-col justify-center px-6 py-12 lg:px-8">
       <div className="sm:mx-auto sm:w-full sm:max-w-sm">
-        <h2 className="mt-10 text-center text-2xl font-bold leading-9 tracking-tight text-gray-900">
+        <div className="flex justify-center">
+          <Image
+            src="/logopia.png"
+            alt="Logo PIA"
+            width={300}
+            height={100}
+            className="w-auto h-20"
+            priority
+          />
+        </div>
+        <h2 className="mt-6 text-center text-2xl font-bold leading-9 tracking-tight text-gray-900">
           Login ke SIA (Sistem Inovasi App)
         </h2>
       </div>
@@ -73,16 +84,7 @@ export default function LoginPage() {
           </div>
         </form>
 
-        <div className="mt-6 text-center text-sm text-gray-500">
-          <p>Email percobaan:</p>
-          <ul className="text-left bg-gray-50 p-4 mt-2 rounded-md font-mono text-xs space-y-1">
-            <li>panitia@pia.id</li>
-            <li>kurator1@pia.id (s/d kurator10@pia.id)</li>
-            <li>promotor1@pia.id (s/d promotor5@pia.id)</li>
-            <li>sponsor1@pia.id (s/d sponsor3@pia.id)</li>
-            <li className="mt-2 pt-2 border-t text-gray-400">Password semua: password123</li>
-          </ul>
-        </div>
+
       </div>
     </div>
   );
