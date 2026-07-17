@@ -1,8 +1,8 @@
 import { getActiveCompetition, advancePhaseAction } from '@/app/actions/competitions';
 import { getSession } from '@/lib/auth/session';
 import { db } from '@/lib/db';
-import { proposals, curatorAssignments } from '@/lib/db/schema';
-import { eq } from 'drizzle-orm';
+import { proposals, curatorAssignments, users } from '@/lib/db/schema';
+import { eq, sql } from 'drizzle-orm';
 import Link from 'next/link';
 
 export default async function OverviewDashboard() {
@@ -79,6 +79,40 @@ export default async function OverviewDashboard() {
     if (b === 'Kantor Pusat') return -1;
     return a.localeCompare(b);
   });
+
+  // Calculate Curator Assignment Stats (Only for Coordinator)
+  let curatorStats: { name: string; total: number; completed: number; sisa: number }[] = [];
+  if (session?.roles?.includes('coordinator')) {
+    const curators = await db
+      .select({ id: users.id, name: users.name })
+      .from(users)
+      .where(sql`'curator' = ANY(${users.roles})`);
+
+    const assignments = await db
+      .select({
+        curatorId: curatorAssignments.curatorId,
+        status: curatorAssignments.status,
+      })
+      .from(curatorAssignments)
+      .innerJoin(proposals, eq(curatorAssignments.proposalId, proposals.id))
+      .where(eq(proposals.competitionId, activeComp.id));
+
+    curatorStats = curators.map((c) => {
+      const myAss = assignments.filter((a) => a.curatorId === c.id);
+      const total = myAss.length;
+      const completed = myAss.filter((a) => a.status === 'completed').length;
+      const sisa = total - completed;
+      return {
+        name: c.name,
+        total,
+        completed,
+        sisa,
+      };
+    });
+
+    // Sort by Sisa (descending), then alphabetically by name
+    curatorStats.sort((a, b) => b.sisa - a.sisa || a.name.localeCompare(b.name));
+  }
 
   return (
     <div className="p-8">
@@ -213,6 +247,42 @@ export default async function OverviewDashboard() {
           </table>
         </div>
       </div>
+
+      {session?.roles?.includes('coordinator') && (
+        <div className="mt-8 bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden flex flex-col">
+          <div className="px-5 py-4 border-b border-gray-100 bg-gray-50">
+            <h2 className="font-bold text-gray-900">Assignment per Kurator</h2>
+            <p className="text-xs text-gray-500 mt-1">Data beban kerja dan progres seluruh kurator (diurutkan berdasarkan sisa terbanyak).</p>
+          </div>
+          <table className="min-w-full divide-y divide-gray-100 flex-1">
+            <thead className="bg-white">
+              <tr>
+                <th className="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Kurator</th>
+                <th className="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Total Assigned</th>
+                <th className="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Sudah Discreening</th>
+                <th className="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Sisa</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {curatorStats.map((stat) => (
+                <tr key={stat.name} className="hover:bg-gray-50">
+                  <td className="px-5 py-3 font-semibold text-sm text-gray-900">{stat.name}</td>
+                  <td className="px-5 py-3 text-sm text-gray-600">{stat.total}</td>
+                  <td className="px-5 py-3 text-sm font-semibold text-emerald-600">{stat.completed}</td>
+                  <td className="px-5 py-3 text-sm font-bold text-rose-600">{stat.sisa}</td>
+                </tr>
+              ))}
+              {curatorStats.length === 0 && (
+                <tr>
+                  <td colSpan={4} className="px-5 py-4 text-center text-sm text-gray-500">
+                    Belum ada kurator yang terdaftar.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      )}
 
       {session?.roles?.includes('coordinator') && (
         <div className="mt-8 bg-indigo-50 p-6 rounded-xl border border-indigo-100">
