@@ -1,17 +1,70 @@
 'use client';
 
 import { useState } from 'react';
-import { submitScreeningAction } from '@/app/actions/screening';
+import { submitScreeningAction, editScreeningAction, resetScreeningAction } from '@/app/actions/screening';
 import { SCREENING_VERDICTS } from '@/lib/constants/screening';
 
-export default function ScreeningForm({ assignmentId, isCompleted }: { assignmentId: number, isCompleted: boolean }) {
+type ScreeningFormProps = {
+  assignmentId: number;
+  isCompleted: boolean;
+  hardLock?: { locked: boolean; reason: string };
+  existingResult?: { verdict: string; notes: string };
+};
+
+export default function ScreeningForm({ assignmentId, isCompleted, hardLock, existingResult }: ScreeningFormProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
 
-  if (isCompleted) {
+  const handleReset = async () => {
+    if (!confirm('Anda yakin ingin membatalkan/reset screening ini? Proposal akan kembali ke status awal (belum discreening).')) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await resetScreeningAction(assignmentId);
+      if (res.error) setError(res.error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (isCompleted && !isEditing) {
     return (
       <div className="bg-green-50 text-green-800 p-4 rounded-xl border border-green-200">
-        ✅ Screening untuk proposal ini sudah selesai Anda lakukan.
+        <div className="flex items-center mb-2">
+          ✅ <span className="ml-2 font-semibold">Screening Selesai</span>
+        </div>
+        {existingResult && (
+          <div className="mt-3 text-sm bg-white p-3 rounded-lg border border-green-100">
+            <p className="mb-1"><span className="font-semibold text-gray-700">Verdict:</span> <span className="capitalize text-indigo-700 font-bold">{existingResult.verdict.replace('_', ' ')}</span></p>
+            <p><span className="font-semibold text-gray-700">Catatan:</span> {existingResult.notes}</p>
+          </div>
+        )}
+        
+        {hardLock?.locked ? (
+          <div className="mt-4 text-xs font-semibold text-amber-700 bg-amber-50 p-2 rounded border border-amber-200">
+            🔒 {hardLock.reason}
+          </div>
+        ) : (
+          <div className="mt-4 flex space-x-3">
+            <button 
+              type="button" 
+              onClick={() => setIsEditing(true)}
+              className="text-sm px-3 py-1.5 bg-white border border-gray-300 rounded text-gray-700 hover:bg-gray-50 shadow-sm transition"
+            >
+              Edit Verdict
+            </button>
+            <button 
+              type="button" 
+              onClick={handleReset}
+              disabled={loading}
+              className="text-sm px-3 py-1.5 bg-red-50 border border-red-200 rounded text-red-600 hover:bg-red-100 shadow-sm transition disabled:opacity-50"
+            >
+              {loading ? 'Memproses...' : 'Reset Screening'}
+            </button>
+          </div>
+        )}
+        {error && <div className="mt-3 text-sm text-red-600">{error}</div>}
       </div>
     );
   }
@@ -22,8 +75,15 @@ export default function ScreeningForm({ assignmentId, isCompleted }: { assignmen
         setLoading(true);
         setError(null);
         try {
-          const res = await submitScreeningAction({}, formData);
-          if (res.error) setError(res.error);
+          const res = isEditing 
+            ? await editScreeningAction({}, formData)
+            : await submitScreeningAction({}, formData);
+            
+          if (res.error) {
+            setError(res.error);
+          } else if (isEditing) {
+            setIsEditing(false);
+          }
         } finally {
           setLoading(false);
         }
@@ -43,7 +103,7 @@ export default function ScreeningForm({ assignmentId, isCompleted }: { assignmen
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {SCREENING_VERDICTS.map(v => (
             <label key={v} className="flex items-center p-3 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50 focus-within:ring-2 focus-within:ring-indigo-500">
-              <input type="radio" name="verdict" value={v} className="w-4 h-4 text-indigo-600 border-gray-300 focus:ring-indigo-500" required />
+              <input type="radio" name="verdict" value={v} defaultChecked={isEditing && existingResult?.verdict === v} className="w-4 h-4 text-indigo-600 border-gray-300 focus:ring-indigo-500" required />
               <span className="ml-3 text-sm font-medium text-gray-900 capitalize">{v.replace('_', ' ')}</span>
             </label>
           ))}
@@ -56,6 +116,7 @@ export default function ScreeningForm({ assignmentId, isCompleted }: { assignmen
           name="notes"
           required
           rows={4}
+          defaultValue={isEditing ? existingResult?.notes : ''}
           className="w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-3 border"
           placeholder="Tuliskan justifikasi detail mengapa Anda memilih verdict tersebut..."
         ></textarea>
@@ -71,13 +132,25 @@ export default function ScreeningForm({ assignmentId, isCompleted }: { assignmen
         ></textarea>
       </div>
 
-      <button
-        type="submit"
-        disabled={loading}
-        className="w-full bg-[#0A4736] text-white py-3 px-4 rounded-xl font-bold hover:bg-[#073629] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#0A4736] transition-colors disabled:opacity-50"
-      >
-        {loading ? 'Menyimpan...' : 'Submit Keputusan'}
-      </button>
+      <div className="flex flex-col sm:flex-row gap-3 mt-4">
+        <button
+          type="submit"
+          disabled={loading}
+          className="w-full sm:w-auto bg-[#0A4736] text-white py-3 px-6 rounded-xl font-bold hover:bg-[#073629] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#0A4736] transition-colors disabled:opacity-50"
+        >
+          {loading ? 'Menyimpan...' : (isEditing ? 'Simpan Perubahan' : 'Submit Keputusan')}
+        </button>
+        {isEditing && (
+          <button
+            type="button"
+            onClick={() => setIsEditing(false)}
+            disabled={loading}
+            className="w-full sm:w-auto bg-white border border-gray-300 text-gray-700 py-3 px-6 rounded-xl font-bold hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-300 transition-colors disabled:opacity-50"
+          >
+            Batal Edit
+          </button>
+        )}
+      </div>
     </form>
   );
 }

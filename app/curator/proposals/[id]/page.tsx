@@ -6,6 +6,7 @@ import { notFound, redirect } from 'next/navigation';
 import Link from 'next/link';
 import AutoStartScreening from './AutoStartScreening';
 import ScreeningForm from './ScreeningForm';
+import { checkHardLock } from '@/app/actions/screening';
 
 export default async function ProposalDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const session = await getSession();
@@ -47,6 +48,21 @@ export default async function ProposalDetailPage({ params }: { params: Promise<{
         <Link href="/curator" className="mt-4 inline-block text-indigo-600 hover:underline">Kembali ke Papan Lelang</Link>
       </div>
     );
+  }
+
+  let hardLock = { locked: false, reason: '' };
+  let existingResult = undefined;
+
+  if (assignment) {
+    const lockCheck = await checkHardLock(proposalId, proposal.competitionId);
+    hardLock = { locked: lockCheck.locked, reason: lockCheck.reason || '' };
+
+    if (assignment.status === 'completed') {
+      const [res] = await db.select().from(screeningResults).where(eq(screeningResults.assignmentId, assignment.id)).limit(1);
+      if (res) {
+        existingResult = { verdict: res.verdict, notes: res.notes || '' };
+      }
+    }
   }
 
   const renderAiScore = (label: string, score: number | null) => (
@@ -226,6 +242,8 @@ export default async function ProposalDetailPage({ params }: { params: Promise<{
               <ScreeningForm 
                 assignmentId={assignment.id} 
                 isCompleted={assignment.status === 'completed'}
+                hardLock={hardLock}
+                existingResult={existingResult}
               />
             </div>
           )}

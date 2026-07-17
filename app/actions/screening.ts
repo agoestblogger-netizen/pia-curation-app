@@ -5,12 +5,15 @@ import {
   curatorAssignments,
   screeningResults,
   proposals,
+  competitions,
+  promoterSelections,
+  auditLogs,
 } from '@/lib/db/schema';
 import { requireRole } from '@/lib/auth/helpers';
 import { eq, and } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
-import { audit } from '@/lib/audit';
+import { audit, createAuditLog } from '@/lib/audit';
 
 import { SCREENING_VERDICTS, screeningSchema } from '@/lib/constants/screening';
 
@@ -148,4 +151,147 @@ export async function getCuratorAssignmentDetail(assignmentId: number, curatorId
     .limit(1);
 
   return assignment ?? null;
+}
+
+export async function checkHardLock(proposalId: number, competitionId: number): Promise<{ locked: boolean; reason?: string }> {
+  const [comp] = await db.select().from(competitions).where(eq(competitions.id, competitionId)).limit(1);
+  if (!comp) return { locked: true, reason: 'Kompetisi tidak ditemukan' };
+
+  const pastPhases = ['grand_final', 'scoring', 'final_result'];
+  if (pastPhases.includes(comp.phase)) {
+    return { locked: true, reason: 'Terkunci: Fase seleksi promotor telah ditutup.' };
+  }
+
+  const [selection] = await db
+    .select()
+    .from(promoterSelections)
+    .where(eq(promoterSelections.proposalId, proposalId))
+    .limit(1);
+
+  if (selection) {
+    return { locked: true, reason: 'Terkunci: Proposal telah dipilih oleh Promotor.' };
+  }
+
+  return { locked: false };
+}
+
+export async function editScreeningAction(
+  _prev: ScreeningActionState,
+  formData: FormData
+): Promise<ScreeningActionState> {
+  const session = await requireRole('curator');
+
+  const parsed = screeningSchema.safeParse({
+    assignmentId: formData.get('assignmentId'),
+    verdict: formData.get('verdict'),
+    notes: formData.get('notes'),
+  });
+
+  if (!parsed.success) return { error: 'Input tidak valid' };
+  const { assignmentId, verdict, notes } = parsed.data;
+
+  const [assignment] = await db
+    .select({
+      id: curatorAssignments.id,
+      curatorId: curatorAssignments.curatorId,
+      status: curatorAssignments.status,
+      proposalId: proposals.id,
+      competitionId: proposals.competitionId,
+    })
+    .from(curatorAssignments)
+    .innerJoin(proposals, eq(curatorAssignments.proposalId, proposals.id))
+    .where(eq(curatorAssignments.id, assignmentId))
+    .limit(1);
+
+  if (!assignment || assignment.curatorId !== session.userId) {
+    return { error: 'Assignment tidak ditemukan atau bukan milik Anda' };
+  }
+
+  if (assignment.status !== 'completed') {
+    return { error: 'Proposal belum discreening, gunakan submit biasa.' };
+  }
+
+  const hardLock = await checkHardLock(assignment.proposalId, assignment.competitionId);
+  if (hardLock.locked) {
+    return { error: hardLock.reason };
+  }
+
+  const [oldResult] = await db
+    .select()
+    .from(screeningResults)
+    .where(eq(screeningResults.assignmentId, assignmentId))
+    .limit(1);
+
+  if (!oldResult) return { error: 'Hasil screening sebelumnya tidak ditemukan' };
+
+  await db.transaction(async (tx) => {
+    await tx
+      .update(screeningResults)
+      .set({ verdict, notes })
+      .where(eq(screeningResults.id, oldResult.id));
+
+    // Audit Log is done after transaction to use helper
+  });
+
+  await createAuditLog({
+    action: 'screening_edited',
+    entity: 'proposal',
+    entityId: assignment.proposalId,
+    after: { oldVerdict: oldResult.verdict, newVerdict: verdict, notes },
+  });
+
+  revalidatePath('/curator');
+  return { success: true };
+}
+
+export async function resetScreeningAction(assignmentId: number): Promise<ScreeningActionState> {
+  const session = await requireRole('curator');
+
+  const [assignment] = await db
+    .select({
+      id: curatorAssignments.id,
+      curatorId: curatorAssignments.curatorId,
+      status: curatorAssignments.status,
+      proposalId: proposals.id,
+      competitionId: proposals.competitionId,
+    })
+    .from(curatorAssignments)
+    .innerJoin(proposals, eq(curatorAssignments.proposalId, proposals.id))
+    .where(eq(curatorAssignments.id, assignmentId))
+    .limit(1);
+
+  if (!assignment || assignment.curatorId !== session.userId) {
+    return { error: 'Assignment tidak ditemukan atau bukan milik Anda' };
+  }
+
+  const hardLock = await checkHardLock(assignment.proposalId, assignment.competitionId);
+  if (hardLock.locked) {
+    return { error: hardLock.reason };
+  }
+
+  await db.transaction(async (tx) => {
+    await tx.delete(screeningResults).where(eq(screeningResults.assignmentId, assignmentId));
+
+    await tx
+      .update(curatorAssignments)
+      .set({ status: 'in_review', completedAt: null })
+      .where(eq(curatorAssignments.id, assignmentId));
+
+    await tx
+      .update(proposals)
+      .set({ status: 'under_curation', updatedAt: new Date() })
+      .where(eq(proposals.id, assignment.proposalId));
+
+    // Audit Log is done after transaction to use helper
+  });
+
+  await createAuditLog({
+    action: 'screening_reset',
+    entity: 'proposal',
+    entityId: assignment.proposalId,
+    after: { assignmentId },
+  });
+
+  revalidatePath('/curator');
+  return { success: true };
 }
