@@ -45,8 +45,8 @@ export default async function ProposalHistoryPage({ params }: { params: Promise<
   return (
     <div className="p-8 max-w-4xl">
       <div className="mb-6">
-        <Link href="/coordinator" className="text-sm text-indigo-600 hover:underline">
-          ← Dashboard Koordinator
+        <Link href="/overview" className="text-sm text-indigo-600 hover:underline">
+          ← Dashboard
         </Link>
       </div>
 

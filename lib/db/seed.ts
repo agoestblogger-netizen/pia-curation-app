@@ -52,9 +52,9 @@ async function seed() {
     }))
   ).returning();
 
-  // 2. Create Competition
+  // 2. Create Active Competition
   const [competition] = await db.insert(competitions).values({
-    name: 'Pelindo Innovation Award',
+    name: 'Pegadaian Innovation Award',
     year: 2026,
     description: 'Seed Data Competition',
     phase: 'imported',

@@ -21,11 +21,9 @@ export default async function CuratorLayout({ children }: { children: React.Reac
         </div>
         
         <div className="flex items-center space-x-4">
-          {session.roles.includes('coordinator') && (
-            <Link href="/coordinator" className="text-sm text-[#4ADE80] font-semibold hover:underline mr-4 flex items-center">
-              <span>← Dasbor Koordinator</span>
-            </Link>
-          )}
+          <Link href="/overview" className="text-sm text-[#4ADE80] font-semibold hover:underline mr-4 flex items-center">
+            <span>📊 Dashboard</span>
+          </Link>
           <div className="flex items-center gap-2">
             {session.roles.map(r => (
               <div key={r} className="px-4 py-1 rounded-full text-xs font-semibold bg-[#073629] border border-[#135A47] text-gray-300 capitalize">

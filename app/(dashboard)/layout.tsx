@@ -29,9 +29,9 @@ export default async function DashboardLayout({
         </div>
 
         <nav className="flex-1 p-4 space-y-2">
-          {session?.roles?.includes('coordinator') && (
-            <Link href="/coordinator" className="block px-4 py-2 rounded hover:bg-indigo-800">
-              Dashboard Koordinator
+          {session && (
+            <Link href="/overview" className="block px-4 py-2 rounded hover:bg-indigo-800">
+              Dashboard
             </Link>
           )}
 
