@@ -266,7 +266,7 @@ export default function AssignProposalUI({
                       placeholder="Cari Proposal..."
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
-                      className="pl-8 w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-xs px-2 py-1.5 border"
+                      className="pl-8 w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-xs px-2 py-1.5 border text-gray-900 bg-white"
                     />
                   </div>
                 </div>

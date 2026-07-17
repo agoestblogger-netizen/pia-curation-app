@@ -108,11 +108,11 @@ export default async function ProposalDetailPage({ params }: { params: Promise<{
         <div className="lg:col-span-2 space-y-6">
           <div className="bg-white p-8 rounded-xl border border-gray-200 shadow-sm">
             <div className="flex items-center space-x-3 mb-4">
-              <span className="px-3 py-1 bg-gray-100 text-gray-800 text-xs font-bold rounded">
-                {proposal.category}
+              <span className="w-8 h-8 flex items-center justify-center bg-gray-900 text-white text-xs font-bold rounded-md shadow-sm">
+                #{proposalRowNumber}
               </span>
-              <span className="px-3 py-1 bg-indigo-100 text-indigo-800 text-xs font-bold rounded border border-indigo-200">
-                No. {proposalRowNumber} &middot; {proposal.regionCenter || 'Pusat'}
+              <span className="px-3 py-1 bg-gray-100 text-gray-800 text-xs font-bold rounded border border-gray-200">
+                {proposal.category} {proposal.regionCenter ? `· ${proposal.regionCenter}` : '· Pusat'}
               </span>
               <span className="text-sm text-gray-500 font-mono ml-auto">ID: {proposal.externalSubId || proposal.externalId}</span>
             </div>

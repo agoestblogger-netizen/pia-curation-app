@@ -68,6 +68,11 @@ export default function CoordinatorBoard({ proposals }: { proposals: ProposalCar
     <div className="border-t border-gray-100 divide-y divide-gray-100">
       {items.map((p) => (
         <div key={p.id} className="p-6 flex items-start group hover:bg-gray-50 transition-colors">
+          {/* Row Number Badge */}
+          <div className="w-10 h-10 bg-gray-100 rounded-lg text-gray-700 flex items-center justify-center flex-shrink-0 mr-3 shadow-sm font-bold text-sm border border-gray-200">
+            {p.proposalRowNumber}
+          </div>
+
           {/* Icon */}
           <div className="w-12 h-12 bg-[#0F4C81] rounded-lg text-white flex items-center justify-center flex-shrink-0 mr-4 shadow-sm">
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M8 14v3m4-3v3m4-3v3M3 21h18M3 10h18M3 7l9-4 9 4M4 10h16v11H4V10z" /></svg>
@@ -78,7 +83,7 @@ export default function CoordinatorBoard({ proposals }: { proposals: ProposalCar
             <div className="flex items-center space-x-3 mb-1">
               <Link href={`/curator/proposals/${p.id}`} className="hover:underline">
                 <h4 className="text-[15px] font-bold text-gray-900 leading-tight">
-                  No. {p.proposalRowNumber} — {p.title}
+                  {p.title}
                 </h4>
               </Link>
               <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-green-50 text-green-700 border border-green-200 whitespace-nowrap">
@@ -144,7 +149,7 @@ export default function CoordinatorBoard({ proposals }: { proposals: ProposalCar
           placeholder="Cari Proposal..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          className="pl-10 w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-3 border"
+          className="pl-10 w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-3 border text-gray-900 bg-white"
         />
       </div>
 
