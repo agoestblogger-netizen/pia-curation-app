@@ -82,6 +82,7 @@ export default function AssignProposalUI({
   const [selectedCategory, setSelectedCategory] = useState(ASSIGN_CATEGORIES[0]);
   const [checkedBlocks, setCheckedBlocks] = useState<Set<string>>(new Set());
   const [expandedCats, setExpandedCats] = useState<Record<string, boolean>>({});
+  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
     setCheckedBlocks(new Set());
@@ -253,6 +254,22 @@ export default function AssignProposalUI({
                     <svg fill="none" height="20" shapeRendering="geometricPrecision" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" viewBox="0 0 24 24" width="20"><path d="M6 9l6 6 6-6"></path></svg>
                   </span>
                 </summary>
+                <div className="p-2 border-t border-gray-200">
+                  <div className="relative mb-2">
+                    <div className="absolute inset-y-0 left-0 pl-2 flex items-center pointer-events-none">
+                      <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                      </svg>
+                    </div>
+                    <input
+                      type="text"
+                      placeholder="Cari Proposal..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="pl-8 w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-xs px-2 py-1.5 border"
+                    />
+                  </div>
+                </div>
                 <div className="max-h-64 overflow-y-auto p-2 border-t border-gray-200">
                   {categoryProposals.length === 0 ? (
                     <p className="text-gray-500 italic p-2 text-center">Tidak ada proposal di kategori ini.</p>
@@ -266,7 +283,9 @@ export default function AssignProposalUI({
                         </tr>
                       </thead>
                       <tbody>
-                        {categoryProposals.map(p => {
+                        {categoryProposals
+                          .filter(p => p.title.toLowerCase().includes(searchQuery.toLowerCase()))
+                          .map(p => {
                           const isAssigned = assignedMap.has(p.id);
                           const curatorName = assignedMap.get(p.id);
                           return (

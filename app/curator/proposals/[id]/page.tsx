@@ -1,7 +1,7 @@
 import { getSession } from '@/lib/auth/session';
 import { db } from '@/lib/db';
 import { proposals, curatorAssignments, screeningResults } from '@/lib/db/schema';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, sql } from 'drizzle-orm';
 import { notFound, redirect } from 'next/navigation';
 import Link from 'next/link';
 import AutoStartScreening from './AutoStartScreening';
@@ -26,8 +26,26 @@ export default async function ProposalDetailPage({ params }: { params: Promise<{
   const proposalId = parseInt(id, 10);
   if (isNaN(proposalId)) notFound();
 
-  const [proposal] = await db.select().from(proposals).where(eq(proposals.id, proposalId)).limit(1);
-  if (!proposal) notFound();
+  const rawSql = sql<number>`(
+    SELECT rn FROM (
+      SELECT id, ROW_NUMBER() OVER (PARTITION BY category, region_center ORDER BY id ASC) as rn 
+      FROM proposals 
+      WHERE competition_id = ${proposals.competitionId}
+    ) sub WHERE sub.id = ${proposals.id}
+  )`.mapWith(Number);
+
+  const [proposalResult] = await db
+    .select({
+      proposal: proposals,
+      proposalRowNumber: rawSql
+    })
+    .from(proposals)
+    .where(eq(proposals.id, proposalId))
+    .limit(1);
+
+  if (!proposalResult) notFound();
+  
+  const { proposal, proposalRowNumber } = proposalResult;
 
   // Get user's assignment
   let assignment = null;
@@ -93,7 +111,10 @@ export default async function ProposalDetailPage({ params }: { params: Promise<{
               <span className="px-3 py-1 bg-gray-100 text-gray-800 text-xs font-bold rounded">
                 {proposal.category}
               </span>
-              <span className="text-sm text-gray-500 font-mono">ID: {proposal.externalSubId || proposal.externalId}</span>
+              <span className="px-3 py-1 bg-indigo-100 text-indigo-800 text-xs font-bold rounded border border-indigo-200">
+                No. {proposalRowNumber} &middot; {proposal.regionCenter || 'Pusat'}
+              </span>
+              <span className="text-sm text-gray-500 font-mono ml-auto">ID: {proposal.externalSubId || proposal.externalId}</span>
             </div>
             
             <h1 className="text-2xl font-bold text-gray-900 mb-6 leading-tight">

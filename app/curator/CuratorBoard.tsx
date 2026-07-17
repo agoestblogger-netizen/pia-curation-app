@@ -13,6 +13,7 @@ interface ProposalCard {
   regionCenter: string | null;
   status: string; // 'assigned', 'in_review', 'completed'
   aiScore: string;
+  proposalRowNumber: number;
 }
 
 const CATEGORY_MAP: Record<string, { label: string, short: string, bg: string }> = {
@@ -24,6 +25,7 @@ const CATEGORY_MAP: Record<string, { label: string, short: string, bg: string }>
 
 export default function CuratorBoard({ proposals }: { proposals: ProposalCard[] }) {
   const [activeTab, setActiveTab] = useState<'assigned' | 'review'>('assigned');
+  const [searchQuery, setSearchQuery] = useState('');
   const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>({
     'PUSAT': true
   });
@@ -37,10 +39,12 @@ export default function CuratorBoard({ proposals }: { proposals: ProposalCard[] 
     setExpandedWilayah(prev => ({ ...prev, [region]: !prev[region] }));
   };
 
-  // Filter based on tab
-  const displayedProposals = proposals.filter(p => 
-    activeTab === 'assigned' ? p.status !== 'completed' : p.status === 'completed'
-  );
+  // Filter based on tab and search query
+  const displayedProposals = proposals.filter(p => {
+    const matchesTab = activeTab === 'assigned' ? p.status !== 'completed' : p.status === 'completed';
+    const matchesSearch = p.title.toLowerCase().includes(searchQuery.toLowerCase());
+    return matchesTab && matchesSearch;
+  });
 
   // Group by category
   const grouped: Record<string, ProposalCard[]> = {
@@ -73,7 +77,7 @@ export default function CuratorBoard({ proposals }: { proposals: ProposalCard[] 
             <div className="flex items-center space-x-3 mb-1">
               <Link href={`/curator/proposals/${p.id}`} className="hover:underline">
                 <h4 className="text-[15px] font-bold text-gray-900 leading-tight">
-                  {p.title}
+                  No. {p.proposalRowNumber} — {p.title}
                 </h4>
               </Link>
               <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-green-50 text-green-700 border border-green-200 whitespace-nowrap">
@@ -120,6 +124,22 @@ export default function CuratorBoard({ proposals }: { proposals: ProposalCard[] 
         >
           Selesai Discreening
         </button>
+      </div>
+
+      {/* Search Input */}
+      <div className="mb-6 relative w-full sm:max-w-md">
+        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+          <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+        </div>
+        <input
+          type="text"
+          placeholder="Cari Proposal..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="pl-10 w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-3 border"
+        />
       </div>
 
       <div className="space-y-4">

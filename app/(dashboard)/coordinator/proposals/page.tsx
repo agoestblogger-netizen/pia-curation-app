@@ -1,7 +1,7 @@
 import { requireRole } from '@/lib/auth/helpers';
 import { db } from '@/lib/db';
 import { proposals, users, curatorAssignments } from '@/lib/db/schema';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, sql } from 'drizzle-orm';
 import { getActiveCompetition } from '@/app/actions/competitions';
 import CoordinatorBoard from './CoordinatorBoard';
 
@@ -34,6 +34,7 @@ export default async function ProposalsPage() {
       status: proposals.status,
       aiScore: proposals.aiCidaTotal,
       curatorName: users.name,
+      proposalRowNumber: sql<number>`ROW_NUMBER() OVER (PARTITION BY ${proposals.category}, ${proposals.regionCenter} ORDER BY ${proposals.id} ASC)`.mapWith(Number),
     })
     .from(proposals)
     .leftJoin(
@@ -54,6 +55,7 @@ export default async function ProposalsPage() {
     status: r.status,
     aiScore: r.aiScore !== null ? Number(r.aiScore).toFixed(2) : 'N/A',
     curatorName: r.curatorName,
+    proposalRowNumber: r.proposalRowNumber,
   }));
 
   const completedCount = mappedProposals.filter(p => p.status === 'completed').length;

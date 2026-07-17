@@ -1,7 +1,7 @@
 import { getSession } from '@/lib/auth/session';
 import { db } from '@/lib/db';
 import { proposals, curatorAssignments, competitions, users } from '@/lib/db/schema';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, sql } from 'drizzle-orm';
 import CuratorBoard from './CuratorBoard';
 
 export default async function CuratorDashboard() {
@@ -31,6 +31,7 @@ export default async function CuratorDashboard() {
         regionCenter: proposals.regionCenter,
         aiCidaTotal: proposals.aiCidaTotal,
         assignmentStatus: curatorAssignments.status,
+        proposalRowNumber: sql<number>`ROW_NUMBER() OVER (PARTITION BY ${proposals.category}, ${proposals.regionCenter} ORDER BY ${proposals.id} ASC)`.mapWith(Number),
       })
       .from(curatorAssignments)
       .innerJoin(proposals, eq(curatorAssignments.proposalId, proposals.id))
@@ -52,6 +53,7 @@ export default async function CuratorDashboard() {
       regionCenter: a.regionCenter,
       status: a.assignmentStatus,
       aiScore: a.aiCidaTotal ? a.aiCidaTotal.toFixed(1) : '-',
+      proposalRowNumber: a.proposalRowNumber,
     }));
   }
 
