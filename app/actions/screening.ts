@@ -47,7 +47,7 @@ export async function startScreeningAction(assignmentId: number): Promise<Screen
     .set({ status: 'in_review', startedAt: new Date() })
     .where(eq(curatorAssignments.id, assignmentId));
 
-  revalidatePath('/curator');
+  revalidatePath('/curator', 'layout');
   return { success: true };
 }
 
@@ -117,8 +117,7 @@ export async function submitScreeningAction(
     .where(eq(proposals.id, assignment.proposalId));
 
   await audit.screeningSubmit(assignmentId, verdict);
-  revalidatePath('/curator');
-  revalidatePath(`/curator/screening/${assignmentId}`);
+  revalidatePath('/curator', 'layout');
 
   return { success: true };
 }
@@ -240,7 +239,7 @@ export async function editScreeningAction(
     after: { oldVerdict: oldResult.verdict, newVerdict: verdict, notes },
   });
 
-  revalidatePath('/curator');
+  revalidatePath('/curator', 'layout');
   return { success: true };
 }
 
@@ -292,6 +291,6 @@ export async function resetScreeningAction(assignmentId: number): Promise<Screen
     after: { assignmentId },
   });
 
-  revalidatePath('/curator');
+  revalidatePath('/curator', 'layout');
   return { success: true };
 }
