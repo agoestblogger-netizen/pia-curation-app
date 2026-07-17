@@ -117,7 +117,7 @@ export default function ScreeningForm({ assignmentId, isCompleted, hardLock, exi
           required
           rows={4}
           defaultValue={isEditing ? existingResult?.notes : ''}
-          className="w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-3 border"
+          className="w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-3 border text-gray-900 bg-white"
           placeholder="Tuliskan justifikasi detail mengapa Anda memilih verdict tersebut..."
         ></textarea>
       </div>
@@ -127,7 +127,7 @@ export default function ScreeningForm({ assignmentId, isCompleted, hardLock, exi
         <textarea
           name="recommendation"
           rows={3}
-          className="w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-3 border"
+          className="w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-3 border text-gray-900 bg-white"
           placeholder="Adakah saran pengembangan untuk proposal ini ke depannya?"
         ></textarea>
       </div>
