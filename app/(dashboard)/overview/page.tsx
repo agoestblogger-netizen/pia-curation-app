@@ -2,7 +2,7 @@ import { getActiveCompetition, advancePhaseAction } from '@/app/actions/competit
 import { getSession } from '@/lib/auth/session';
 import { db } from '@/lib/db';
 import { proposals, curatorAssignments, users } from '@/lib/db/schema';
-import { eq, sql } from 'drizzle-orm';
+import { eq, sql, and } from 'drizzle-orm';
 import Link from 'next/link';
 
 export default async function OverviewDashboard() {
@@ -81,17 +81,22 @@ export default async function OverviewDashboard() {
   });
 
   // Calculate Curator Assignment Stats (Only for Coordinator)
-  let curatorStats: { name: string; total: number; completed: number; sisa: number }[] = [];
+  let curatorStats: { name: string; categoriesAssigned: string; total: number; completed: number; sisa: number }[] = [];
   if (session?.roles?.includes('coordinator')) {
     const curators = await db
       .select({ id: users.id, name: users.name })
       .from(users)
-      .where(sql`'curator' = ANY(${users.roles})`);
+      .where(and(
+        sql`'curator' = ANY(${users.roles})`,
+        eq(users.isActive, true)
+      ));
 
     const assignments = await db
       .select({
         curatorId: curatorAssignments.curatorId,
         status: curatorAssignments.status,
+        category: proposals.category,
+        regionCenter: proposals.regionCenter,
       })
       .from(curatorAssignments)
       .innerJoin(proposals, eq(curatorAssignments.proposalId, proposals.id))
@@ -102,8 +107,30 @@ export default async function OverviewDashboard() {
       const total = myAss.length;
       const completed = myAss.filter((a) => a.status === 'completed').length;
       const sisa = total - completed;
+      
+      const categoryCounts: Record<string, number> = {};
+      myAss.forEach(a => {
+        let catLabel = a.category;
+        if (a.category === 'WILAYAH' && a.regionCenter) {
+          catLabel = `Kanwil ${a.regionCenter}`;
+        } else if (a.category === 'PUSAT') {
+          catLabel = 'Kantor Pusat';
+        } else if (a.category === 'BI') {
+          catLabel = 'Bank Indonesia';
+        } else if (a.category === 'BC') {
+          catLabel = 'Bisnis Cabang';
+        }
+        categoryCounts[catLabel] = (categoryCounts[catLabel] || 0) + 1;
+      });
+
+      const categoriesStr = Object.entries(categoryCounts)
+        .sort((a, b) => b[1] - a[1]) // highest first
+        .map(([name, count]) => `${name} (${count})`)
+        .join(', ');
+
       return {
         name: c.name,
+        categoriesAssigned: categoriesStr || '-',
         total,
         completed,
         sisa,
@@ -258,6 +285,7 @@ export default async function OverviewDashboard() {
             <thead className="bg-white">
               <tr>
                 <th className="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Kurator</th>
+                <th className="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Kategori yang Di-assign</th>
                 <th className="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Total Assigned</th>
                 <th className="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Sudah Discreening</th>
                 <th className="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Sisa</th>
@@ -267,6 +295,7 @@ export default async function OverviewDashboard() {
               {curatorStats.map((stat) => (
                 <tr key={stat.name} className="hover:bg-gray-50">
                   <td className="px-5 py-3 font-semibold text-sm text-gray-900">{stat.name}</td>
+                  <td className="px-5 py-3 text-xs text-gray-500 max-w-xs truncate" title={stat.categoriesAssigned}>{stat.categoriesAssigned}</td>
                   <td className="px-5 py-3 text-sm text-gray-600">{stat.total}</td>
                   <td className="px-5 py-3 text-sm font-semibold text-emerald-600">{stat.completed}</td>
                   <td className="px-5 py-3 text-sm font-bold text-rose-600">{stat.sisa}</td>
@@ -274,8 +303,8 @@ export default async function OverviewDashboard() {
               ))}
               {curatorStats.length === 0 && (
                 <tr>
-                  <td colSpan={4} className="px-5 py-4 text-center text-sm text-gray-500">
-                    Belum ada kurator yang terdaftar.
+                  <td colSpan={5} className="px-5 py-4 text-center text-sm text-gray-500">
+                    Belum ada kurator yang terdaftar atau aktif.
                   </td>
                 </tr>
               )}
