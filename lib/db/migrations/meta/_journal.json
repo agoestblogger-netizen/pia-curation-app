@@ -1,0 +1,55 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1784197877813,
+      "tag": "0000_aromatic_speedball",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1784209765318,
+      "tag": "0001_great_stark_industries",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1784210060724,
+      "tag": "0002_quiet_tarantula",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1784257848155,
+      "tag": "0003_parched_bill_hollister",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1784261169779,
+      "tag": "0004_white_lethal_legion",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1784262299878,
+      "tag": "0005_add_roles",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1784267307245,
+      "tag": "0006_military_warbird",
+      "breakpoints": true
+    }
+  ]
+}

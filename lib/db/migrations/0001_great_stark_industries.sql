@@ -1,0 +1,2 @@
+CREATE TYPE "public"."screening_verdict" AS ENUM('lolos', 'duplication', 'mapped', 'non_compliance', 'low_impact');--> statement-breakpoint
+ALTER TABLE "screening_results" ALTER COLUMN "verdict" SET DATA TYPE "public"."screening_verdict" USING "verdict"::"public"."screening_verdict";

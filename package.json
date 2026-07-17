@@ -6,21 +6,41 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test": "vitest run",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "npx tsx scripts/run-migrations.ts",
+    "db:seed": "DOTENV_CONFIG_PATH=.env.local npx tsx -r dotenv/config lib/db/seed.ts",
+    "db:verify": "DOTENV_CONFIG_PATH=.env.local npx tsx -r dotenv/config scripts/verify-connection.ts",
+    "db:import": "DOTENV_CONFIG_PATH=.env.local npx tsx -r dotenv/config scripts/import-cida.ts",
+    "db:import:truncate": "DOTENV_CONFIG_PATH=.env.local npx tsx -r dotenv/config scripts/import-cida.ts --truncate"
   },
   "dependencies": {
+    "@react-pdf/renderer": "^4.5.1",
+    "@types/bcryptjs": "^2.4.6",
+    "bcryptjs": "^3.0.3",
+    "drizzle-kit": "^0.31.10",
+    "jose": "^6.2.3",
     "next": "16.2.10",
+    "postgres": "^3.4.9",
     "react": "19.2.4",
-    "react-dom": "19.2.4"
+    "react-dom": "19.2.4",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
+    "@testing-library/react": "^16.3.2",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@vitejs/plugin-react": "^6.0.3",
+    "dotenv": "^17.4.2",
+    "drizzle-orm": "^0.45.2",
     "eslint": "^9",
     "eslint-config-next": "16.2.10",
+    "jsdom": "^29.1.1",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^4.1.10"
   }
 }
