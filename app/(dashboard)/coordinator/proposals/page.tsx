@@ -68,6 +68,8 @@ export default async function ProposalsPage() {
     proposalRowNumber: rnMap.get(r.id) || 0,
   }));
 
+  mappedProposals.sort((a, b) => a.proposalRowNumber - b.proposalRowNumber);
+
   const completedCount = mappedProposals.filter(p => p.status === 'completed').length;
   const totalCount = mappedProposals.length;
 

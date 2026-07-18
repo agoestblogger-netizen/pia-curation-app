@@ -65,6 +65,8 @@ export default async function CuratorDashboard() {
       aiScore: a.aiCidaTotal ? a.aiCidaTotal.toFixed(1) : '-',
       proposalRowNumber: rnMap.get(a.id) || 0,
     }));
+
+    mappedProposals.sort((a, b) => a.proposalRowNumber - b.proposalRowNumber);
   }
 
   // User details for Identity block
