@@ -169,7 +169,7 @@ export default async function ProposalDetailPage({ params }: { params: Promise<{
                 </div>
                 <div>
                   <div className="text-xs text-gray-500 font-semibold mb-1 uppercase">Nama Unit Kerja</div>
-                  <div className="text-sm text-gray-900">{proposal.proposerOffice || '-'}</div>
+                  <div className="text-sm text-gray-900">{proposal.proposerUnitKerja || '-'}</div>
                 </div>
               </div>
 
