@@ -157,8 +157,8 @@ export default async function ProposalDetailPage({ params }: { params: Promise<{
                 </div>
               </div>
 
-              {/* Row 3: Group & Sub-Tema */}
-              <div className="grid grid-cols-2 gap-4">
+              {/* Row 3: Group, Sub-Tema, & Unit Kerja */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>
                   <div className="text-xs text-gray-500 font-semibold mb-1 uppercase">Group</div>
                   <div className="text-sm text-gray-900">{proposal.groupName || '-'}</div>
@@ -166,6 +166,10 @@ export default async function ProposalDetailPage({ params }: { params: Promise<{
                 <div>
                   <div className="text-xs text-gray-500 font-semibold mb-1 uppercase">Sub-Tema</div>
                   <div className="text-sm text-gray-900">{proposal.theme || '-'}</div>
+                </div>
+                <div>
+                  <div className="text-xs text-gray-500 font-semibold mb-1 uppercase">Nama Unit Kerja</div>
+                  <div className="text-sm text-gray-900">{proposal.proposerOffice || '-'}</div>
                 </div>
               </div>
 
