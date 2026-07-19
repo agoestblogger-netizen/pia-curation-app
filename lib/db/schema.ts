@@ -164,6 +164,17 @@ export const proposals = pgTable('proposals', {
   index('proposals_region_center_idx').on(table.regionCenter),
 ]);
 
+// ─── PROPOSAL AI ANALYSES ─────────────────────────────────────────────────────
+export const proposalAiAnalyses = pgTable('proposal_ai_analyses', {
+  id: serial('id').primaryKey(),
+  proposalId: integer('proposal_id').notNull().references(() => proposals.id).unique(),
+  structuredSummary: jsonb('structured_summary').notNull(), // { problem: string, solution: string, target: string }
+  keyClaims: jsonb('key_claims').notNull(), // string[]
+  clarificationPoints: jsonb('clarification_points').notNull(), // string[]
+  duplicationCheck: text('duplication_check'), // string
+  generatedAt: timestamp('generated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
 // ─── CURATION BATCHES ─────────────────────────────────────────────────────────
 export const curationBatches = pgTable('curation_batches', {
   id: serial('id').primaryKey(),
@@ -444,3 +455,4 @@ export type FgdSession = typeof fgdSessions.$inferSelect;
 export type FgdVote = typeof fgdVotes.$inferSelect;
 export type FgdComment = typeof fgdComments.$inferSelect;
 export type PromoterAssignment = typeof promoterAssignments.$inferSelect;
+export type ProposalAiAnalysis = typeof proposalAiAnalyses.$inferSelect;

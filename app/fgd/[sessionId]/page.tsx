@@ -1,9 +1,9 @@
 import { getSession } from '@/lib/auth/session';
 import { db } from '@/lib/db';
 import { 
-  fgdSessions, fgdVotes, fgdComments, users
+  fgdSessions, fgdVotes, fgdComments, users, proposalAiAnalyses
 } from '@/lib/db/schema';
-import { eq, sql } from 'drizzle-orm';
+import { eq, sql, inArray } from 'drizzle-orm';
 import FgdRoomClient from './FgdRoomClient';
 import Link from 'next/link';
 
@@ -77,7 +77,30 @@ export default async function FgdRoomPage({ params }: { params: Promise<{ sessio
     subId: string | null;
     rowNumber: number;
     verdict: string;
+    aiAnalysis?: any;
   }>;
+
+  // Fetch AI analyses for the proposals in this session
+  const proposalIds = allRawProposals.map(p => p.id);
+  
+  if (proposalIds.length > 0) {
+    const aiAnalyses = await db
+      .select()
+      .from(proposalAiAnalyses)
+      .where(inArray(proposalAiAnalyses.proposalId, proposalIds));
+      
+    // Attach aiAnalysis to each proposal
+    const aiMap = new Map();
+    for (const analysis of aiAnalyses) {
+      aiMap.set(analysis.proposalId, analysis);
+    }
+    
+    for (const p of allRawProposals) {
+      if (aiMap.has(p.id)) {
+        p.aiAnalysis = aiMap.get(p.id);
+      }
+    }
+  }
 
   // ─── Get votes ────────────────────────────────────────────────────────────
   const votesRaw = await db

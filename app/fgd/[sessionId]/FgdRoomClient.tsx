@@ -3,6 +3,7 @@
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { submitFgdCommentAction, submitFgdVoteAction, lockFgdSessionAction } from '@/app/actions/fgd';
+import { generateFgdAiAnalysis } from '@/app/actions/aiAnalysis';
 
 // 5 warna per verdict — sesuai SCREENING_VERDICT_COLORS
 const VERDICT_COLORS: Record<string, string> = {
@@ -40,6 +41,7 @@ type Proposal = {
   summary: string | null;
   rowNumber: number;
   verdict: string;
+  aiAnalysis?: any;
 };
 
 type Vote = { id: number; proposalId: number; curatorId: number; vote: string };
@@ -58,6 +60,40 @@ export default function FgdRoomClient({
   const [, startRefresh] = useTransition();
 
   const [activeTab, setActiveTab] = useState<'list' | 'detail' | 'penetapan'>('list');
+  const [isGeneratingAi, setIsGeneratingAi] = useState<Record<number, boolean>>({});
+  const [aiError, setAiError] = useState<Record<number, string | null>>({});
+  
+  // Local state for AI analyses so we don't need to refresh the whole page
+  const [localAiAnalyses, setLocalAiAnalyses] = useState<Record<number, any>>(() => {
+    const map: Record<number, any> = {};
+    for (const p of proposals) {
+      if (p.aiAnalysis) map[p.id] = p.aiAnalysis;
+    }
+    return map;
+  });
+
+  const handleGenerateAi = async (proposalId: number) => {
+    setIsGeneratingAi(prev => ({ ...prev, [proposalId]: true }));
+    setAiError(prev => ({ ...prev, [proposalId]: null }));
+    try {
+      const otherContext = proposals.map(p => ({
+        id: p.id,
+        title: p.title,
+        summary: p.summary
+      }));
+      
+      const res = await generateFgdAiAnalysis(proposalId, otherContext);
+      if (res.error) {
+        setAiError(prev => ({ ...prev, [proposalId]: res.error as string }));
+      } else if (res.data) {
+        setLocalAiAnalyses(prev => ({ ...prev, [proposalId]: res.data }));
+      }
+    } catch (e: any) {
+      setAiError(prev => ({ ...prev, [proposalId]: e.message || 'Terjadi kesalahan sistem.' }));
+    } finally {
+      setIsGeneratingAi(prev => ({ ...prev, [proposalId]: false }));
+    }
+  };
   const [activeProposalIdx, setActiveProposalIdx] = useState<number | null>(null);
   
   const [commentText, setCommentText] = useState('');
@@ -340,12 +376,93 @@ export default function FgdRoomClient({
                       )}
                     </div>
 
-                    {activeProposal.summary && (
-                      <div className="bg-gray-50 p-4 rounded-md border border-gray-100 mb-6">
-                        <h4 className="font-semibold text-gray-700 mb-2 text-xs uppercase tracking-wide">Ringkasan AI</h4>
-                        <p className="text-gray-700 text-sm whitespace-pre-wrap">{activeProposal.summary}</p>
+                    {/* NEW AI ANALYSIS SECTION */}
+                    <div className="bg-gray-50 p-5 rounded-md border border-gray-200 mb-6 relative">
+                      <div className="flex justify-between items-center mb-4">
+                        <h4 className="font-bold text-indigo-900 text-sm uppercase tracking-wide flex items-center">
+                          <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                          Analisis AI Pintar
+                        </h4>
+                        {!localAiAnalyses[activeProposal.id] && (
+                          <button
+                            onClick={() => handleGenerateAi(activeProposal.id)}
+                            disabled={isGeneratingAi[activeProposal.id]}
+                            className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold py-1.5 px-3 rounded shadow-sm transition disabled:opacity-50 flex items-center"
+                          >
+                            {isGeneratingAi[activeProposal.id] ? (
+                              <span className="flex items-center">
+                                <svg className="animate-spin -ml-1 mr-2 h-3 w-3 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                Memproses...
+                              </span>
+                            ) : '✨ Generate Analisis'}
+                          </button>
+                        )}
                       </div>
-                    )}
+
+                      {aiError[activeProposal.id] && (
+                        <div className="bg-red-50 text-red-700 p-3 rounded text-sm mb-3 border border-red-200">
+                          {aiError[activeProposal.id]}
+                        </div>
+                      )}
+
+                      {localAiAnalyses[activeProposal.id] ? (
+                        <div className="space-y-4">
+                          {/* 1. Structured Summary */}
+                          <div className="text-sm text-gray-700 space-y-2">
+                            <div><strong className="text-gray-900">Masalah:</strong> {localAiAnalyses[activeProposal.id].structuredSummary?.problem || '-'}</div>
+                            <div><strong className="text-gray-900">Solusi:</strong> {localAiAnalyses[activeProposal.id].structuredSummary?.solution || '-'}</div>
+                            <div><strong className="text-gray-900">Target:</strong> {localAiAnalyses[activeProposal.id].structuredSummary?.target || '-'}</div>
+                          </div>
+
+                          {/* 2. Key Claims */}
+                          {localAiAnalyses[activeProposal.id].keyClaims?.length > 0 && (
+                            <div className="flex flex-wrap gap-2 pt-2 border-t border-gray-200">
+                              {localAiAnalyses[activeProposal.id].keyClaims.map((claim: string, idx: number) => (
+                                <span key={idx} className="bg-indigo-100 text-indigo-800 text-xs font-semibold px-2.5 py-1 rounded-full border border-indigo-200 shadow-sm flex items-center">
+                                  🎯 {claim}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+
+                          {/* 3. Clarification Points */}
+                          {localAiAnalyses[activeProposal.id].clarificationPoints?.length > 0 && (
+                            <div className="bg-orange-50 border-l-4 border-orange-400 p-3 rounded">
+                              <h5 className="text-xs font-bold text-orange-800 mb-1 flex items-center">
+                                ⚠️ Poin Perlu Klarifikasi
+                              </h5>
+                              <ul className="list-disc list-inside text-xs text-orange-900 space-y-1 ml-1">
+                                {localAiAnalyses[activeProposal.id].clarificationPoints.map((point: string, idx: number) => (
+                                  <li key={idx} className="leading-snug">{point}</li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+
+                          {/* 4. Duplication Check */}
+                          {localAiAnalyses[activeProposal.id].duplicationCheck && (
+                            <div className="bg-gray-100 border border-gray-300 p-3 rounded flex items-start">
+                              <span className="text-gray-500 mr-2">🔍</span>
+                              <p className="text-xs text-gray-700 leading-snug">
+                                <strong className="font-semibold">Cek Duplikasi: </strong>
+                                {localAiAnalyses[activeProposal.id].duplicationCheck}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <div>
+                          {activeProposal.summary && (
+                            <p className="text-gray-600 text-sm italic mb-4 border-l-2 border-gray-300 pl-3">
+                              {activeProposal.summary}
+                            </p>
+                          )}
+                          <p className="text-gray-500 text-sm">
+                            Analisis pintar belum ditarik. Klik tombol di atas untuk menganalisa target, klaim kunci, dan potensi duplikasi.
+                          </p>
+                        </div>
+                      )}
+                    </div>
 
                     {/* VOTE AREA */}
                     <div className="bg-blue-50 border border-blue-100 p-5 rounded-md">

@@ -71,6 +71,13 @@
       "when": 1784397097675,
       "tag": "0009_cheerful_jean_grey",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1784466041013,
+      "tag": "0010_heavy_grandmaster",
+      "breakpoints": true
     }
   ]
 }
