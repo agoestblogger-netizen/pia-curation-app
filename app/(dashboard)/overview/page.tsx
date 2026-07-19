@@ -194,7 +194,9 @@ export default async function OverviewDashboard() {
             <tbody className="divide-y divide-gray-100">
               {['WILAYAH', 'PUSAT', 'BC', 'BI'].map((cat) => (
                 <tr key={cat}>
-                  <td className="px-5 py-3 font-semibold text-sm text-gray-900">{cat}</td>
+                  <td className="px-5 py-3 font-semibold text-sm text-gray-900">
+                    {cat === 'BC' ? 'Business Case' : cat === 'BI' ? 'Breakthrough Innovation' : cat}
+                  </td>
                   <td className="px-5 py-3 text-sm text-gray-600">{catTotal[cat]}</td>
                 </tr>
               ))}
@@ -219,7 +221,9 @@ export default async function OverviewDashboard() {
             <tbody className="divide-y divide-gray-100">
               {['WILAYAH', 'PUSAT', 'BC', 'BI'].map((cat) => (
                 <tr key={cat}>
-                  <td className="px-5 py-3 font-semibold text-sm text-gray-900">{cat}</td>
+                  <td className="px-5 py-3 font-semibold text-sm text-gray-900">
+                    {cat === 'BC' ? 'Business Case' : cat === 'BI' ? 'Breakthrough Innovation' : cat}
+                  </td>
                   <td className="px-5 py-3 text-sm font-semibold text-indigo-700">
                     {catCurated[cat]} / <span className="text-gray-500 font-normal">{catTotal[cat]}</span>
                   </td>
