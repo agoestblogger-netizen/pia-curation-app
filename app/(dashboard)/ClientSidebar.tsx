@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { logoutAction } from '@/app/actions/auth';
 
 type Session = {
   userId: number;
@@ -41,15 +42,31 @@ export default function ClientSidebar({ session }: { session: Session }) {
           PIA Curation App
         </div>
         
-        <div className="p-4 text-sm text-indigo-300 border-b border-indigo-800">
-          <div className="font-semibold text-white">{session?.name}</div>
-          <div className="flex flex-wrap gap-1 mt-1">
-            {session?.roles?.map(r => (
-              <span key={r} className="px-2 py-0.5 bg-indigo-800 text-indigo-100 rounded-full text-xs font-medium capitalize">
-                {r}
-              </span>
-            ))}
+        <div className="p-4 text-sm text-indigo-300 border-b border-indigo-800 flex flex-col gap-3">
+          <div>
+            <div className="font-semibold text-white">{session?.name}</div>
+            <div className="flex flex-wrap gap-1 mt-1">
+              {session?.roles?.map(r => (
+                <span key={r} className="px-2 py-0.5 bg-indigo-800 text-indigo-100 rounded-full text-xs font-medium capitalize">
+                  {r}
+                </span>
+              ))}
+            </div>
           </div>
+          
+          {session && (
+            <div className="flex items-center gap-3 text-xs font-medium mt-1">
+              <Link href="/settings/password" onClick={() => setIsOpen(false)} className="hover:text-white transition-colors">
+                Ganti Password
+              </Link>
+              <span className="text-indigo-700">|</span>
+              <form action={logoutAction}>
+                <button type="submit" className="text-red-400 hover:text-red-300 transition-colors font-bold">
+                  Logout
+                </button>
+              </form>
+            </div>
+          )}
         </div>
 
         <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
