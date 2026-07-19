@@ -50,7 +50,7 @@ export default async function FgdRoomPage({ params }: { params: Promise<{ sessio
       p.summary,
       p.group_name as "groupName",
       p.theme,
-      p.sub_id as "subId",
+      p.external_sub_id as "subId",
       ROW_NUMBER() OVER (PARTITION BY p.category, p.region_center ORDER BY p.id ASC) as "rowNumber",
       sr.verdict
     FROM proposals p
