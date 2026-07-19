@@ -20,6 +20,7 @@ export default async function UsersPage() {
       <UserManagementClient
         users={users.map(u => ({ ...u, createdAt: u.createdAt ?? null }))}
         currentUserId={session.userId}
+        currentUserRoles={session.roles}
       />
     </div>
   );

@@ -39,9 +39,10 @@ const ROLE_COLORS: Record<string, string> = {
 interface Props {
   users: UserRow[];
   currentUserId: number;
+  currentUserRoles: string[];
 }
 
-export default function UserManagementClient({ users: initialUsers, currentUserId }: Props) {
+export default function UserManagementClient({ users: initialUsers, currentUserId, currentUserRoles }: Props) {
   const [users, setUsers] = useState(initialUsers);
   const [togglingId, setTogglingId] = useState<number | null>(null);
   
@@ -199,18 +200,23 @@ export default function UserManagementClient({ users: initialUsers, currentUserI
             <div className="col-span-2">
               <label className="block text-xs font-semibold text-gray-600 mb-2">Role(s) (Pilih satu atau lebih)</label>
               <div className="flex gap-4">
-                {Object.entries(ROLE_LABELS).map(([val, label]) => (
-                  <label key={val} className="flex items-center space-x-2 text-sm">
-                    <input 
-                      type="checkbox" 
-                      name="roles" 
-                      value={val} 
-                      defaultChecked={editMode?.roles?.includes(val)}
-                      className="rounded text-indigo-600 focus:ring-indigo-500" 
-                    />
-                    <span>{label}</span>
-                  </label>
-                ))}
+                {Object.entries(ROLE_LABELS).map(([val, label]) => {
+                  if (val === 'admin' && !currentUserRoles.includes('admin')) {
+                    return null;
+                  }
+                  return (
+                    <label key={val} className="flex items-center space-x-2 text-sm">
+                      <input 
+                        type="checkbox" 
+                        name="roles" 
+                        value={val} 
+                        defaultChecked={editMode?.roles?.includes(val)}
+                        className="rounded text-indigo-600 focus:ring-indigo-500" 
+                      />
+                      <span>{label}</span>
+                    </label>
+                  );
+                })}
               </div>
             </div>
             
