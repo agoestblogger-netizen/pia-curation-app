@@ -224,7 +224,7 @@ export default function AssignProposalUI({
     const expandedCats = isKurator ? expandedCatsKurator : expandedCatsPromotor;
     const setExpandedCats = isKurator ? setExpandedCatsKurator : setExpandedCatsPromotor;
     
-    const selectedCategory = isKurator ? selectedCuratorCategory : selectedPromoterCategory;
+    const rawSelectedCategory = isKurator ? selectedCuratorCategory : selectedPromoterCategory;
     const setSelectedCategory = isKurator ? setSelectedCuratorCategory : setSelectedPromoterCategory;
     
     const searchQuery = isKurator ? searchQueryKurator : searchQueryPromotor;
@@ -234,6 +234,29 @@ export default function AssignProposalUI({
     const action = isKurator ? actionKurator : actionPromotor;
 
     const availableCategories = isKurator ? ASSIGN_CATEGORIES : ['BI', 'BC'];
+
+    const categoriesWithAvailability = availableCategories.map(cat => {
+      const catTotal = allProps.filter(p => {
+        if (cat === 'Kantor Pusat') return p.category === 'PUSAT';
+        if (cat === 'BI') return p.category === 'BI';
+        if (cat === 'BC') return p.category === 'BC';
+        return p.category === 'WILAYAH' && p.regionCenter === cat;
+      }).length;
+      const catAssigned = allAssigned.filter(a => {
+        if (cat === 'Kantor Pusat') return a.category === 'PUSAT';
+        if (cat === 'BI') return a.category === 'BI';
+        if (cat === 'BC') return a.category === 'BC';
+        return a.category === 'WILAYAH' && a.proposalRegionCenter === cat;
+      }).length;
+      return { cat, catTotal, available: catTotal - catAssigned };
+    }).filter(c => c.available > 0);
+
+    const validCategories = categoriesWithAvailability.map(c => c.cat);
+    
+    // Auto-correct selected category if it has 0 available (not in validCategories)
+    const selectedCategory = (validCategories.includes(rawSelectedCategory) || validCategories.length === 0)
+      ? rawSelectedCategory
+      : validCategories[0];
 
     let dbCategory = '';
     let dbRegionCenter = '';
@@ -414,36 +437,37 @@ export default function AssignProposalUI({
                 {dbRegionCenter && <input type="hidden" name="regionCenter" value={dbRegionCenter} />}
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Kategori</label>
-                  <select 
-                    value={selectedCategory} 
-                    onChange={(e) => setSelectedCategory(e.target.value)}
-                    className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm px-3 py-2 border mb-2"
-                  >
-                    {availableCategories.map((cat) => {
-                      const catTotal = allProps.filter(p => {
-                        if (cat === 'Kantor Pusat') return p.category === 'PUSAT';
-                        if (cat === 'BI') return p.category === 'BI';
-                        if (cat === 'BC') return p.category === 'BC';
-                        return p.category === 'WILAYAH' && p.regionCenter === cat;
-                      }).length;
-                      
-                      let displayCat = cat;
-                      if (KANWIL_CITIES.includes(cat)) displayCat = `Kanwil ${cat}`;
-                      else if (cat === 'BI') displayCat = 'Breakthrough Innovation';
-                      else if (cat === 'BC') displayCat = 'Business Case';
+                  {categoriesWithAvailability.length === 0 ? (
+                    <div className="p-4 mb-4 bg-green-50 border border-green-200 rounded-md text-green-800 text-sm font-medium text-center">
+                      Semua proposal sudah ter-assign ke {isKurator ? 'kurator' : 'promotor'}.
+                    </div>
+                  ) : (
+                    <>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Kategori</label>
+                      <select 
+                        value={selectedCategory} 
+                        onChange={(e) => setSelectedCategory(e.target.value)}
+                        className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm px-3 py-2 border mb-2"
+                      >
+                        {categoriesWithAvailability.map(({ cat, catTotal }) => {
+                          let displayCat = cat;
+                          if (KANWIL_CITIES.includes(cat)) displayCat = `Kanwil ${cat}`;
+                          else if (cat === 'BI') displayCat = 'Breakthrough Innovation';
+                          else if (cat === 'BC') displayCat = 'Business Case';
 
-                      return (
-                        <option key={cat} value={cat}>
-                          {displayCat} ({catTotal})
-                        </option>
-                      );
-                    })}
-                  </select>
-                  <div className="text-sm text-gray-600 bg-gray-50 p-3 rounded-md border border-gray-200 flex justify-between items-center">
-                    <span><span className="font-semibold">{selectedCategory === 'BI' ? 'Breakthrough Innovation' : selectedCategory === 'BC' ? 'Business Case' : KANWIL_CITIES.includes(selectedCategory) ? `Kanwil ${selectedCategory}` : selectedCategory}:</span> {totalProps} total</span>
-                    <span><span className="font-bold text-green-600">{availableCount} tersedia</span></span>
-                  </div>
+                          return (
+                            <option key={cat} value={cat}>
+                              {displayCat} ({catTotal})
+                            </option>
+                          );
+                        })}
+                      </select>
+                      <div className="text-sm text-gray-600 bg-gray-50 p-3 rounded-md border border-gray-200 flex justify-between items-center">
+                        <span><span className="font-semibold">{selectedCategory === 'BI' ? 'Breakthrough Innovation' : selectedCategory === 'BC' ? 'Business Case' : KANWIL_CITIES.includes(selectedCategory) ? `Kanwil ${selectedCategory}` : selectedCategory}:</span> {totalProps} total</span>
+                        <span><span className="font-bold text-green-600">{availableCount} tersedia</span></span>
+                      </div>
+                    </>
+                  )}
                 </div>
 
                 {/* Tabel Referensi */}
