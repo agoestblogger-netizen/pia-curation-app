@@ -105,10 +105,10 @@ export default function CoordinatorBoard({ proposals }: { proposals: ProposalCar
 
           {/* Right action / Arrow */}
           <div className="flex-shrink-0 ml-auto pl-4 self-center flex flex-col items-end space-y-2">
-            <Link href={`/curator/proposals/${p.id}`} className="px-3 py-1 bg-indigo-100 text-indigo-800 text-xs font-bold rounded-md border border-indigo-200 hover:bg-indigo-200">
+            <Link href={`/curator/proposals/${p.id}`} className="hidden md:block px-3 py-1 bg-indigo-100 text-indigo-800 text-xs font-bold rounded-md border border-indigo-200 hover:bg-indigo-200">
               Lihat Detail
             </Link>
-            <svg className="w-5 h-5 text-gray-300 group-hover:text-gray-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" /></svg>
+            <svg className="w-5 h-5 text-gray-300 group-hover:text-gray-500 transition-colors md:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" /></svg>
           </div>
         </div>
       ))}
