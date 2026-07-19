@@ -51,6 +51,7 @@ export default async function FgdRoomPage({ params }: { params: Promise<{ sessio
       p.group_name as "groupName",
       p.theme,
       p.external_sub_id as "subId",
+      p.link_proposal as "linkProposal",
       ROW_NUMBER() OVER (PARTITION BY p.category, p.region_center ORDER BY p.id ASC) as "rowNumber",
       sr.verdict
     FROM proposals p
@@ -75,6 +76,7 @@ export default async function FgdRoomPage({ params }: { params: Promise<{ sessio
     groupName: string | null;
     theme: string | null;
     subId: string | null;
+    linkProposal: string | null;
     rowNumber: number;
     verdict: string;
     aiAnalysis?: any;

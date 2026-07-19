@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useState, useTransition, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { submitFgdCommentAction, submitFgdVoteAction, lockFgdSessionAction } from '@/app/actions/fgd';
 import { generateFgdAiAnalysis } from '@/app/actions/aiAnalysis';
@@ -39,6 +39,7 @@ type Proposal = {
   status: string;
   aiCidaTotal: number | null;
   summary: string | null;
+  linkProposal: string | null;
   rowNumber: number;
   verdict: string;
   aiAnalysis?: any;
@@ -94,7 +95,18 @@ export default function FgdRoomClient({
       setIsGeneratingAi(prev => ({ ...prev, [proposalId]: false }));
     }
   };
+
   const [activeProposalIdx, setActiveProposalIdx] = useState<number | null>(null);
+
+  // Auto-generate AI analysis when proposal is opened
+  useEffect(() => {
+    if (activeTab === 'detail' && activeProposalIdx !== null) {
+      const activeId = proposals[activeProposalIdx]?.id;
+      if (activeId && !localAiAnalyses[activeId] && !isGeneratingAi[activeId]) {
+        handleGenerateAi(activeId);
+      }
+    }
+  }, [activeTab, activeProposalIdx, localAiAnalyses, isGeneratingAi, proposals]);
   
   const [commentText, setCommentText] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -363,7 +375,19 @@ export default function FgdRoomClient({
                         <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
                           No. {activeProposal.rowNumber}
                         </span>
-                        <h2 className="text-xl font-bold text-gray-900 mt-1 leading-tight">{activeProposal.title}</h2>
+                        <div className="flex items-center space-x-3 mt-1">
+                          <h2 className="text-xl font-bold text-gray-900 leading-tight">{activeProposal.title}</h2>
+                          {activeProposal.linkProposal && (
+                            <a
+                              href={activeProposal.linkProposal}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center px-2.5 py-1 rounded bg-blue-50 text-blue-700 text-xs font-semibold hover:bg-blue-100 transition whitespace-nowrap"
+                            >
+                              Buka Dokumen Sumber ↗
+                            </a>
+                          )}
+                        </div>
                         <p className="text-gray-500 mt-1 text-sm">{activeProposal.proposerName}
                           {activeProposal.proposerUnitKerja && ` · ${activeProposal.proposerUnitKerja}`}
                         </p>
@@ -381,21 +405,13 @@ export default function FgdRoomClient({
                       <div className="flex justify-between items-center mb-4">
                         <h4 className="font-bold text-indigo-900 text-sm uppercase tracking-wide flex items-center">
                           <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
-                          Analisis AI Pintar
+                          Rangkuman Proposal
                         </h4>
-                        {!localAiAnalyses[activeProposal.id] && (
-                          <button
-                            onClick={() => handleGenerateAi(activeProposal.id)}
-                            disabled={isGeneratingAi[activeProposal.id]}
-                            className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold py-1.5 px-3 rounded shadow-sm transition disabled:opacity-50 flex items-center"
-                          >
-                            {isGeneratingAi[activeProposal.id] ? (
-                              <span className="flex items-center">
-                                <svg className="animate-spin -ml-1 mr-2 h-3 w-3 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                                Memproses...
-                              </span>
-                            ) : '✨ Generate Analisis'}
-                          </button>
+                        {!localAiAnalyses[activeProposal.id] && isGeneratingAi[activeProposal.id] && (
+                          <span className="flex items-center text-indigo-600 text-xs font-semibold bg-indigo-50 px-3 py-1.5 rounded shadow-sm">
+                            <svg className="animate-spin -ml-1 mr-2 h-3 w-3 text-indigo-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                            Memproses...
+                          </span>
                         )}
                       </div>
 
@@ -458,7 +474,7 @@ export default function FgdRoomClient({
                             </p>
                           )}
                           <p className="text-gray-500 text-sm">
-                            Analisis pintar belum ditarik. Klik tombol di atas untuk menganalisa target, klaim kunci, dan potensi duplikasi.
+                            Memproses rangkuman proposal, klaim kunci, dan potensi duplikasi...
                           </p>
                         </div>
                       )}
