@@ -116,9 +116,9 @@ export default async function OverviewDashboard() {
         } else if (a.category === 'PUSAT') {
           catLabel = 'Kantor Pusat';
         } else if (a.category === 'BI') {
-          catLabel = 'Bank Indonesia';
+          catLabel = 'BI';
         } else if (a.category === 'BC') {
-          catLabel = 'Bisnis Cabang';
+          catLabel = 'BC';
         }
         categoryCounts[catLabel] = (categoryCounts[catLabel] || 0) + 1;
       });
