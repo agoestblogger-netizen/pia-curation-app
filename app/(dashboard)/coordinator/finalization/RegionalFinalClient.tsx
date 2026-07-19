@@ -202,13 +202,34 @@ export default function RegionalFinalClient({ competitionId, groups }: Props) {
                   </div>
                   <div className="flex space-x-3">
                     {group.isLocked ? (
-                      <button
-                        onClick={() => handleReopen(group)}
-                        disabled={isPending}
-                        className="px-4 py-2 text-sm font-medium text-orange-600 border border-orange-300 rounded-lg hover:bg-orange-50 transition-colors disabled:opacity-50"
-                      >
-                        Buka Kembali
-                      </button>
+                      <>
+                        {group.hasLockedFgd ? (
+                          <a
+                            href={`/api/pdf/fgd/${group.lockedFgdSessionId}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 transition-colors shadow-sm"
+                          >
+                            📄 Download Berita Acara FGD
+                          </a>
+                        ) : (
+                          <a
+                            href={`/api/pdf/regional/${group.category === 'PUSAT' ? 'Kantor Pusat' : group.region.replace('Kanwil ', '')}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 transition-colors shadow-sm"
+                          >
+                            📄 Download Surat Penetapan
+                          </a>
+                        )}
+                        <button
+                          onClick={() => handleReopen(group)}
+                          disabled={isPending}
+                          className="px-4 py-2 text-sm font-medium text-orange-600 border border-orange-300 rounded-lg hover:bg-orange-50 transition-colors disabled:opacity-50"
+                        >
+                          Buka Kembali
+                        </button>
+                      </>
                     ) : (
                       <>
                         <button

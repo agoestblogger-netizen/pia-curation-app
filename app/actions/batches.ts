@@ -347,8 +347,7 @@ const assignRangeSchema = z.object({
   curatorId: z.coerce.number(),
   category: z.string(),
   regionCenter: z.string().optional(),
-  startRange: z.coerce.number(),
-  endRange: z.coerce.number(),
+  rangeString: z.string().min(1, 'Range tidak boleh kosong'),
 });
 
 export async function assignRangeAction(_prev: BatchActionState, formData: FormData): Promise<BatchActionState> {
@@ -358,19 +357,75 @@ export async function assignRangeAction(_prev: BatchActionState, formData: FormD
     curatorId: formData.get('curatorId'),
     category: formData.get('category'),
     regionCenter: formData.get('regionCenter') || undefined,
-    startRange: formData.get('startRange'),
-    endRange: formData.get('endRange'),
+    rangeString: formData.get('rangeString'),
   });
 
   if (!parsed.success) return { error: 'Data range tidak valid' };
   
-  const { batchId, curatorId, category, regionCenter, startRange, endRange } = parsed.data;
+  const { batchId, curatorId, category, regionCenter, rangeString } = parsed.data;
   
-  if (startRange > endRange) return { error: 'Range mulai tidak boleh lebih besar dari range akhir' };
+  // Parse rangeString
+  const rowNumbers = new Set<number>();
+  const parts = rangeString.split(',').map(s => s.trim()).filter(Boolean);
+  for (const part of parts) {
+    if (part.includes('-')) {
+      const [startStr, endStr] = part.split('-');
+      const start = parseInt(startStr);
+      const end = parseInt(endStr);
+      if (!isNaN(start) && !isNaN(end) && start <= end) {
+        for (let i = start; i <= end; i++) rowNumbers.add(i);
+      } else if (!isNaN(start)) {
+        rowNumbers.add(start);
+      }
+    } else {
+      const num = parseInt(part);
+      if (!isNaN(num)) rowNumbers.add(num);
+    }
+  }
+
+  const requestedRows = Array.from(rowNumbers);
+  if (requestedRows.length === 0) return { error: 'Range tidak valid' };
 
   const [batch] = await db.select().from(curationBatches).where(eq(curationBatches.id, batchId)).limit(1);
   if (!batch) return { error: 'Batch tidak ditemukan' };
   if (batch.status === 'locked') return { error: 'Batch sudah dikunci' };
+
+  // ── VALIDASI 1 KURATOR PER REGIONAL ──────────────────────────────────────
+  // Aturan: grup regional (Kanwil / Kantor Pusat) hanya boleh dimiliki 1 kurator.
+  // Kategori BI dan BC bebas dibagi ke banyak kurator.
+  const isRegionalCategory = category === 'PUSAT' || category === 'WILAYAH';
+
+  if (isRegionalCategory) {
+    // Cari kurator yang sudah pernah dapat assignment di grup regional ini
+    const existingRegionalOwner = await db
+      .select({ curatorId: curatorAssignments.curatorId, curatorName: users.name })
+      .from(curatorAssignments)
+      .innerJoin(proposals, eq(proposals.id, curatorAssignments.proposalId))
+      .leftJoin(users, eq(users.id, curatorAssignments.curatorId))
+      .where(
+        and(
+          eq(proposals.competitionId, batch.competitionId),
+          eq(proposals.category, category),
+          regionCenter
+            ? eq(proposals.regionCenter, regionCenter)
+            : sql`(${proposals.regionCenter} IS NULL OR ${proposals.regionCenter} = '')`,
+        )
+      )
+      .limit(1);
+
+    if (existingRegionalOwner.length > 0) {
+      const owner = existingRegionalOwner[0];
+      if (owner.curatorId !== curatorId) {
+        const regionLabel = category === 'PUSAT'
+          ? 'Kantor Pusat'
+          : `Kanwil ${regionCenter}`;
+        return {
+          error: `Grup regional "${regionLabel}" sudah menjadi tanggung jawab ${owner.curatorName ?? 'kurator lain'} — regional tidak boleh dibagi ke lebih dari 1 kurator.`,
+        };
+      }
+    }
+  }
+  // ── END VALIDASI REGIONAL ─────────────────────────────────────────────────
 
   // Get all proposals for this category/region with their row numbers
   const result = await db.execute(sql`
@@ -386,7 +441,7 @@ export async function assignRangeAction(_prev: BatchActionState, formData: FormD
         ${regionCenter ? sql`AND region_center = ${regionCenter}` : sql`AND (region_center IS NULL OR region_center = '')`}
     )
     SELECT id, row_number FROM RankedProposals
-    WHERE row_number >= ${startRange} AND row_number <= ${endRange}
+    WHERE row_number IN (${sql.join(requestedRows.map(n => sql`${n}`), sql`, `)})
   `);
 
   const proposalsInRange = result as unknown as { id: number, row_number: number }[];

@@ -40,6 +40,9 @@ export default async function DashboardLayout({
               <Link href="/coordinator/batches" className="block px-4 py-2 rounded hover:bg-indigo-800 text-sm">
                 Assign Proposal
               </Link>
+              <Link href="/coordinator/fgd" className="block px-4 py-2 rounded hover:bg-indigo-800 text-sm">
+                FGD Tim Kurator
+              </Link>
               <Link href="/coordinator/finalization" className="block px-4 py-2 rounded hover:bg-indigo-800 text-sm">
                 Finalisasi & Ranking
               </Link>
@@ -50,11 +53,20 @@ export default async function DashboardLayout({
               <Link href="/coordinator/users" className="block px-4 py-2 rounded hover:bg-indigo-800 text-sm">
                 Manajemen User
               </Link>
-              <Link href="/coordinator/regional-leads" className="block px-4 py-2 rounded hover:bg-indigo-800 text-sm">
-                Regional Leads
-              </Link>
               <Link href="/coordinator/audit-log" className="block px-4 py-2 rounded hover:bg-indigo-800 text-sm">
                 Audit Log
+              </Link>
+            </>
+          )}
+
+          {session?.roles?.includes('admin') && (
+            <>
+              <div className="border-t border-indigo-800 my-2" />
+              <div className="px-4 py-1 text-xs font-bold text-red-400 uppercase tracking-wider">
+                Admin Zone
+              </div>
+              <Link href="/admin/reset-data" className="block px-4 py-2 rounded hover:bg-red-900/50 text-red-300 text-sm font-medium transition-colors">
+                Reset Data Testing
               </Link>
             </>
           )}
@@ -66,29 +78,38 @@ export default async function DashboardLayout({
                 <span>Papan Lelang (Kurator)</span>
                 <span className="text-indigo-400">→</span>
               </Link>
+              <Link href="/coordinator/fgd" className="block px-4 py-2 rounded hover:bg-indigo-800 text-sm">
+                FGD Tim Kurator
+              </Link>
             </>
           )}
 
         </nav>
-
-        <div className="p-4 border-t border-indigo-800 space-y-2">
-          <Link href="/settings/password" className="block w-full text-left px-4 py-2 text-indigo-300 hover:text-white hover:bg-indigo-800 rounded transition-colors">
-            Ganti Password
-          </Link>
-          <form action={logoutAction}>
-            <button
-              type="submit"
-              className="w-full text-left px-4 py-2 text-red-300 hover:text-white hover:bg-red-900/50 rounded transition-colors"
-            >
-              Logout
-            </button>
-          </form>
-        </div>
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 overflow-auto">
-        {children}
+      <div className="flex-1 flex flex-col h-screen overflow-hidden">
+        {/* Top Header */}
+        <header className="bg-white border-b border-gray-200 px-8 py-4 flex justify-end items-center shrink-0 z-10">
+          <div className="flex items-center space-x-6">
+            <Link href="/settings/password" className="text-sm font-semibold text-gray-600 hover:text-indigo-600 transition-colors">
+              Ganti Password
+            </Link>
+            <form action={logoutAction}>
+              <button
+                type="submit"
+                className="text-sm font-bold text-red-600 hover:text-red-800 transition-colors"
+              >
+                Logout
+              </button>
+            </form>
+          </div>
+        </header>
+
+        {/* Page Content */}
+        <div className="flex-1 overflow-auto">
+          {children}
+        </div>
       </div>
     </div>
   );

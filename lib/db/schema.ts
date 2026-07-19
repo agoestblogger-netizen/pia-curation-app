@@ -40,6 +40,7 @@ export const competitions = pgTable('competitions', {
   phase: text('phase').notNull().default('imported'),
   phaseLockedAt: timestamp('phase_locked_at', { withTimezone: true }),
   phaseLockedBy: integer('phase_locked_by').references(() => users.id),
+  promotorAccessMode: text('promotor_access_mode').notNull().default('open'), // 'assigned' | 'open'
   isActive: boolean('is_active').notNull().default(true),
   createdBy: integer('created_by').references(() => users.id),
   claimDeadline: timestamp('claim_deadline', { withTimezone: true }),
@@ -366,13 +367,57 @@ export const pdfExports = pgTable('pdf_exports', {
   documentStatus: text('document_status').notNull().default('DRAFT'), // DRAFT | INTERNAL | FINAL
 });
 
-// ─── REGIONAL LEADS ─────────────────────────────────────────────────────────────
-export const regionalLeads = pgTable('regional_leads', {
+// ─── PROMOTER ASSIGNMENTS ───────────────────────────────────────────────────
+export const promoterAssignments = pgTable('promoter_assignments', {
   id: serial('id').primaryKey(),
-  regionCenter: text('region_center').notNull().unique(), // e.g., Kanwil I, Kantor Pusat, dll.
-  curatorId: integer('curator_id').notNull().references(() => users.id),
+  competitionId: integer('competition_id').notNull().references(() => competitions.id),
+  proposalId: integer('proposal_id').notNull().references(() => proposals.id),
+  promoterId: integer('promoter_id').notNull().references(() => users.id),
   assignedBy: integer('assigned_by').references(() => users.id),
   assignedAt: timestamp('assigned_at', { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [
+  uniqueIndex('promoter_assignment_unique').on(table.competitionId, table.proposalId, table.promoterId),
+  index('promoter_assignment_promoter_idx').on(table.promoterId),
+]);
+
+// ─── FGD SESSIONS ─────────────────────────────────────────────────────────────
+export const fgdSessions = pgTable('fgd_sessions', {
+  id: serial('id').primaryKey(),
+  competitionId: integer('competition_id').notNull().references(() => competitions.id),
+  name: text('name').notNull(),
+  scope: text('scope').notNull().default('nasional'), // nasional | regional
+  regionCenter: text('region_center'), // null if nasional
+  targetCandidates: integer('target_candidates').notNull().default(10),
+  viewMode: text('view_mode').notNull().default('grouped'), // grouped | mixed
+  filterStatuses: jsonb('filter_statuses').notNull().default(sql`'["lolos"]'`), // array of string status
+  status: text('status').notNull().default('draft'), // draft | active | locked
+  lockedAt: timestamp('locked_at', { withTimezone: true }),
+  lockedBy: integer('locked_by').references(() => users.id),
+  createdBy: integer('created_by').references(() => users.id),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+// ─── FGD VOTES ────────────────────────────────────────────────────────────────
+export const fgdVotes = pgTable('fgd_votes', {
+  id: serial('id').primaryKey(),
+  sessionId: integer('session_id').notNull().references(() => fgdSessions.id),
+  proposalId: integer('proposal_id').notNull().references(() => proposals.id),
+  curatorId: integer('curator_id').notNull().references(() => users.id),
+  vote: text('vote').notNull(), // nominate | not_nominate
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [
+  uniqueIndex('fgd_vote_unique').on(table.sessionId, table.proposalId, table.curatorId),
+]);
+
+// ─── FGD COMMENTS ─────────────────────────────────────────────────────────────
+export const fgdComments = pgTable('fgd_comments', {
+  id: serial('id').primaryKey(),
+  sessionId: integer('session_id').notNull().references(() => fgdSessions.id),
+  proposalId: integer('proposal_id').notNull().references(() => proposals.id),
+  curatorId: integer('curator_id').notNull().references(() => users.id),
+  content: text('content').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
 // ─── TYPE EXPORTS ─────────────────────────────────────────────────────────────
@@ -395,4 +440,7 @@ export type SponsorScore = typeof sponsorScores.$inferSelect;
 export type FinalResult = typeof finalResults.$inferSelect;
 export type AuditLog = typeof auditLogs.$inferSelect;
 export type CuratorQuotaConfig = typeof curatorQuotaConfigs.$inferSelect;
-export type RegionalLead = typeof regionalLeads.$inferSelect;
+export type FgdSession = typeof fgdSessions.$inferSelect;
+export type FgdVote = typeof fgdVotes.$inferSelect;
+export type FgdComment = typeof fgdComments.$inferSelect;
+export type PromoterAssignment = typeof promoterAssignments.$inferSelect;

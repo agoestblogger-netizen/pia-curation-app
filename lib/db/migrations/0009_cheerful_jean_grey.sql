@@ -1,0 +1,1 @@
+DROP TABLE "regional_leads" CASCADE;

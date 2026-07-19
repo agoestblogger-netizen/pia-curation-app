@@ -25,7 +25,7 @@ export default async function PromoterDashboard() {
     );
   }
 
-  const proposals = await getPassedProposals(activeComp.id);
+  const proposals = await getPassedProposals(activeComp.id, session.userId);
   const selections = await getPromoterSelections(activeComp.id, session.userId);
   const selectedIds = selections.map(s => s.proposalId);
 

@@ -13,13 +13,23 @@ type UserRow = {
 };
 
 const ROLE_LABELS: Record<string, string> = {
+  admin: 'Admin',
   coordinator: 'Koordinator',
   curator: 'Kurator',
   promoter: 'Promotor',
   sponsor: 'Sponsor',
 };
 
+const AVAILABLE_ROLES = [
+  { id: 'admin', label: 'Admin (Superuser)' },
+  { id: 'coordinator', label: 'Koordinator' },
+  { id: 'curator', label: 'Tim Kurator' },
+  { id: 'promoter', label: 'Tim Promotor' },
+  { id: 'sponsor', label: 'Tim Sponsor (BOD)' },
+];
+
 const ROLE_COLORS: Record<string, string> = {
+  admin: 'bg-red-100 text-red-700',
   coordinator: 'bg-purple-100 text-purple-700',
   curator: 'bg-blue-100 text-blue-700',
   promoter: 'bg-yellow-100 text-yellow-700',

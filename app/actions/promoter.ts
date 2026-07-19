@@ -5,6 +5,7 @@ import {
   promoterSelections,
   proposals,
   competitions,
+  promoterAssignments,
 } from '@/lib/db/schema';
 import { requireRole } from '@/lib/auth/helpers';
 import { eq, and, notInArray, inArray } from 'drizzle-orm';
@@ -22,7 +23,7 @@ export async function selectProposalAction(
 ): Promise<PromoterActionState> {
   const session = await requireRole('promoter');
 
-  // Verify proposal is in curation_passed status
+  // Verify proposal is in promotor_selection status
   const [proposal] = await db
     .select()
     .from(proposals)
@@ -30,7 +31,7 @@ export async function selectProposalAction(
       and(
         eq(proposals.id, proposalId),
         eq(proposals.competitionId, competitionId),
-        eq(proposals.status, 'curation_passed')
+        eq(proposals.status, 'promotor_selection')
       )
     )
     .limit(1);
@@ -85,14 +86,14 @@ export async function closePromoterSelectionAction(
 ): Promise<PromoterActionState> {
   await requireRole('coordinator');
 
-  // Get all curation_passed proposals
+  // Get all promotor_selection proposals
   const passedProposals = await db
     .select({ id: proposals.id })
     .from(proposals)
     .where(
       and(
         eq(proposals.competitionId, competitionId),
-        eq(proposals.status, 'curation_passed')
+        eq(proposals.status, 'promotor_selection')
       )
     );
 
@@ -159,14 +160,47 @@ export async function getPromoterSelections(competitionId: number, promoterId: n
     );
 }
 
-export async function getPassedProposals(competitionId: number) {
+export async function getPassedProposals(competitionId: number, promoterId: number) {
+  const [comp] = await db
+    .select({ promotorAccessMode: competitions.promotorAccessMode })
+    .from(competitions)
+    .where(eq(competitions.id, competitionId))
+    .limit(1);
+
+  if (comp?.promotorAccessMode === 'assigned') {
+    const assignedIds = await db
+      .select({ proposalId: promoterAssignments.proposalId })
+      .from(promoterAssignments)
+      .where(
+        and(
+          eq(promoterAssignments.competitionId, competitionId),
+          eq(promoterAssignments.promoterId, promoterId)
+        )
+      );
+
+    const ids = assignedIds.map((a) => a.proposalId);
+    if (ids.length === 0) return []; // none assigned
+
+    return db
+      .select()
+      .from(proposals)
+      .where(
+        and(
+          eq(proposals.competitionId, competitionId),
+          eq(proposals.status, 'promotor_selection'),
+          inArray(proposals.id, ids)
+        )
+      );
+  }
+
+  // default open
   return db
     .select()
     .from(proposals)
     .where(
       and(
         eq(proposals.competitionId, competitionId),
-        eq(proposals.status, 'curation_passed')
+        eq(proposals.status, 'promotor_selection')
       )
     );
 }
