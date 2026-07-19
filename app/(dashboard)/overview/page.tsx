@@ -146,7 +146,7 @@ export default async function OverviewDashboard() {
       <div className="flex justify-between items-center mb-8">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
-          <p className="text-gray-500 text-sm mt-1">{activeComp.name} &middot; Tahap: <span className="font-semibold capitalize">{activeComp.phase}</span></p>
+          <p className="text-gray-500 text-sm mt-1">{activeComp.name} &middot; Tahap: <span className="font-semibold capitalize">{activeComp.phase.replace(/_/g, ' ')}</span></p>
         </div>
         
         {session?.roles?.includes('coordinator') && (
@@ -327,7 +327,7 @@ export default async function OverviewDashboard() {
         <div className="mt-8 bg-indigo-50 p-6 rounded-xl border border-indigo-100">
           <h3 className="text-lg font-bold text-indigo-900 mb-2">Administrasi Tahap Kompetisi</h3>
           <p className="text-sm text-indigo-700 mb-4">
-            Saat ini berada di tahap: <strong className="uppercase">{activeComp.phase}</strong>
+            Saat ini berada di tahap: <strong className="uppercase">{activeComp.phase.replace(/_/g, ' ')}</strong>
           </p>
           <form action={async () => {
             'use server';
