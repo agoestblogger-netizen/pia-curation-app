@@ -21,7 +21,7 @@ export default async function FgdRoomPage({ params }: { params: Promise<{ sessio
 
   // ─── Build proposal pool with screening verdict filter ────────────────────
   // filterStatuses in fgd stores screening verdicts like ['lolos', 'duplication', ...]
-  const rawStatuses = Array.isArray(fgd.filterStatuses) ? (fgd.filterStatuses as string[]) : ['lolos'];
+  const rawStatuses = Array.isArray(fgd.filterStatuses) && fgd.filterStatuses.length > 0 ? (fgd.filterStatuses as string[]) : ['lolos'];
 
   // Build scope condition as raw SQL
   let scopeSql: ReturnType<typeof sql>;
@@ -56,7 +56,7 @@ export default async function FgdRoomPage({ params }: { params: Promise<{ sessio
     FROM proposals p
     INNER JOIN screening_results sr ON sr.proposal_id = p.id
     WHERE p.competition_id = ${fgd.competitionId}
-      AND sr.verdict = ANY(${rawStatuses})
+      AND sr.verdict IN (${sql.raw(rawStatuses.map(s => `'${s}'`).join(', '))})
       AND ${scopeSql}
     ORDER BY p.category, p.region_center, p.id ASC
   `);
