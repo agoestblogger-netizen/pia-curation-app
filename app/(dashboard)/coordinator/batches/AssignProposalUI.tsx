@@ -402,15 +402,21 @@ export default function AssignProposalUI({
                         if (cat === 'BC') return p.category === 'BC';
                         return p.category === 'WILAYAH' && p.regionCenter === cat;
                       }).length;
+                      
+                      let displayCat = cat;
+                      if (KANWIL_CITIES.includes(cat)) displayCat = `Kanwil ${cat}`;
+                      else if (cat === 'BI') displayCat = 'Breakthrough Innovation';
+                      else if (cat === 'BC') displayCat = 'Business Case';
+
                       return (
                         <option key={cat} value={cat}>
-                          {KANWIL_CITIES.includes(cat) ? `Kanwil ${cat}` : cat} ({catTotal})
+                          {displayCat} ({catTotal})
                         </option>
                       );
                     })}
                   </select>
                   <div className="text-sm text-gray-600 bg-gray-50 p-3 rounded-md border border-gray-200 flex justify-between items-center">
-                    <span><span className="font-semibold">{KANWIL_CITIES.includes(selectedCategory) ? `Kanwil ${selectedCategory}` : selectedCategory}:</span> {totalProps} total</span>
+                    <span><span className="font-semibold">{selectedCategory === 'BI' ? 'Breakthrough Innovation' : selectedCategory === 'BC' ? 'Business Case' : KANWIL_CITIES.includes(selectedCategory) ? `Kanwil ${selectedCategory}` : selectedCategory}:</span> {totalProps} total</span>
                     <span><span className="font-bold text-green-600">{availableCount} tersedia</span></span>
                   </div>
                 </div>
@@ -551,7 +557,10 @@ export default function AssignProposalUI({
                 ) : (
                   <div className="space-y-4">
                     {Object.entries(groupedBlocks).map(([cat, catBlocks]) => {
-                      const displayCat = KANWIL_CITIES.includes(cat) ? `Kanwil ${cat}` : cat;
+                      let displayCat = cat;
+                      if (KANWIL_CITIES.includes(cat)) displayCat = `Kanwil ${cat}`;
+                      else if (cat === 'BI') displayCat = 'Breakthrough Innovation';
+                      else if (cat === 'BC') displayCat = 'Business Case';
                       const totalProps = catBlocks.reduce((acc, b) => acc + b.count, 0);
                       const isExpanded = expandedCats[cat] ?? false;
                       

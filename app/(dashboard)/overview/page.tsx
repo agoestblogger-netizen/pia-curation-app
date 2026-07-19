@@ -116,9 +116,9 @@ export default async function OverviewDashboard() {
         } else if (a.category === 'PUSAT') {
           catLabel = 'Kantor Pusat';
         } else if (a.category === 'BI') {
-          catLabel = 'BI';
+          catLabel = 'Breakthrough Innovation';
         } else if (a.category === 'BC') {
-          catLabel = 'BC';
+          catLabel = 'Business Case';
         }
         categoryCounts[catLabel] = (categoryCounts[catLabel] || 0) + 1;
       });
