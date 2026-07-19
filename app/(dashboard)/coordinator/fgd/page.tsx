@@ -8,9 +8,11 @@ import FgdListClient from './FgdListClient';
 
 export default async function FgdPage() {
   const session = await getSession();
-  if (!session || !session.roles.includes('coordinator')) {
+  if (!session || !session.roles.some(r => ['coordinator', 'curator'].includes(r))) {
     return <div>Unauthorized</div>;
   }
+  
+  const isCoordinator = session.roles.includes('coordinator');
 
   const activeComp = await getActiveCompetition();
   if (!activeComp) {
@@ -30,15 +32,17 @@ export default async function FgdPage() {
           <h1 className="text-2xl font-bold text-gray-900 mb-2">FGD Tim Kurator</h1>
           <p className="text-gray-600">Kelola sesi Focus Group Discussion (FGD) untuk penetapan proposal.</p>
         </div>
-        <Link 
-          href="/coordinator/fgd/new"
-          className="bg-teal-600 text-white px-4 py-2 rounded font-medium hover:bg-teal-700 transition"
-        >
-          + Buat Sesi Baru
-        </Link>
+        {isCoordinator && (
+          <Link 
+            href="/coordinator/fgd/new"
+            className="bg-teal-600 text-white px-4 py-2 rounded font-medium hover:bg-teal-700 transition"
+          >
+            + Buat Sesi Baru
+          </Link>
+        )}
       </div>
 
-      <FgdListClient sessions={sessions} />
+      <FgdListClient sessions={sessions} isCoordinator={isCoordinator} />
     </div>
   );
 }

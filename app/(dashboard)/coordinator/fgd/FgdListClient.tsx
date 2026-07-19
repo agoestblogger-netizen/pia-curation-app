@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { deleteFgdSessionAction } from '@/app/actions/fgd';
 
-export default function FgdListClient({ sessions }: { sessions: FgdSession[] }) {
+export default function FgdListClient({ sessions, isCoordinator }: { sessions: FgdSession[], isCoordinator?: boolean }) {
   const router = useRouter();
 
   async function handleDelete(id: number) {
@@ -71,7 +71,7 @@ export default function FgdListClient({ sessions }: { sessions: FgdSession[] }) 
                 >
                   Masuk Ruang FGD
                 </Link>
-                {s.status !== 'locked' && (
+                {isCoordinator && s.status !== 'locked' && (
                   <button 
                     onClick={() => handleDelete(s.id)}
                     className="text-red-600 font-medium hover:text-red-800 text-sm"
