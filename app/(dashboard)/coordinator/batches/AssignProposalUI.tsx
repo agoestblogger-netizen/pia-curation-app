@@ -357,10 +357,35 @@ export default function AssignProposalUI({
             </div>
             
             {selectedUserId && selectedUser && (
-              <div className="w-full sm:w-2/3 text-sm text-gray-700 bg-indigo-50/50 px-4 py-3 rounded-md border border-indigo-100 mt-6 sm:mt-0">
-                <span className="font-semibold text-indigo-900">{selectedUser.name}</span> <span className="mx-2">—</span> {totalJatah} proposal di-assign
-                {isKurator && belumDiscreening > 0 && (
-                  <span className="ml-2 px-2 py-0.5 bg-red-100 text-red-700 rounded-full text-xs font-bold">{belumDiscreening} belum screening</span>
+              <div className="w-full sm:w-2/3 text-sm text-gray-700 bg-indigo-50/50 px-4 py-3 rounded-md border border-indigo-100 mt-6 sm:mt-0 flex flex-col gap-1">
+                <div>
+                  <span className="font-semibold text-indigo-900">{selectedUser.name}</span> saat ini: {totalJatah} proposal ter-assign
+                  {isKurator && belumDiscreening > 0 && (
+                    <span className="ml-2 px-2 py-0.5 bg-red-100 text-red-700 rounded-full text-xs font-bold">{belumDiscreening} belum screening</span>
+                  )}
+                </div>
+                {isKurator && users.length > 0 && (
+                  (() => {
+                    const rec = Math.round(allProps.length / users.length);
+                    const diff = rec - totalJatah;
+                    const isOver = totalJatah > rec;
+                    return (
+                      <div className="mt-1 pt-2 border-t border-indigo-100/50">
+                        <div className="text-gray-600 mb-1">
+                          Rekomendasi: <span className="font-semibold">~{rec}</span> proposal/kurator ({allProps.length} ÷ {users.length} kurator aktif)
+                        </div>
+                        {isOver ? (
+                          <div className="text-orange-600 font-medium">
+                            Sudah melebihi rekomendasi sebanyak {totalJatah - rec} proposal
+                          </div>
+                        ) : (
+                          <div className="text-indigo-600 font-medium">
+                            Sisa rekomendasi: {diff} proposal
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()
                 )}
               </div>
             )}
