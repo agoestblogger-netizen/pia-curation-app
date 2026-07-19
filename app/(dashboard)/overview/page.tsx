@@ -183,6 +183,7 @@ export default async function OverviewDashboard() {
           <div className="px-5 py-4 border-b border-gray-100">
             <h2 className="font-bold text-gray-900">Distribusi Kategori</h2>
           </div>
+          <div className="overflow-x-auto w-full">
           <table className="min-w-full divide-y divide-gray-100 flex-1">
             <thead className="bg-gray-50">
               <tr>
@@ -199,6 +200,7 @@ export default async function OverviewDashboard() {
               ))}
             </tbody>
           </table>
+          </div>
         </div>
 
         {/* Category Breakdown (Progress) */}
@@ -206,6 +208,7 @@ export default async function OverviewDashboard() {
           <div className="px-5 py-4 border-b border-gray-100 bg-indigo-50/30">
             <h2 className="font-bold text-indigo-900">Progress Terkurasi per Kategori</h2>
           </div>
+          <div className="overflow-x-auto w-full">
           <table className="min-w-full divide-y divide-gray-100 flex-1">
             <thead className="bg-indigo-50/50">
               <tr>
@@ -224,6 +227,7 @@ export default async function OverviewDashboard() {
               ))}
             </tbody>
           </table>
+          </div>
         </div>
 
         {/* Region Breakdown (Fixed) */}
@@ -231,6 +235,7 @@ export default async function OverviewDashboard() {
           <div className="px-5 py-4 border-b border-gray-100">
             <h2 className="font-bold text-gray-900">Distribusi per Kanwil/Pusat</h2>
           </div>
+          <div className="overflow-x-auto w-full">
           <table className="min-w-full divide-y divide-gray-100 flex-1">
             <thead className="bg-gray-50">
               <tr>
@@ -247,6 +252,7 @@ export default async function OverviewDashboard() {
               ))}
             </tbody>
           </table>
+          </div>
         </div>
 
         {/* Region Breakdown (Progress) */}
@@ -254,6 +260,7 @@ export default async function OverviewDashboard() {
           <div className="px-5 py-4 border-b border-gray-100 bg-indigo-50/30">
             <h2 className="font-bold text-indigo-900">Progress Terkurasi per Kanwil/Pusat</h2>
           </div>
+          <div className="overflow-x-auto w-full">
           <table className="min-w-full divide-y divide-gray-100 flex-1">
             <thead className="bg-indigo-50/50">
               <tr>
@@ -272,6 +279,7 @@ export default async function OverviewDashboard() {
               ))}
             </tbody>
           </table>
+          </div>
         </div>
       </div>
 
@@ -281,6 +289,7 @@ export default async function OverviewDashboard() {
             <h2 className="font-bold text-gray-900">Assignment per Kurator</h2>
             <p className="text-xs text-gray-500 mt-1">Data beban kerja dan progres seluruh kurator (diurutkan berdasarkan sisa terbanyak).</p>
           </div>
+          <div className="overflow-x-auto w-full">
           <table className="min-w-full divide-y divide-gray-100 flex-1">
             <thead className="bg-white">
               <tr>
@@ -310,6 +319,7 @@ export default async function OverviewDashboard() {
               )}
             </tbody>
           </table>
+          </div>
         </div>
       )}
 
