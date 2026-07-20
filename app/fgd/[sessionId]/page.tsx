@@ -175,8 +175,13 @@ export default async function FgdRoomPage({ params }: { params: Promise<{ sessio
           </Link>
           <div className="h-6 w-px bg-gray-300"></div>
           <div>
-            <h1 className="font-bold text-gray-900 text-lg leading-tight">{fgd.name}</h1>
-            <div className="text-xs text-gray-500 flex items-center space-x-2 mt-0.5">
+            <h1 className="font-bold text-gray-900 text-lg leading-tight flex items-center">
+              {fgd.name}
+              <span className={`ml-3 px-2.5 py-0.5 rounded text-xs font-bold text-white uppercase tracking-wider ${fgd.fgdType === 'promoter' ? 'bg-amber-500' : 'bg-indigo-600'}`}>
+                FGD {fgd.fgdType === 'promoter' ? 'Promotor' : 'Kurator'}
+              </span>
+            </h1>
+            <div className="text-xs text-gray-500 flex items-center space-x-2 mt-1">
               <span className="uppercase font-semibold tracking-wider">{fgd.scope}{fgd.regionCenter ? ` — ${fgd.regionCenter}` : ''}</span>
               <span>•</span>
               <span>Target: {fgd.targetCandidates} Kandidat</span>
