@@ -4,6 +4,7 @@ import { db } from '@/lib/db';
 import { proposals } from '@/lib/db/schema';
 import { eq, and } from 'drizzle-orm';
 import NewFgdClient from './NewFgdClient';
+import { Suspense } from 'react';
 
 export default async function NewFgdPage() {
   const session = await getSession();
@@ -37,11 +38,13 @@ export default async function NewFgdPage() {
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-gray-900 mb-2">Buat Sesi FGD Baru</h1>
         <p className="text-gray-600">
-          Setup ruang diskusi untuk Tim Kurator. Tentukan target jumlah proposal dan filter status yang ingin dibahas.
+          Setup ruang diskusi. Tentukan target jumlah proposal dan filter status yang ingin dibahas.
         </p>
       </div>
 
-      <NewFgdClient competitionId={activeComp.id} regions={regions} />
+      <Suspense fallback={<div>Loading...</div>}>
+        <NewFgdClient competitionId={activeComp.id} regions={regions} />
+      </Suspense>
     </div>
   );
 }

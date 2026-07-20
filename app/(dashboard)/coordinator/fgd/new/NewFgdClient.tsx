@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { createFgdSessionAction } from '@/app/actions/fgd';
 
 const FILTER_OPTIONS = [
@@ -20,10 +20,13 @@ export default function NewFgdClient({
   regions: string[];
 }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const typeParam = searchParams.get('type') as 'curator' | 'promoter' | null;
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const [fgdType, setFgdType] = useState<'curator' | 'promoter'>('curator');
+  const [fgdType, setFgdType] = useState<'curator' | 'promoter'>(typeParam === 'promoter' ? 'promoter' : 'curator');
   const [name, setName] = useState('Sesi FGD ' + new Date().toLocaleDateString('id-ID'));
   const [scope, setScope] = useState<'nasional' | 'regional'>('nasional');
   const [regionCenter, setRegionCenter] = useState<string>('');
@@ -80,39 +83,8 @@ export default function NewFgdClient({
         </div>
       )}
 
-      <div>
-        <label className="block text-sm font-semibold text-gray-700 mb-2">Tipe FGD</label>
-        <div className="flex space-x-4">
-          <label className="flex-1 cursor-pointer">
-            <div className={`p-4 border rounded text-center transition ${fgdType === 'curator' ? 'border-teal-500 bg-teal-50 text-teal-800 ring-1 ring-teal-500' : 'border-gray-200 hover:bg-gray-50'}`}>
-              <input 
-                type="radio" 
-                name="fgdType" 
-                value="curator" 
-                checked={fgdType === 'curator'}
-                onChange={() => setFgdType('curator')}
-                className="sr-only"
-              />
-              <span className="font-semibold block mb-1">FGD Kurator</span>
-              <span className="text-xs text-gray-500 block">Menentukan nominasi Promotor</span>
-            </div>
-          </label>
-          <label className="flex-1 cursor-pointer">
-            <div className={`p-4 border rounded text-center transition ${fgdType === 'promoter' ? 'border-teal-500 bg-teal-50 text-teal-800 ring-1 ring-teal-500' : 'border-gray-200 hover:bg-gray-50'}`}>
-              <input 
-                type="radio" 
-                name="fgdType" 
-                value="promoter" 
-                checked={fgdType === 'promoter'}
-                onChange={() => setFgdType('promoter')}
-                className="sr-only"
-              />
-              <span className="font-semibold block mb-1">FGD Promotor</span>
-              <span className="text-xs text-gray-500 block">Menentukan Grand Finalist</span>
-            </div>
-          </label>
-        </div>
-      </div>
+      {/* Tipe FGD kini disembunyikan karena sudah dipilih dari tab sebelumnya */}
+      <input type="hidden" name="fgdType" value={fgdType} />
 
       <div>
         <label className="block text-sm font-semibold text-gray-700 mb-2">Nama Sesi FGD</label>

@@ -20,8 +20,24 @@ export default function FgdListClient({ sessions, isCoordinator }: { sessions: F
   const filteredSessions = sessions.filter(s => s.fgdType === activeTab);
 
   return (
-    <div className="bg-white rounded-lg shadow overflow-hidden border border-gray-200">
-      <div className="flex border-b border-gray-200">
+    <div className="space-y-6">
+      <div className="flex justify-between items-center mb-8">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">Sesi FGD (Kurator & Promotor)</h1>
+          <p className="text-gray-600">Kelola sesi Focus Group Discussion (FGD) untuk penetapan proposal.</p>
+        </div>
+        {isCoordinator && (
+          <Link 
+            href={`/coordinator/fgd/new?type=${activeTab}`}
+            className="bg-teal-600 text-white px-4 py-2 rounded font-medium hover:bg-teal-700 transition"
+          >
+            + Buat Sesi Baru
+          </Link>
+        )}
+      </div>
+
+      <div className="bg-white rounded-lg shadow overflow-hidden border border-gray-200">
+        <div className="flex border-b border-gray-200">
         <button
           onClick={() => setActiveTab('curator')}
           className={`flex-1 py-4 text-center font-medium ${
@@ -106,6 +122,7 @@ export default function FgdListClient({ sessions, isCoordinator }: { sessions: F
         </tbody>
       </table>
       )}
+    </div>
     </div>
   );
 }
