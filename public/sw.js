@@ -6,26 +6,27 @@ self.addEventListener('install', (event) => {
 });
 
 self.addEventListener('activate', (event) => {
-  // Langsung kendalikan semua client/tab yang terbuka
-  event.waitUntil(self.clients.claim());
-  
-  // HAPUS semua cache lama yang tersisa dari versi sebelumnya
-  // Ini penting agar user lama terbebas dari jebakan cache file yang sudah usang
+  // SATUKAN semua Promise dalam satu event.waitUntil agar browser tidak bingung/hang
   event.waitUntil(
-    caches.keys().then((cacheNames) => {
-      return Promise.all(
-        cacheNames.map((cacheName) => {
-          return caches.delete(cacheName);
-        })
-      );
-    })
+    Promise.all([
+      self.clients.claim(), // Langsung kendalikan semua client/tab yang terbuka
+      caches.keys().then((cacheNames) => {
+        // Hapus semua cache lama
+        return Promise.all(
+          cacheNames.map((cacheName) => {
+            return caches.delete(cacheName);
+          })
+        );
+      })
+    ])
   );
 });
 
 self.addEventListener('fetch', (event) => {
-  // OPSI A: Bypass Cache sepenuhnya
-  // Semua request akan langsung mengarah ke network tanpa melalui cache browser.
-  // Strategi ini adalah yang paling aman untuk mencegah "ChunkLoadError" dan 
-  // memastikan user selalu mendapat versi terbaru setiap ada deployment.
-  event.respondWith(fetch(event.request));
+  // Biarkan kosong / return segera.
+  // Dengan TIDAK memanggil event.respondWith(), browser akan menangani request
+  // secara native (seolah-olah tidak ada Service Worker). Ini jauh lebih cepat 
+  // dan menghindari overhead/hang dari SW proxying.
+  // Listener ini tetap ada HANYA untuk memenuhi syarat PWA (Installable).
+  return;
 });
