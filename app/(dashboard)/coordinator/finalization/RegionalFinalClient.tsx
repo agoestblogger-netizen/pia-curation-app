@@ -29,6 +29,18 @@ export default function RegionalFinalClient({ competitionId, groups }: Props) {
 
   const toggleSelection = (group: RegionalGroup, proposalId: number, isLocked: boolean) => {
     if (isLocked) return;
+
+    const currentSet = selections[group.region] ?? new Set();
+    
+    // Validasi batas maksimal di luar updater state
+    if (!currentSet.has(proposalId) && currentSet.size >= 10) {
+      setError(e => ({ ...e, [group.region]: 'Maksimal 10 finalis per grup.' }));
+      return;
+    }
+
+    // Bersihkan pesan error & success sebelumnya saat user mulai berinteraksi
+    setError(e => ({ ...e, [group.region]: '' }));
+    setSuccess(s => ({ ...s, [group.region]: '' }));
     
     setSelections(prev => {
       const next = new Map(Object.entries(prev));
@@ -37,14 +49,9 @@ export default function RegionalFinalClient({ competitionId, groups }: Props) {
       if (set.has(proposalId)) {
         set.delete(proposalId);
       } else {
-        if (set.size >= 10) {
-          setError(e => ({ ...e, [group.region]: 'Maksimal 10 finalis per grup.' }));
-          return prev;
-        }
         set.add(proposalId);
       }
       
-      setError(e => ({ ...e, [group.region]: '' }));
       next.set(group.region, set);
       return Object.fromEntries(next);
     });
