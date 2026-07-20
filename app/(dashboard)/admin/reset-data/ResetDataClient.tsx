@@ -98,7 +98,7 @@ export default function ResetDataClient({ stats }: { stats: any }) {
             />
             <div>
               <div className="font-semibold text-gray-900">Assignment Kurator</div>
-              <div className="text-sm text-gray-500">Hapus {stats.assignment} assignment kurator dan batch. Papan lelang kurator akan kosong.</div>
+              <div className="text-sm text-gray-500">Hapus {stats.assignment} assignment kurator dan batch. Daftar proposal kurator akan kosong.</div>
             </div>
           </label>
 

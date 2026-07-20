@@ -114,7 +114,7 @@ export default function ClientSidebar({ session }: { session: Session }) {
             <>
               <div className="border-t border-indigo-800 my-2" />
               <Link href="/curator" className="block px-4 py-2 rounded hover:bg-indigo-800 text-sm flex items-center justify-between" onClick={() => setIsOpen(false)}>
-                <span>Papan Lelang (Kurator)</span>
+                <span>Daftar Proposal (Kurator)</span>
                 <span className="text-indigo-400">→</span>
               </Link>
               <Link href="/coordinator/fgd" className="block px-4 py-2 rounded hover:bg-indigo-800 text-sm" onClick={() => setIsOpen(false)}>

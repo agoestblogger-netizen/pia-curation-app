@@ -56,7 +56,7 @@ export default async function ProposalDetailPage({ params }: { params: Promise<{
       <div className="p-8 text-center text-red-600">
         <h2 className="text-xl font-bold mb-2">Akses Ditolak</h2>
         <p>Proposal ini bukan merupakan jatah assignment Anda.</p>
-        <Link href="/curator" className="mt-4 inline-block text-indigo-600 hover:underline">Kembali ke Papan Lelang</Link>
+        <Link href="/curator" className="mt-4 inline-block text-indigo-600 hover:underline">Kembali ke Daftar Proposal</Link>
       </div>
     );
   }
@@ -92,7 +92,7 @@ export default async function ProposalDetailPage({ params }: { params: Promise<{
       {/* Back button */}
       <div>
         <Link href={isCurator ? "/curator" : "/coordinator/proposals"} className="text-sm text-[#0A4736] font-semibold hover:underline">
-          ← Kembali ke {isCurator ? "Papan Lelang" : "Semua Proposal"}
+          ← Kembali ke {isCurator ? "Daftar Proposal" : "Semua Proposal"}
         </Link>
       </div>
 
