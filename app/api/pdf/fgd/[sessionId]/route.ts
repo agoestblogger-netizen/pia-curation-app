@@ -52,7 +52,9 @@ export async function GET(
   if (finalProposalIds.length > 0) {
     finalProposals = await db.select({
       id: proposals.id,
+      subId: proposals.externalSubId,
       title: proposals.title,
+      proposerUnitKerja: proposals.proposerUnitKerja,
       proposerName: proposals.proposerName,
       category: proposals.category,
     }).from(proposals).where(inArray(proposals.id, finalProposalIds));
@@ -87,10 +89,6 @@ export async function GET(
     // @ts-ignore
     React.createElement(FgdBeritaAcaraReport, {
       competitionName: `${activeComp?.name || ''} ${activeComp?.year || ''}`,
-      sessionName: fgd.name,
-      scopeText,
-      generatedAt,
-      generatedBy,
       proposals: finalProposals,
       participants: participantsData,
     })
