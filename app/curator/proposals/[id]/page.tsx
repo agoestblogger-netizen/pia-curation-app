@@ -83,17 +83,75 @@ export default async function ProposalDetailPage({ params }: { params: Promise<{
     </div>
   );
 
+  let prevId: number | null = null;
+  let nextId: number | null = null;
+
+  if (isCurator) {
+    const allAssignments = await db
+      .select({ proposalId: curatorAssignments.proposalId, category: proposals.category, regionCenter: proposals.regionCenter, nomorUrut: proposals.nomorUrut })
+      .from(curatorAssignments)
+      .innerJoin(proposals, eq(curatorAssignments.proposalId, proposals.id))
+      .where(and(eq(curatorAssignments.curatorId, session.userId), eq(proposals.competitionId, proposal.competitionId)));
+
+    allAssignments.sort((a, b) => {
+      if (a.category !== b.category) return a.category.localeCompare(b.category);
+      if (a.regionCenter && b.regionCenter && a.regionCenter !== b.regionCenter) return a.regionCenter.localeCompare(b.regionCenter);
+      return (a.nomorUrut || 0) - (b.nomorUrut || 0);
+    });
+
+    const currentIndex = allAssignments.findIndex(a => a.proposalId === proposalId);
+    if (currentIndex > 0) prevId = allAssignments[currentIndex - 1].proposalId;
+    if (currentIndex < allAssignments.length - 1) nextId = allAssignments[currentIndex + 1].proposalId;
+  } else if (isCoordinator) {
+    const allProps = await db
+      .select({ id: proposals.id, category: proposals.category, regionCenter: proposals.regionCenter, nomorUrut: proposals.nomorUrut })
+      .from(proposals)
+      .where(eq(proposals.competitionId, proposal.competitionId));
+      
+    allProps.sort((a, b) => {
+      if (a.category !== b.category) return a.category.localeCompare(b.category);
+      if (a.regionCenter && b.regionCenter && a.regionCenter !== b.regionCenter) return a.regionCenter.localeCompare(b.regionCenter);
+      return (a.nomorUrut || 0) - (b.nomorUrut || 0);
+    });
+
+    const currentIndex = allProps.findIndex(p => p.id === proposalId);
+    if (currentIndex > 0) prevId = allProps[currentIndex - 1].id;
+    if (currentIndex < allProps.length - 1) nextId = allProps[currentIndex + 1].id;
+  }
+
   return (
     <div className="max-w-5xl mx-auto space-y-6 pb-12">
       {assignment && assignment.status === 'assigned' && (
         <AutoStartScreening assignmentId={assignment.id} />
       )}
 
-      {/* Back button */}
-      <div>
-        <Link href={isCurator ? "/curator" : "/coordinator/proposals"} className="text-sm text-[#0A4736] font-semibold hover:underline">
+      {/* Top Navigation Bar */}
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <Link href={isCurator ? "/curator" : "/coordinator/proposals"} className="text-sm text-[#0A4736] font-semibold hover:underline bg-white px-4 py-2 rounded-lg border border-gray-200 shadow-sm">
           ← Kembali ke {isCurator ? "Daftar Proposal" : "Semua Proposal"}
         </Link>
+        
+        <div className="flex items-center space-x-2">
+          {prevId ? (
+            <Link href={`/curator/proposals/${prevId}`} className="text-sm text-gray-700 bg-white px-4 py-2 rounded-lg border border-gray-200 shadow-sm hover:bg-gray-50 transition font-medium">
+              ← Sebelumnya
+            </Link>
+          ) : (
+            <span className="text-sm text-gray-400 bg-gray-50 px-4 py-2 rounded-lg border border-gray-200 shadow-sm cursor-not-allowed font-medium">
+              ← Sebelumnya
+            </span>
+          )}
+          
+          {nextId ? (
+            <Link href={`/curator/proposals/${nextId}`} className="text-sm text-gray-700 bg-white px-4 py-2 rounded-lg border border-gray-200 shadow-sm hover:bg-gray-50 transition font-medium">
+              Selanjutnya →
+            </Link>
+          ) : (
+            <span className="text-sm text-gray-400 bg-gray-50 px-4 py-2 rounded-lg border border-gray-200 shadow-sm cursor-not-allowed font-medium">
+              Selanjutnya →
+            </span>
+          )}
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -268,6 +326,35 @@ export default async function ProposalDetailPage({ params }: { params: Promise<{
                 existingResult={existingResult}
               />
             </div>
+          )}
+        </div>
+      </div>
+
+      {/* Bottom Navigation Bar */}
+      <div className="flex flex-wrap items-center justify-between gap-4 pt-6 border-t border-gray-200">
+        <Link href={isCurator ? "/curator" : "/coordinator/proposals"} className="text-sm text-[#0A4736] font-semibold hover:underline bg-white px-4 py-2 rounded-lg border border-gray-200 shadow-sm">
+          ← Kembali ke {isCurator ? "Daftar Proposal" : "Semua Proposal"}
+        </Link>
+        
+        <div className="flex items-center space-x-2">
+          {prevId ? (
+            <Link href={`/curator/proposals/${prevId}`} className="text-sm text-gray-700 bg-white px-4 py-2 rounded-lg border border-gray-200 shadow-sm hover:bg-gray-50 transition font-medium">
+              ← Sebelumnya
+            </Link>
+          ) : (
+            <span className="text-sm text-gray-400 bg-gray-50 px-4 py-2 rounded-lg border border-gray-200 shadow-sm cursor-not-allowed font-medium">
+              ← Sebelumnya
+            </span>
+          )}
+          
+          {nextId ? (
+            <Link href={`/curator/proposals/${nextId}`} className="text-sm text-gray-700 bg-white px-4 py-2 rounded-lg border border-gray-200 shadow-sm hover:bg-gray-50 transition font-medium">
+              Selanjutnya →
+            </Link>
+          ) : (
+            <span className="text-sm text-gray-400 bg-gray-50 px-4 py-2 rounded-lg border border-gray-200 shadow-sm cursor-not-allowed font-medium">
+              Selanjutnya →
+            </span>
           )}
         </div>
       </div>
