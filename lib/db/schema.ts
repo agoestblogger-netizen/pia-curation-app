@@ -414,6 +414,8 @@ export const fgdSessions = pgTable('fgd_sessions', {
   targetCandidates: integer('target_candidates').notNull().default(10),
   viewMode: text('view_mode').notNull().default('grouped'), // grouped | mixed
   filterStatuses: jsonb('filter_statuses').notNull().default(sql`'["lolos"]'`), // array of string status
+  ketuaName: text('ketua_name'),
+  sekretarisName: text('sekretaris_name'),
   status: text('status').notNull().default('draft'), // draft | active | locked
   lockedAt: timestamp('locked_at', { withTimezone: true }),
   lockedBy: integer('locked_by').references(() => users.id),

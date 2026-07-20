@@ -22,6 +22,8 @@ export async function createFgdSessionAction(data: {
   viewMode: 'grouped' | 'mixed';
   filterStatuses: string[];
   fgdType?: 'curator' | 'promoter';
+  ketuaName?: string;
+  sekretarisName?: string;
 }) {
   const session = await requireRole(['coordinator']);
 
@@ -34,6 +36,8 @@ export async function createFgdSessionAction(data: {
     viewMode: data.viewMode,
     filterStatuses: data.filterStatuses,
     fgdType: data.fgdType || 'curator',
+    ketuaName: data.ketuaName || null,
+    sekretarisName: data.sekretarisName || null,
     status: 'active',
     createdBy: session.userId,
   }).returning();

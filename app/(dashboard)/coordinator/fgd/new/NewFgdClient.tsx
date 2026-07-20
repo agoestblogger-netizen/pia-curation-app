@@ -33,6 +33,9 @@ export default function NewFgdClient({
   const [targetCandidates, setTargetCandidates] = useState(15);
   const [viewMode, setViewMode] = useState<'grouped' | 'mixed'>('mixed');
   const [filterStatuses, setFilterStatuses] = useState<string[]>(['lolos']);
+  
+  const [ketuaName, setKetuaName] = useState('');
+  const [sekretarisName, setSekretarisName] = useState('');
 
   function toggleFilter(id: string) {
     if (filterStatuses.includes(id)) {
@@ -65,6 +68,8 @@ export default function NewFgdClient({
       viewMode,
       filterStatuses: fgdType === 'promoter' ? ['promotor_selection'] : filterStatuses,
       fgdType,
+      ketuaName,
+      sekretarisName,
     });
 
     if ('error' in res && res.error) {
@@ -95,6 +100,29 @@ export default function NewFgdClient({
           required
           className="w-full px-4 py-2 border border-gray-300 rounded focus:ring-teal-500 focus:border-teal-500"
         />
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div>
+          <label className="block text-sm font-semibold text-gray-700 mb-2">Nama Ketua Task Force</label>
+          <input 
+            type="text" 
+            value={ketuaName}
+            onChange={(e) => setKetuaName(e.target.value)}
+            placeholder="Masukkan nama ketua..."
+            className="w-full px-4 py-2 border border-gray-300 rounded focus:ring-teal-500 focus:border-teal-500"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-semibold text-gray-700 mb-2">Nama Sekretaris Task Force</label>
+          <input 
+            type="text" 
+            value={sekretarisName}
+            onChange={(e) => setSekretarisName(e.target.value)}
+            placeholder="Masukkan nama sekretaris..."
+            className="w-full px-4 py-2 border border-gray-300 rounded focus:ring-teal-500 focus:border-teal-500"
+          />
+        </div>
       </div>
 
       {fgdType === 'curator' && (

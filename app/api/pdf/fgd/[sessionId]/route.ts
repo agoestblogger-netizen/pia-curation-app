@@ -140,6 +140,8 @@ export async function GET(
       competitionName: `${activeComp?.name || ''} ${activeComp?.year || ''}`,
       proposals: finalProposals,
       participants: participantsData,
+      ketuaName: fgd.ketuaName || null,
+      sekretarisName: fgd.sekretarisName || null,
       stats: {
         total: 0, // Unused
         admin: totalAdmin,

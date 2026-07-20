@@ -78,6 +78,8 @@ interface FgdBeritaAcaraProps {
     yearStr: string;
     place: string;
   };
+  ketuaName?: string | null;
+  sekretarisName?: string | null;
 }
 
 export const FgdBeritaAcaraReport = ({
@@ -85,7 +87,9 @@ export const FgdBeritaAcaraReport = ({
   proposals,
   participants,
   stats,
-  dateInfo
+  dateInfo,
+  ketuaName,
+  sekretarisName
 }: FgdBeritaAcaraProps) => (
   <Document>
     <Page size="A4" style={styles.page}>
@@ -186,38 +190,36 @@ export const FgdBeritaAcaraReport = ({
             <View style={styles.colSigJabatan}><Text style={styles.textBold}>Jabatan</Text></View>
             <View style={styles.colSigTtd}><Text style={styles.textBold}>Tanda Tangan</Text></View>
           </View>
-          {(!participants || participants.length === 0) ? (
-            [
-              { nama: '....................', jabatan: 'Ketua Task Force Kurator' },
-              { nama: '....................', jabatan: 'Sekretaris Task Force Kurator' },
-              { nama: '....................', jabatan: 'Anggota Kurator' },
-              { nama: '....................', jabatan: 'Anggota Kurator' },
-              { nama: '....................', jabatan: 'Anggota Kurator' }
-            ].map((sig, i) => (
+          {(() => {
+            const defaultKetua = { nama: ketuaName || '....................', jabatan: 'Ketua Task Force Kurator' };
+            const defaultSekretaris = { nama: sekretarisName || '....................', jabatan: 'Sekretaris Task Force Kurator' };
+            
+            // Render basic rows first
+            const rows = [defaultKetua, defaultSekretaris];
+            
+            // Render remaining participants as Anggota
+            if (participants && participants.length > 0) {
+              participants.forEach(p => {
+                rows.push({
+                  nama: p.name,
+                  jabatan: 'Anggota Kurator'
+                });
+              });
+            } else {
+              rows.push({ nama: '....................', jabatan: 'Anggota Kurator' });
+              rows.push({ nama: '....................', jabatan: 'Anggota Kurator' });
+              rows.push({ nama: '....................', jabatan: 'Anggota Kurator' });
+            }
+            
+            return rows.map((row, i) => (
               <View key={i} style={styles.rowSig}>
                 <View style={styles.colSigNo}><Text>{i + 1}</Text></View>
-                <View style={styles.colSigNama}><Text>{sig.nama}</Text></View>
-                <View style={styles.colSigJabatan}><Text>{sig.jabatan}</Text></View>
+                <View style={styles.colSigNama}><Text>{row.nama}</Text></View>
+                <View style={styles.colSigJabatan}><Text>{row.jabatan}</Text></View>
                 <View style={styles.colSigTtd}><Text></Text></View>
               </View>
-            ))
-          ) : (
-            participants.map((p, i) => {
-              let jabatan = 'Anggota Kurator';
-              if (i === 0) jabatan = 'Ketua Task Force Kurator';
-              else if (i === 1) jabatan = 'Sekretaris Task Force Kurator';
-              else if (p.role === 'Koordinator') jabatan = 'Koordinator FGD';
-              
-              return (
-                <View key={i} style={styles.rowSig}>
-                  <View style={styles.colSigNo}><Text>{i + 1}</Text></View>
-                  <View style={styles.colSigNama}><Text>{p.name}</Text></View>
-                  <View style={styles.colSigJabatan}><Text>{jabatan}</Text></View>
-                  <View style={styles.colSigTtd}><Text></Text></View>
-                </View>
-              );
-            })
-          )}
+            ));
+          })()}
         </View>
 
         <View style={styles.mengetahui}>
