@@ -6,7 +6,7 @@ import Link from 'next/link';
 export default async function FinalizationPage({
   searchParams,
 }: {
-  searchParams: { tab?: string };
+  searchParams: Promise<{ tab?: string }>;
 }) {
   const session = await getSession();
   
@@ -14,7 +14,8 @@ export default async function FinalizationPage({
     return <div className="p-8 text-red-500">Unauthorized</div>;
   }
 
-  const currentTab = searchParams.tab || 'regional';
+  const resolvedParams = await searchParams;
+  const currentTab = resolvedParams.tab || 'regional';
 
   const tabs = [
     { id: 'regional', label: '1. Regional' },
