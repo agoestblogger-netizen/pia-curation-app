@@ -51,11 +51,14 @@ export default function FormattedTextDisplay({
       const res = await formatProposalFieldAction(proposalId, fieldName, originalText);
       if (res.error) {
         setError(res.error);
+        setShowOriginal(true); // Pastikan menampilkan original jika gagal
       } else {
         setShowOriginal(false);
       }
     });
   };
+
+  const isFailed = !!error;
 
   return (
     <div className="relative group">
@@ -88,14 +91,18 @@ export default function FormattedTextDisplay({
             className="flex items-center gap-1.5 text-xs font-medium text-white bg-indigo-600 hover:bg-indigo-700 transition-colors px-2.5 py-1 rounded-md disabled:opacity-50"
           >
             <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09l2.846.813-2.846.813a4.5 4.5 0 0 0-3.09 3.09ZM18.259 8.715 18 9.75l-.259-1.035a3.375 3.375 0 0 0-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 0 0 2.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 0 0 2.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 0 0-2.456 2.456ZM16.894 20.567 16.5 21.75l-.394-1.183a2.25 2.25 0 0 0-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 0 0 1.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 0 0 1.423 1.423l1.183.394-1.183.394a2.25 2.25 0 0 0-1.423 1.423Z" /></svg>
-            <span>{isPending ? 'Merapikan...' : 'Rapikan Format dengan AI'}</span>
+            <span>{isPending ? 'Merapikan...' : (isFailed ? 'Coba Rapikan Lagi' : 'Rapikan Format dengan AI')}</span>
           </button>
         )}
       </div>
 
-      {error && (
-        <div className="mb-2 text-xs text-red-600 bg-red-50 p-2 rounded">
-          {error}
+      {/* Fallback Graceful Note */}
+      {isFailed && (
+        <div className="mb-3 text-xs text-amber-600 bg-amber-50 p-2.5 rounded border border-amber-100 flex items-start gap-2">
+          <svg className="w-4 h-4 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+          <span className="leading-snug">
+            Perapian format AI belum tersedia saat ini — menampilkan teks asli.
+          </span>
         </div>
       )}
 
