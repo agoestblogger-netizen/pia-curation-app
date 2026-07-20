@@ -4,6 +4,8 @@ import { useState, useTransition, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { submitFgdCommentAction, submitFgdVoteAction, lockFgdSessionAction } from '@/app/actions/fgd';
 import { generateFgdAiAnalysis } from '@/app/actions/aiAnalysis';
+import { uploadFgdAdditionalDocument } from '@/app/actions/uploadDocument';
+import { deleteFgdAdditionalDocument } from '@/app/actions/deleteDocument';
 
 // 5 warna per verdict — sesuai SCREENING_VERDICT_COLORS
 const VERDICT_COLORS: Record<string, string> = {
@@ -43,6 +45,7 @@ type Proposal = {
   rowNumber: number;
   verdict: string;
   aiAnalysis?: any;
+  additionalDocument?: any;
 };
 
 type Vote = { id: number; proposalId: number; curatorId: number; vote: string };
@@ -72,6 +75,79 @@ export default function FgdRoomClient({
     }
     return map;
   });
+
+  const [localAdditionalDocs, setLocalAdditionalDocs] = useState<Record<number, any[]>>(() => {
+    const map: Record<number, any[]> = {};
+    for (const p of proposals) {
+      if (p.additionalDocuments && p.additionalDocuments.length > 0) {
+        map[p.id] = p.additionalDocuments;
+      }
+    }
+    return map;
+  });
+
+  const [isUploadingDoc, setIsUploadingDoc] = useState<Record<number, boolean>>({});
+  const [isDeletingDoc, setIsDeletingDoc] = useState<Record<number, boolean>>({});
+  const [uploadError, setUploadError] = useState<Record<number, string | null>>({});
+
+  const handleUploadDocument = async (proposalId: number, e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.type !== 'application/pdf') {
+      setUploadError(prev => ({ ...prev, [proposalId]: 'Hanya file PDF yang diperbolehkan.' }));
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      setUploadError(prev => ({ ...prev, [proposalId]: 'Ukuran file maksimal 10MB.' }));
+      return;
+    }
+
+    setIsUploadingDoc(prev => ({ ...prev, [proposalId]: true }));
+    setUploadError(prev => ({ ...prev, [proposalId]: null }));
+
+    try {
+      const formData = new FormData();
+      formData.append('proposalId', proposalId.toString());
+      formData.append('file', file);
+
+      const res = await uploadFgdAdditionalDocument(formData);
+      if (res.error) {
+        setUploadError(prev => ({ ...prev, [proposalId]: res.error as string }));
+      } else if (res.data) {
+        setLocalAdditionalDocs(prev => ({ 
+          ...prev, 
+          [proposalId]: [...(prev[proposalId] || []), res.data] 
+        }));
+      }
+    } catch (err: any) {
+      setUploadError(prev => ({ ...prev, [proposalId]: err.message || 'Gagal mengunggah dokumen.' }));
+    } finally {
+      setIsUploadingDoc(prev => ({ ...prev, [proposalId]: false }));
+      // Reset input
+      e.target.value = '';
+    }
+  };
+
+  const handleDeleteDocument = async (proposalId: number, docId: number) => {
+    if (!confirm('Hapus dokumen tambahan ini?')) return;
+    setIsDeletingDoc(prev => ({ ...prev, [docId]: true }));
+    try {
+      const res = await deleteFgdAdditionalDocument(docId);
+      if (res.error) {
+        alert(res.error);
+      } else {
+        setLocalAdditionalDocs(prev => ({
+          ...prev,
+          [proposalId]: (prev[proposalId] || []).filter((d: any) => d.id !== docId)
+        }));
+      }
+    } catch (err: any) {
+      alert(err.message || 'Gagal menghapus dokumen.');
+    } finally {
+      setIsDeletingDoc(prev => ({ ...prev, [docId]: false }));
+    }
+  };
 
   const handleGenerateAi = async (proposalId: number) => {
     setIsGeneratingAi(prev => ({ ...prev, [proposalId]: true }));
@@ -476,6 +552,105 @@ export default function FgdRoomClient({
                           <p className="text-gray-500 text-sm">
                             Memproses rangkuman proposal, klaim kunci, dan potensi duplikasi...
                           </p>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* NEW ADDITIONAL DOCUMENT AI ANALYSIS SECTION */}
+                    <div className="bg-white p-5 rounded-md border border-indigo-100 shadow-sm mb-6 relative">
+                      <div className="flex justify-between items-start mb-4">
+                        <h4 className="font-bold text-indigo-900 text-sm uppercase tracking-wide flex items-center">
+                          <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                          Analisis Dokumen Tambahan
+                        </h4>
+                        
+                        {/* Koordinator Only Upload Button */}
+                        {session?.roles?.includes('coordinator') && (
+                          <div className="flex flex-col items-end">
+                            <label className={`cursor-pointer inline-flex items-center px-3 py-1.5 rounded text-xs font-semibold shadow-sm transition-colors ${
+                              isUploadingDoc[activeProposal.id] 
+                                ? 'bg-gray-100 text-gray-500 cursor-not-allowed' 
+                                : 'bg-indigo-600 text-white hover:bg-indigo-700'
+                            }`}>
+                              {isUploadingDoc[activeProposal.id] ? (
+                                <>
+                                  <svg className="animate-spin -ml-1 mr-2 h-3 w-3 text-gray-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                  Mengunggah...
+                                </>
+                              ) : (
+                                'Tambah Dokumen'
+                              )}
+                              <input 
+                                type="file" 
+                                accept=".pdf" 
+                                className="hidden" 
+                                onChange={(e) => handleUploadDocument(activeProposal.id, e)}
+                                disabled={isUploadingDoc[activeProposal.id]}
+                              />
+                            </label>
+                            <span className="text-[10px] text-gray-400 mt-1">Maks 10MB (Hanya PDF)</span>
+                          </div>
+                        )}
+                      </div>
+
+                      {uploadError[activeProposal.id] && (
+                        <div className="bg-red-50 text-red-700 p-3 rounded text-sm mb-3 border border-red-200">
+                          {uploadError[activeProposal.id]}
+                        </div>
+                      )}
+
+                      {localAdditionalDocs[activeProposal.id] && localAdditionalDocs[activeProposal.id].length > 0 ? (
+                        <div className="space-y-4 text-sm text-gray-700 border-t border-gray-100 pt-3">
+                          {localAdditionalDocs[activeProposal.id].map((doc: any, idx: number) => (
+                            <div key={doc.id || idx} className="bg-gray-50 p-4 rounded border border-gray-200 relative">
+                              {session?.roles?.includes('coordinator') && (
+                                <button 
+                                  onClick={() => handleDeleteDocument(activeProposal.id, doc.id)}
+                                  disabled={isDeletingDoc[doc.id]}
+                                  className="absolute top-2 right-2 text-gray-400 hover:text-red-600 transition-colors bg-white p-1 rounded shadow-sm border border-gray-200 disabled:opacity-50"
+                                  title="Hapus dokumen ini"
+                                >
+                                  {isDeletingDoc[doc.id] ? (
+                                    <svg className="animate-spin w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                  ) : (
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                  )}
+                                </button>
+                              )}
+                              
+                              <div className="flex items-center justify-between mb-3 pr-8">
+                                <span className="text-xs font-medium text-indigo-700 bg-indigo-50 px-2 py-1 rounded border border-indigo-100 flex items-center">
+                                  📄 {doc.fileName}
+                                </span>
+                                <a href={doc.fileUrl} target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:underline text-xs font-semibold flex items-center">
+                                  Buka File <svg className="w-3 h-3 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+                                </a>
+                              </div>
+                              
+                              <div className="space-y-3">
+                                <div><strong className="text-gray-900 block mb-1">Rangkuman Tambahan:</strong> {doc.aiAnalysis?.summary || '-'}</div>
+                                
+                                {doc.aiAnalysis?.keyFindings?.length > 0 && (
+                                  <div>
+                                    <strong className="text-gray-900 block mb-1">Temuan Penting:</strong>
+                                    <ul className="list-disc list-inside space-y-1 ml-1 text-gray-600">
+                                      {doc.aiAnalysis.keyFindings.map((kf: string, i: number) => (
+                                        <li key={i} className="leading-snug">{kf}</li>
+                                      ))}
+                                    </ul>
+                                  </div>
+                                )}
+                                
+                                <div><strong className="text-gray-900 block mb-1">Metodologi:</strong> {doc.aiAnalysis?.methodology || '-'}</div>
+                                <div><strong className="text-gray-900 block mb-1">Validitas Data:</strong> {doc.aiAnalysis?.dataValidity || '-'}</div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="text-center py-6 text-gray-400 text-sm border-2 border-dashed border-gray-200 rounded">
+                          Belum ada dokumen tambahan untuk proposal ini.<br />
+                          {session?.roles?.includes('coordinator') && "Koordinator dapat mengunggah file PDF untuk dianalisis oleh AI."}
                         </div>
                       )}
                     </div>

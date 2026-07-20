@@ -1,7 +1,7 @@
 import { getSession } from '@/lib/auth/session';
 import { db } from '@/lib/db';
 import { 
-  fgdSessions, fgdVotes, fgdComments, users, proposalAiAnalyses
+  fgdSessions, fgdVotes, fgdComments, users, proposalAiAnalyses, fgdAdditionalDocuments
 } from '@/lib/db/schema';
 import { eq, sql, inArray } from 'drizzle-orm';
 import FgdRoomClient from './FgdRoomClient';
@@ -80,6 +80,7 @@ export default async function FgdRoomPage({ params }: { params: Promise<{ sessio
     rowNumber: number;
     verdict: string;
     aiAnalysis?: any;
+    additionalDocument?: any;
   }>;
 
   // Fetch AI analyses for the proposals in this session
@@ -100,6 +101,28 @@ export default async function FgdRoomPage({ params }: { params: Promise<{ sessio
     for (const p of allRawProposals) {
       if (aiMap.has(p.id)) {
         p.aiAnalysis = aiMap.get(p.id);
+      }
+    }
+
+    // Fetch additional documents
+    const addlDocs = await db
+      .select()
+      .from(fgdAdditionalDocuments)
+      .where(inArray(fgdAdditionalDocuments.proposalId, proposalIds));
+      
+    const docMap = new Map();
+    for (const doc of addlDocs) {
+      if (!docMap.has(doc.proposalId)) {
+        docMap.set(doc.proposalId, []);
+      }
+      docMap.get(doc.proposalId).push(doc);
+    }
+    
+    for (const p of allRawProposals) {
+      if (docMap.has(p.id)) {
+        p.additionalDocuments = docMap.get(p.id);
+      } else {
+        p.additionalDocuments = [];
       }
     }
   }

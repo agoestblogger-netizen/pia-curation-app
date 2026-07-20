@@ -175,6 +175,17 @@ export const proposalAiAnalyses = pgTable('proposal_ai_analyses', {
   generatedAt: timestamp('generated_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
+// ─── FGD ADDITIONAL DOCUMENTS ─────────────────────────────────────────────────
+export const fgdAdditionalDocuments = pgTable('fgd_additional_documents', {
+  id: serial('id').primaryKey(),
+  proposalId: integer('proposal_id').notNull().references(() => proposals.id),
+  fileName: text('file_name').notNull(),
+  fileUrl: text('file_url').notNull(),
+  aiAnalysis: jsonb('ai_analysis').notNull(), // The GPT result
+  uploadedAt: timestamp('uploaded_at', { withTimezone: true }).notNull().defaultNow(),
+  uploadedBy: integer('uploaded_by').references(() => users.id),
+});
+
 // ─── CURATION BATCHES ─────────────────────────────────────────────────────────
 export const curationBatches = pgTable('curation_batches', {
   id: serial('id').primaryKey(),
@@ -456,3 +467,4 @@ export type FgdVote = typeof fgdVotes.$inferSelect;
 export type FgdComment = typeof fgdComments.$inferSelect;
 export type PromoterAssignment = typeof promoterAssignments.$inferSelect;
 export type ProposalAiAnalysis = typeof proposalAiAnalyses.$inferSelect;
+export type FgdAdditionalDocument = typeof fgdAdditionalDocuments.$inferSelect;

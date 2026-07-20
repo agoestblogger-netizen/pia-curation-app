@@ -78,6 +78,20 @@
       "when": 1784466041013,
       "tag": "0010_heavy_grandmaster",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1784468782509,
+      "tag": "0011_orange_smasher",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1784510318853,
+      "tag": "0012_fluffy_namorita",
+      "breakpoints": true
     }
   ]
 }
