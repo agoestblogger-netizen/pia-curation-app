@@ -1,6 +1,14 @@
 import React from 'react';
 import { Document, Page, Text, View, StyleSheet } from '@react-pdf/renderer';
 
+function terbilang(n: number): string {
+  const angka = ["", "satu", "dua", "tiga", "empat", "lima", "enam", "tujuh", "delapan", "sembilan", "sepuluh", "sebelas"];
+  if (n < 12) return angka[n];
+  if (n < 20) return angka[n - 10] + " belas";
+  if (n < 100) return angka[Math.floor(n / 10)] + " puluh" + (n % 10 === 0 ? "" : " " + angka[n % 10]);
+  return n.toString();
+}
+
 const styles = StyleSheet.create({
   page: { padding: 40, fontFamily: 'Helvetica', fontSize: 10, color: '#333' },
   header: { textAlign: 'center', marginBottom: 20 },
@@ -51,8 +59,8 @@ export const SuratPenetapanRegionalReport = ({
   <Document>
     <Page size="A4" style={styles.page}>
       <View style={styles.header}>
-        <Text style={styles.title}>Surat Penetapan Regional Finalis</Text>
-        <Text style={styles.subtitle}>{competitionName}</Text>
+        <Text style={styles.title}>Surat Penetapan Finalis Regional</Text>
+        <Text style={styles.subtitle}>Pegadaian Innovation Award (PIA) Season 12 tahun 2026</Text>
       </View>
 
       <View style={styles.metadata}>
@@ -71,7 +79,7 @@ export const SuratPenetapanRegionalReport = ({
       </View>
 
       <Text style={{ marginBottom: 10 }}>
-        Berdasarkan hasil seleksi oleh Tim Kurator (Regional Lead), berikut adalah 10 (sepuluh) proposal yang ditetapkan sebagai Regional Finalist untuk {regionName} dan berhak melanjutkan ke tahapan seleksi berikutnya:
+        Berdasarkan hasil seleksi oleh Tim Kurator (Regional Lead), berikut adalah {proposals.length} ({terbilang(proposals.length)}) proposal yang ditetapkan sebagai Regional Finalist untuk {regionName} dan berhak melanjutkan ke tahapan seleksi berikutnya:
       </Text>
 
       <View style={styles.table}>
