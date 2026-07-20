@@ -27,37 +27,41 @@ export default function RegionalFinalClient({ competitionId, groups }: Props) {
   const [success, setSuccess] = useState<Record<string, string>>({});
   const [isPending, startTransition] = useTransition();
 
-  const toggleSelection = (region: string, proposalId: number, isLocked: boolean) => {
+  const toggleSelection = (group: RegionalGroup, proposalId: number, isLocked: boolean) => {
     if (isLocked) return;
+    
     setSelections(prev => {
       const next = new Map(Object.entries(prev));
-      const set = new Set(next.get(region) ?? []);
+      const set = new Set(next.get(group.region) ?? []);
+      
       if (set.has(proposalId)) {
         set.delete(proposalId);
       } else {
         if (set.size >= 10) {
-          setError(e => ({ ...e, [region]: 'Maksimal 10 finalis per grup.' }));
+          setError(e => ({ ...e, [group.region]: 'Maksimal 10 finalis per grup.' }));
           return prev;
         }
         set.add(proposalId);
       }
-      setError(e => ({ ...e, [region]: '' }));
-      next.set(region, set);
+      
+      setError(e => ({ ...e, [group.region]: '' }));
+      next.set(group.region, set);
+      
+      // Trigger Auto-Save
+      const newIds = Array.from(set);
+      const regionKey = group.category === 'PUSAT' ? 'PUSAT' : group.region;
+      startTransition(async () => {
+        setSuccess(s => ({ ...s, [group.region]: 'Menyimpan...' }));
+        const result = await setRegionalFinalistsAction(competitionId, regionKey, newIds);
+        if (result?.error) {
+          setError(e => ({ ...e, [group.region]: result.error! }));
+        } else {
+          setSuccess(s => ({ ...s, [group.region]: 'Pilihan tersimpan otomatis ✅' }));
+          setTimeout(() => setSuccess(s => ({ ...s, [group.region]: '' })), 2500);
+        }
+      });
+
       return Object.fromEntries(next);
-    });
-  };
-
-  const handleSave = (group: RegionalGroup) => {
-    const regionKey = group.category === 'PUSAT' ? 'PUSAT' : group.region;
-    const ids = Array.from(selections[group.region] ?? []);
-
-    startTransition(async () => {
-      const result = await setRegionalFinalistsAction(competitionId, regionKey, ids);
-      if (result?.error) {
-        setError(e => ({ ...e, [group.region]: result.error! }));
-      } else {
-        setSuccess(s => ({ ...s, [group.region]: `${ids.length} finalis disimpan.` }));
-      }
     });
   };
 
@@ -158,7 +162,7 @@ export default function RegionalFinalClient({ competitionId, groups }: Props) {
                     return (
                       <div
                         key={p.id}
-                        onClick={() => toggleSelection(group.region, p.id, isLocked)}
+                        onClick={() => toggleSelection(group, p.id, isLocked)}
                         className={`px-6 py-4 flex items-center space-x-4 cursor-pointer transition-colors ${
                           isSelected ? 'bg-indigo-50' : 'hover:bg-gray-50'
                         } ${isLocked ? 'cursor-not-allowed' : ''}`}
@@ -232,13 +236,7 @@ export default function RegionalFinalClient({ competitionId, groups }: Props) {
                       </>
                     ) : (
                       <>
-                        <button
-                          onClick={() => handleSave(group)}
-                          disabled={isPending}
-                          className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50"
-                        >
-                          Simpan Pilihan
-                        </button>
+
                         <button
                           onClick={() => handleLock(group)}
                           disabled={isPending || selected.size === 0}
