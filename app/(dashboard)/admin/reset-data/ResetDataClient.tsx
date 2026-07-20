@@ -32,26 +32,20 @@ export default function ResetDataClient({ stats }: { stats: any }) {
       return;
     }
 
-    startTransition(async () => {
-      setError(null);
-      const res = await resetDataAction(options);
+    // Tampilkan indikator proses tanpa startTransition untuk mencegah router block
+    setError(null);
+    setSuccess('Sedang melakukan reset data...');
+    
+    // Eksekusi tanpa startTransition agar router tidak terjebak di background cache invalidation
+    resetDataAction(options).then((res) => {
       if (res?.error) {
         setError(res.error);
+        setSuccess(null);
         setShowConfirm(false);
       } else {
-        setSuccess('Data berhasil di-reset: ' + res?.executedActions?.join(', '));
-        setShowConfirm(false);
-        setOptions({
-          resetScreening: false,
-          resetAssignments: false,
-          resetFgd: false,
-          resetPromotor: false,
-          resetRegionalFinal: false,
-          resetSponsor: false,
-          resetAuditLog: false,
-        });
-        setConfirmText('');
-        router.refresh();
+        // Hard reload browser untuk membersihkan 100% cache layout/router Next.js
+        // Ini mencegah "hang" atau lambat saat pindah menu setelah reset data yang masif
+        window.location.reload();
       }
     });
   };
