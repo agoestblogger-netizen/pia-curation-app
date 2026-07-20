@@ -63,6 +63,10 @@ export default function RegionalFinalClient({ competitionId, groups }: Props) {
     
     if (!confirm(`Kunci grup ${group.region}? Proposal yang tidak terpilih akan di-takeout dan tidak bisa dikembalikan kecuali buka kembali secara manual.`)) return;
 
+    // Bersihkan pesan sebelumnya
+    setError(e => ({ ...e, [group.region]: '' }));
+    setSuccess(s => ({ ...s, [group.region]: '' }));
+
     startTransition(async () => {
       // 1. Simpan state pilihan (checkbox) ke database
       const saveResult = await setRegionalFinalistsAction(competitionId, regionKey, ids);
@@ -84,6 +88,10 @@ export default function RegionalFinalClient({ competitionId, groups }: Props) {
   const handleReopen = (group: RegionalGroup) => {
     const regionKey = group.category === 'PUSAT' ? 'PUSAT' : group.region;
     if (!confirm(`Buka kembali grup ${group.region}? Ini akan mengembalikan proposal takeout ke status curation_passed.`)) return;
+
+    // Bersihkan pesan sebelumnya
+    setError(e => ({ ...e, [group.region]: '' }));
+    setSuccess(s => ({ ...s, [group.region]: '' }));
 
     startTransition(async () => {
       const result = await reopenRegionalGroupAction(competitionId, regionKey);
