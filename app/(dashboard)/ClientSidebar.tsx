@@ -83,6 +83,7 @@ export default function ClientSidebar({ session }: { session: Session }) {
               { label: 'Ruang FGD', path: '/coordinator/fgd', roles: ['coordinator', 'curator', 'promoter'] },
               { isDivider: true, roles: ['coordinator'] },
               { label: 'Semua Proposal', path: '/coordinator/proposals', roles: ['coordinator'] },
+              { label: 'Finalisasi & Ranking', path: '/coordinator/finalization', roles: ['coordinator'] },
               { label: 'Manajemen User', path: '/coordinator/users', roles: ['coordinator'] },
               { label: 'Audit Log', path: '/coordinator/audit-log', roles: ['coordinator'] },
               { isDivider: true, roles: ['admin'] },
