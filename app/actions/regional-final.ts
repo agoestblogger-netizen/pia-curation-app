@@ -24,6 +24,7 @@ export type RegionalGroup = {
     aiCidaAverageSkor: number | null;
     status: string;
     regionalFinalistRank: number | null;
+    regionalFinalizedAt: Date | null;
   }[];
 };
 
@@ -47,6 +48,7 @@ export async function getRegionalGroups(competitionId: number): Promise<Regional
       aiCidaTotal: proposals.aiCidaTotal,
       aiCidaAverageSkor: proposals.aiCidaAverageSkor,
       regionalFinalistRank: proposals.regionalFinalistRank,
+      regionalFinalizedAt: proposals.regionalFinalizedAt,
     })
     .from(proposals)
     .where(
@@ -91,18 +93,17 @@ export async function getRegionalGroups(competitionId: number): Promise<Regional
       aiCidaAverageSkor: p.aiCidaAverageSkor,
       status: p.status,
       regionalFinalistRank: p.regionalFinalistRank,
+      regionalFinalizedAt: p.regionalFinalizedAt,
     });
     group.totalProposals++;
     if (p.status === 'regional_finalist') group.finalistCount++;
   }
 
-  // Determine if a group is "locked" — all non-finalists in that group are takeout
+  // Determine if a group is "locked"
+  // A group is locked if any proposal in it has regionalFinalizedAt set (meaning Kunci Grup was clicked)
   for (const [, group] of groupMap) {
-    const hasFinalist = group.proposals.some(p => p.status === 'regional_finalist');
-    const allNonFinalistAreTakeout = group.proposals
-      .filter(p => p.status !== 'regional_finalist')
-      .every(p => p.status === 'takeout');
-    group.isLocked = hasFinalist && (allNonFinalistAreTakeout || group.proposals.every(p => p.status === 'regional_finalist'));
+    const isLocked = group.proposals.some(p => p.regionalFinalizedAt !== null);
+    group.isLocked = isLocked;
   }
 
   // Check FGD sessions to see if there is a locked FGD session for each region
@@ -271,7 +272,7 @@ export async function lockRegionalGroupAction(
         eq(proposals.competitionId, competitionId),
         isKanpus
           ? eq(proposals.category, 'PUSAT')
-          : and(eq(proposals.category, 'WILAYAH'), eq(proposals.regionCenter, regionKey)),
+          : and(eq(proposals.category, 'WILAYAH'), eq(proposals.regionCenter, dbRegion)),
         inArray(proposals.status, ['curation_passed', 'regional_finalist'])
       )
     );
@@ -348,6 +349,21 @@ export async function reopenRegionalGroupAction(
         ? eq(proposals.category, 'PUSAT')
         : and(eq(proposals.category, 'WILAYAH'), eq(proposals.regionCenter, dbRegion)),
       eq(proposals.takeoutReason, 'not_selected_regional_final')
+    )
+  );
+
+  // Clear lock markers (regionalFinalizedAt) so the group becomes unlocked, but KEEP the regional_finalist status (so checkboxes remain checked)
+  await db.update(proposals).set({
+    regionalFinalizedAt: null,
+    regionalFinalizedBy: null,
+    updatedAt: new Date(),
+  }).where(
+    and(
+      eq(proposals.competitionId, competitionId),
+      isKanpus
+        ? eq(proposals.category, 'PUSAT')
+        : and(eq(proposals.category, 'WILAYAH'), eq(proposals.regionCenter, dbRegion)),
+      eq(proposals.status, 'regional_finalist')
     )
   );
 
