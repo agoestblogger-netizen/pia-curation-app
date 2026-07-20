@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import React, { useState, useTransition, useRef } from 'react';
 import { createUserAction, toggleUserStatusAction, updateUserAction, deleteUserAction } from '@/app/actions/users';
 
 type UserRow = {
@@ -48,6 +48,7 @@ export default function UserManagementClient({ users: initialUsers, currentUserI
   
   // Form State
   const [showForm, setShowForm] = useState(false);
+  const formRef = useRef<HTMLDivElement>(null);
   const [editMode, setEditMode] = useState<UserRow | null>(null);
   const [isPending, startTransition] = useTransition();
   const [formError, setFormError] = useState<string | null>(null);
@@ -80,7 +81,7 @@ export default function UserManagementClient({ users: initialUsers, currentUserI
     setFormError(null);
     setFormSuccess(null);
     setShowForm(true);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    setTimeout(() => formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
   };
 
   const openEditForm = (user: UserRow) => {
@@ -88,7 +89,7 @@ export default function UserManagementClient({ users: initialUsers, currentUserI
     setFormError(null);
     setFormSuccess(null);
     setShowForm(true);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    setTimeout(() => formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
   };
 
   const handleFormSubmit = (e: React.FormEvent<HTMLFormElement>) => {
@@ -163,7 +164,7 @@ export default function UserManagementClient({ users: initialUsers, currentUserI
 
       {/* Add/Edit User Form */}
       {showForm && (
-        <div className="mb-8 bg-white p-6 rounded-xl border border-indigo-200 shadow-sm">
+        <div ref={formRef} className="mb-8 bg-white p-6 rounded-xl border border-indigo-200 shadow-sm">
           <h3 className="font-bold text-gray-900 mb-4">{editMode ? 'Edit User' : 'Tambah User Baru'}</h3>
 
           {formError && (
