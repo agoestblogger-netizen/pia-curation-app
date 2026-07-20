@@ -92,12 +92,11 @@ export async function GET(
     }
   }
 
-  // 1. Proposal Memenuhi Persyaratan Administrasi (Total in Region/Scope, regardless of verdict)
+  // 1. Proposal Memenuhi Persyaratan Administrasi (Total global in competition, matching dashboard)
   const rawTotalAdmin = await db.execute(sql`
     SELECT COUNT(*) as count
     FROM proposals p
     WHERE p.competition_id = ${fgd.competitionId}
-      AND ${poolSql}
   `);
   const totalAdmin = parseInt((rawTotalAdmin[0] as any).count, 10) || 0;
 
