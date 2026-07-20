@@ -14,10 +14,12 @@ const FILTER_OPTIONS = [
 
 export default function NewFgdClient({ 
   competitionId, 
-  regions 
+  regions,
+  users = []
 }: { 
   competitionId: number;
   regions: string[];
+  users?: string[];
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -105,23 +107,29 @@ export default function NewFgdClient({
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div>
           <label className="block text-sm font-semibold text-gray-700 mb-2">Nama Ketua Task Force</label>
-          <input 
-            type="text" 
+          <select 
             value={ketuaName}
             onChange={(e) => setKetuaName(e.target.value)}
-            placeholder="Masukkan nama ketua..."
-            className="w-full px-4 py-2 border border-gray-300 rounded focus:ring-teal-500 focus:border-teal-500"
-          />
+            className="w-full px-4 py-2 border border-gray-300 rounded focus:ring-teal-500 focus:border-teal-500 bg-white"
+          >
+            <option value="">-- Kosongkan / Titik-titik --</option>
+            {users.map(u => (
+              <option key={u} value={u}>{u}</option>
+            ))}
+          </select>
         </div>
         <div>
           <label className="block text-sm font-semibold text-gray-700 mb-2">Nama Sekretaris Task Force</label>
-          <input 
-            type="text" 
+          <select 
             value={sekretarisName}
             onChange={(e) => setSekretarisName(e.target.value)}
-            placeholder="Masukkan nama sekretaris..."
-            className="w-full px-4 py-2 border border-gray-300 rounded focus:ring-teal-500 focus:border-teal-500"
-          />
+            className="w-full px-4 py-2 border border-gray-300 rounded focus:ring-teal-500 focus:border-teal-500 bg-white"
+          >
+            <option value="">-- Kosongkan / Titik-titik --</option>
+            {users.map(u => (
+              <option key={u} value={u}>{u}</option>
+            ))}
+          </select>
         </div>
       </div>
 
