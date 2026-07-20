@@ -153,10 +153,6 @@ export const FgdBeritaAcaraReport = ({
           <View style={styles.colSummaryJumlah}><Text style={styles.textBold}>Jumlah</Text></View>
         </View>
         <View style={styles.rowSummary}>
-          <View style={styles.colSummaryUraian}><Text>Total Proposal yang Diterima</Text></View>
-          <View style={styles.colSummaryJumlah}><Text>{stats?.total ?? '....'} Proposal</Text></View>
-        </View>
-        <View style={styles.rowSummary}>
           <View style={styles.colSummaryUraian}><Text>Proposal Memenuhi Persyaratan Administrasi</Text></View>
           <View style={styles.colSummaryJumlah}><Text>{stats?.admin ?? '....'} Proposal</Text></View>
         </View>

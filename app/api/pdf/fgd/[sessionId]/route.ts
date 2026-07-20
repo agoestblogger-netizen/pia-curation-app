@@ -92,23 +92,12 @@ export async function GET(
     }
   }
 
-  // 1. Total Proposal yang Diterima (Total in Region/Scope)
-  const rawTotalRegion = await db.execute(sql`
-    SELECT COUNT(*) as count
-    FROM proposals p
-    WHERE p.competition_id = ${fgd.competitionId}
-      AND ${poolSql}
-  `);
-  const totalDiterima = parseInt((rawTotalRegion[0] as any).count, 10) || 0;
-
-  // 2. Proposal Memenuhi Persyaratan Administrasi (Total with verdict = lolos in Region/Scope)
+  // 1. Proposal Memenuhi Persyaratan Administrasi (Total in Region/Scope, regardless of verdict)
   const rawTotalAdmin = await db.execute(sql`
     SELECT COUNT(*) as count
     FROM proposals p
-    LEFT JOIN screening_results sr ON sr.proposal_id = p.id
     WHERE p.competition_id = ${fgd.competitionId}
       AND ${poolSql}
-      AND sr.verdict = 'lolos'
   `);
   const totalAdmin = parseInt((rawTotalAdmin[0] as any).count, 10) || 0;
 
@@ -153,7 +142,7 @@ export async function GET(
       proposals: finalProposals,
       participants: participantsData,
       stats: {
-        total: totalDiterima,
+        total: 0, // Unused
         admin: totalAdmin,
         lolos: poolSize,
         promotor: lolosCount
