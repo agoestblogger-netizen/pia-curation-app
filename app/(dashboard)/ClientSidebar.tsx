@@ -82,11 +82,9 @@ export default function ClientSidebar({ session }: { session: Session }) {
                 Assign Proposal
               </Link>
               <Link href="/coordinator/fgd" className="block px-4 py-2 rounded hover:bg-indigo-800 text-sm" onClick={() => setIsOpen(false)}>
-                FGD Tim Kurator
+                Ruang FGD
               </Link>
-              <Link href="/coordinator/finalization" className="block px-4 py-2 rounded hover:bg-indigo-800 text-sm" onClick={() => setIsOpen(false)}>
-                Finalisasi & Ranking
-              </Link>
+
               <div className="border-t border-indigo-800 my-2" />
               <Link href="/coordinator/proposals" className="block px-4 py-2 rounded hover:bg-indigo-800 text-sm" onClick={() => setIsOpen(false)}>
                 Semua Proposal
@@ -120,7 +118,20 @@ export default function ClientSidebar({ session }: { session: Session }) {
                 <span className="text-indigo-400">→</span>
               </Link>
               <Link href="/coordinator/fgd" className="block px-4 py-2 rounded hover:bg-indigo-800 text-sm" onClick={() => setIsOpen(false)}>
-                FGD Tim Kurator
+                Ruang FGD
+              </Link>
+            </>
+          )}
+
+          {session?.roles?.includes('promoter') && (
+            <>
+              <div className="border-t border-indigo-800 my-2" />
+              <Link href="/promoter" className="block px-4 py-2 rounded hover:bg-indigo-800 text-sm flex items-center justify-between" onClick={() => setIsOpen(false)}>
+                <span>Papan Penilaian (Promotor)</span>
+                <span className="text-indigo-400">→</span>
+              </Link>
+              <Link href="/coordinator/fgd" className="block px-4 py-2 rounded hover:bg-indigo-800 text-sm" onClick={() => setIsOpen(false)}>
+                Ruang FGD
               </Link>
             </>
           )}

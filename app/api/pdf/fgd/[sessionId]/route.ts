@@ -73,7 +73,7 @@ export async function GET(
     const pUsers = await db.select({ name: users.name, roles: users.roles }).from(users).where(inArray(users.id, Array.from(participantIds)));
     participantsData = pUsers.map(u => ({
       name: u.name,
-      role: u.roles.includes('coordinator') ? 'Koordinator' : 'Tim Kurator'
+      role: u.roles.includes('coordinator') ? 'Koordinator' : (fgd.fgdType === 'promoter' ? 'Tim Promotor' : 'Tim Kurator')
     }));
   }
 

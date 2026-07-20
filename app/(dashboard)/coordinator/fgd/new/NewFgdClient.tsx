@@ -23,6 +23,7 @@ export default function NewFgdClient({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  const [fgdType, setFgdType] = useState<'curator' | 'promoter'>('curator');
   const [name, setName] = useState('Sesi FGD ' + new Date().toLocaleDateString('id-ID'));
   const [scope, setScope] = useState<'nasional' | 'regional'>('nasional');
   const [regionCenter, setRegionCenter] = useState<string>('');
@@ -40,11 +41,11 @@ export default function NewFgdClient({
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (filterStatuses.length === 0) {
+    if (fgdType === 'curator' && filterStatuses.length === 0) {
       setError('Pilih minimal 1 filter status.');
       return;
     }
-    if (scope === 'regional' && !regionCenter) {
+    if (fgdType === 'curator' && scope === 'regional' && !regionCenter) {
       setError('Pilih kantor wilayah.');
       return;
     }
@@ -55,11 +56,12 @@ export default function NewFgdClient({
     const res = await createFgdSessionAction({
       competitionId,
       name,
-      scope,
-      regionCenter: scope === 'nasional' ? null : regionCenter,
+      scope: fgdType === 'curator' ? scope : 'nasional', // Promotor always nasional conceptually for scope
+      regionCenter: fgdType === 'curator' && scope === 'regional' ? regionCenter : null,
       targetCandidates,
       viewMode,
-      filterStatuses,
+      filterStatuses: fgdType === 'promoter' ? ['promotor_selection'] : filterStatuses,
+      fgdType,
     });
 
     if ('error' in res && res.error) {
@@ -79,6 +81,40 @@ export default function NewFgdClient({
       )}
 
       <div>
+        <label className="block text-sm font-semibold text-gray-700 mb-2">Tipe FGD</label>
+        <div className="flex space-x-4">
+          <label className="flex-1 cursor-pointer">
+            <div className={`p-4 border rounded text-center transition ${fgdType === 'curator' ? 'border-teal-500 bg-teal-50 text-teal-800 ring-1 ring-teal-500' : 'border-gray-200 hover:bg-gray-50'}`}>
+              <input 
+                type="radio" 
+                name="fgdType" 
+                value="curator" 
+                checked={fgdType === 'curator'}
+                onChange={() => setFgdType('curator')}
+                className="sr-only"
+              />
+              <span className="font-semibold block mb-1">FGD Kurator</span>
+              <span className="text-xs text-gray-500 block">Menentukan nominasi Promotor</span>
+            </div>
+          </label>
+          <label className="flex-1 cursor-pointer">
+            <div className={`p-4 border rounded text-center transition ${fgdType === 'promoter' ? 'border-teal-500 bg-teal-50 text-teal-800 ring-1 ring-teal-500' : 'border-gray-200 hover:bg-gray-50'}`}>
+              <input 
+                type="radio" 
+                name="fgdType" 
+                value="promoter" 
+                checked={fgdType === 'promoter'}
+                onChange={() => setFgdType('promoter')}
+                className="sr-only"
+              />
+              <span className="font-semibold block mb-1">FGD Promotor</span>
+              <span className="text-xs text-gray-500 block">Menentukan Grand Finalist</span>
+            </div>
+          </label>
+        </div>
+      </div>
+
+      <div>
         <label className="block text-sm font-semibold text-gray-700 mb-2">Nama Sesi FGD</label>
         <input 
           type="text" 
@@ -89,39 +125,41 @@ export default function NewFgdClient({
         />
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-2">Scope</label>
-          <select 
-            value={scope} 
-            onChange={(e) => setScope(e.target.value as any)}
-            className="w-full px-4 py-2 border border-gray-300 rounded focus:ring-teal-500 focus:border-teal-500 bg-white"
-          >
-            <option value="nasional">Nasional (BI & BC)</option>
-            <option value="regional">Regional (Wilayah & Pusat)</option>
-          </select>
-          <p className="text-xs text-gray-500 mt-2">
-            Regional digunakan sebagai *fallback* FGD jika tidak pakai seleksi *direct-pick* standar.
-          </p>
-        </div>
-
-        {scope === 'regional' && (
+      {fgdType === 'curator' && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">Pilih Wilayah / Kantor Pusat</label>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">Scope</label>
             <select 
-              value={regionCenter} 
-              onChange={(e) => setRegionCenter(e.target.value)}
-              required
+              value={scope} 
+              onChange={(e) => setScope(e.target.value as any)}
               className="w-full px-4 py-2 border border-gray-300 rounded focus:ring-teal-500 focus:border-teal-500 bg-white"
             >
-              <option value="">-- Pilih Wilayah --</option>
-              {regions.map(r => (
-                <option key={r} value={r}>{r}</option>
-              ))}
+              <option value="nasional">Nasional (BI & BC)</option>
+              <option value="regional">Regional (Wilayah & Pusat)</option>
             </select>
+            <p className="text-xs text-gray-500 mt-2">
+              Regional digunakan sebagai *fallback* FGD jika tidak pakai seleksi *direct-pick* standar.
+            </p>
           </div>
-        )}
-      </div>
+
+          {scope === 'regional' && (
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Pilih Wilayah / Kantor Pusat</label>
+              <select 
+                value={regionCenter} 
+                onChange={(e) => setRegionCenter(e.target.value)}
+                required
+                className="w-full px-4 py-2 border border-gray-300 rounded focus:ring-teal-500 focus:border-teal-500 bg-white"
+              >
+                <option value="">-- Pilih Wilayah --</option>
+                {regions.map(r => (
+                  <option key={r} value={r}>{r}</option>
+                ))}
+              </select>
+            </div>
+          )}
+        </div>
+      )}
 
       <div>
         <label className="block text-sm font-semibold text-gray-700 mb-2">Target Jumlah Kandidat (Finalis)</label>
@@ -135,22 +173,24 @@ export default function NewFgdClient({
         />
       </div>
 
-      <div>
-        <label className="block text-sm font-semibold text-gray-700 mb-2">Filter Status Screening</label>
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-          {FILTER_OPTIONS.map(f => (
-            <label key={f.id} className="flex items-center space-x-3 bg-gray-50 px-3 py-2 border border-gray-200 rounded cursor-pointer hover:bg-gray-100">
-              <input 
-                type="checkbox"
-                checked={filterStatuses.includes(f.id)}
-                onChange={() => toggleFilter(f.id)}
-                className="h-4 w-4 text-teal-600 focus:ring-teal-500 border-gray-300 rounded"
-              />
-              <span className="text-sm text-gray-800">{f.label}</span>
-            </label>
-          ))}
+      {fgdType === 'curator' && (
+        <div>
+          <label className="block text-sm font-semibold text-gray-700 mb-2">Filter Status Screening</label>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            {FILTER_OPTIONS.map(f => (
+              <label key={f.id} className="flex items-center space-x-3 bg-gray-50 px-3 py-2 border border-gray-200 rounded cursor-pointer hover:bg-gray-100">
+                <input 
+                  type="checkbox"
+                  checked={filterStatuses.includes(f.id)}
+                  onChange={() => toggleFilter(f.id)}
+                  className="h-4 w-4 text-teal-600 focus:ring-teal-500 border-gray-300 rounded"
+                />
+                <span className="text-sm text-gray-800">{f.label}</span>
+              </label>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
 
       <div>
         <label className="block text-sm font-semibold text-gray-700 mb-2">Mode Tampilan List</label>

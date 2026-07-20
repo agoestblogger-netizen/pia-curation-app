@@ -407,6 +407,7 @@ export const fgdSessions = pgTable('fgd_sessions', {
   id: serial('id').primaryKey(),
   competitionId: integer('competition_id').notNull().references(() => competitions.id),
   name: text('name').notNull(),
+  fgdType: text('fgd_type').notNull().default('curator'), // curator | promoter
   scope: text('scope').notNull().default('nasional'), // nasional | regional
   regionCenter: text('region_center'), // null if nasional
   targetCandidates: integer('target_candidates').notNull().default(10),

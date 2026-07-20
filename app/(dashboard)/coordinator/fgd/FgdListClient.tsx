@@ -5,8 +5,11 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { deleteFgdSessionAction } from '@/app/actions/fgd';
 
+import { useState } from 'react';
+
 export default function FgdListClient({ sessions, isCoordinator }: { sessions: FgdSession[], isCoordinator?: boolean }) {
   const router = useRouter();
+  const [activeTab, setActiveTab] = useState<'curator' | 'promoter'>('curator');
 
   async function handleDelete(id: number) {
     if (!confirm('Yakin ingin menghapus sesi FGD ini? Data komentar dan vote di dalamnya akan hilang.')) return;
@@ -14,16 +17,34 @@ export default function FgdListClient({ sessions, isCoordinator }: { sessions: F
     if (res.error) alert(res.error);
   }
 
-  if (sessions.length === 0) {
-    return (
-      <div className="bg-white p-8 rounded-lg shadow border border-gray-200 text-center text-gray-500">
-        Belum ada sesi FGD yang dibuat.
-      </div>
-    );
-  }
+  const filteredSessions = sessions.filter(s => s.fgdType === activeTab);
 
   return (
     <div className="bg-white rounded-lg shadow overflow-hidden border border-gray-200">
+      <div className="flex border-b border-gray-200">
+        <button
+          onClick={() => setActiveTab('curator')}
+          className={`flex-1 py-4 text-center font-medium ${
+            activeTab === 'curator' ? 'text-teal-600 border-b-2 border-teal-600 bg-teal-50/30' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+          }`}
+        >
+          FGD Kurator
+        </button>
+        <button
+          onClick={() => setActiveTab('promoter')}
+          className={`flex-1 py-4 text-center font-medium ${
+            activeTab === 'promoter' ? 'text-teal-600 border-b-2 border-teal-600 bg-teal-50/30' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+          }`}
+        >
+          FGD Promotor
+        </button>
+      </div>
+      
+      {filteredSessions.length === 0 ? (
+        <div className="p-8 text-center text-gray-500">
+          Belum ada sesi FGD untuk tab ini.
+        </div>
+      ) : (
       <table className="w-full text-left">
         <thead className="bg-gray-50 border-b border-gray-200 text-sm">
           <tr>
@@ -35,7 +56,7 @@ export default function FgdListClient({ sessions, isCoordinator }: { sessions: F
           </tr>
         </thead>
         <tbody className="divide-y divide-gray-200">
-          {sessions.map((s) => (
+          {filteredSessions.map((s) => (
             <tr key={s.id} className="hover:bg-gray-50 transition">
               <td className="px-6 py-4">
                 <div className="font-medium text-gray-900">{s.name}</div>
@@ -84,6 +105,7 @@ export default function FgdListClient({ sessions, isCoordinator }: { sessions: F
           ))}
         </tbody>
       </table>
+      )}
     </div>
   );
 }

@@ -1,0 +1,1 @@
+ALTER TABLE "fgd_sessions" ADD COLUMN "fgd_type" text DEFAULT 'curator' NOT NULL;

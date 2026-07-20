@@ -1,1 +1,1 @@
-ALTER TABLE "fgd_additional_documents" DROP CONSTRAINT "fgd_additional_documents_proposal_id_unique";
+-- Already applied manually

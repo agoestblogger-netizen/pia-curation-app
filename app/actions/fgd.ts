@@ -21,6 +21,7 @@ export async function createFgdSessionAction(data: {
   targetCandidates: number;
   viewMode: 'grouped' | 'mixed';
   filterStatuses: string[];
+  fgdType?: 'curator' | 'promoter';
 }) {
   const session = await requireRole(['coordinator']);
 
@@ -32,6 +33,7 @@ export async function createFgdSessionAction(data: {
     targetCandidates: data.targetCandidates,
     viewMode: data.viewMode,
     filterStatuses: data.filterStatuses,
+    fgdType: data.fgdType || 'curator',
     status: 'active',
     createdBy: session.userId,
   }).returning();
@@ -141,7 +143,38 @@ export async function lockFgdSessionAction(sessionId: number, selectedProposalId
   }).where(eq(fgdSessions.id, sessionId));
 
   if (selectedProposalIds.length > 0) {
-    if (fgd.scope === 'nasional') {
+    if (fgd.fgdType === 'promoter') {
+      // Ubah status ke grand_final
+      await db.update(proposals).set({
+        status: 'grand_final',
+        updatedAt: new Date(),
+      }).where(inArray(proposals.id, selectedProposalIds));
+
+      // Semua proposal promotor_selection di kompetisi ini yang TIDAK terpilih, di-takeout
+      const unselectedRows = await db.select({ id: proposals.id }).from(proposals)
+        .where(
+          and(
+            eq(proposals.competitionId, fgd.competitionId),
+            eq(proposals.status, 'promotor_selection')
+          )
+        );
+      
+      const unselectedIds = unselectedRows.map(r => r.id).filter(id => !selectedProposalIds.includes(id));
+      if (unselectedIds.length > 0) {
+        await db.update(proposals).set({
+          status: 'takeout',
+          takeoutReason: 'not_selected_in_final_filter',
+          updatedAt: new Date(),
+        }).where(inArray(proposals.id, unselectedIds));
+      }
+
+      // Advance competition phase
+      const { competitions } = await import('@/lib/db/schema');
+      await db.update(competitions)
+        .set({ phase: 'sponsor_scoring', updatedAt: new Date() })
+        .where(eq(competitions.id, fgd.competitionId));
+
+    } else if (fgd.scope === 'nasional') {
       // Ubah status ke promotor_selection
       await db.update(proposals).set({
         status: 'promotor_selection',

@@ -9,7 +9,7 @@ import Link from 'next/link';
 
 export default async function FgdRoomPage({ params }: { params: Promise<{ sessionId: string }> }) {
   const session = await getSession();
-  if (!session || (!session.roles.includes('coordinator') && !session.roles.includes('curator'))) {
+  if (!session || (!session.roles.includes('coordinator') && !session.roles.includes('curator') && !session.roles.includes('promoter'))) {
     return <div>Unauthorized</div>;
   }
 
@@ -25,7 +25,11 @@ export default async function FgdRoomPage({ params }: { params: Promise<{ sessio
 
   // Build scope condition as raw SQL
   let scopeSql: ReturnType<typeof sql>;
-  if (fgd.scope === 'regional' && fgd.regionCenter) {
+  if (fgd.fgdType === 'promoter') {
+    // For Promoter FGD, scope is all proposals that are in 'promotor_selection' status, 
+    // regardless of category/region center.
+    scopeSql = sql`p.status = 'promotor_selection'`;
+  } else if (fgd.scope === 'regional' && fgd.regionCenter) {
     if (fgd.regionCenter === 'Kantor Pusat') {
       scopeSql = sql`p.category = 'PUSAT'`;
     } else {
@@ -35,7 +39,6 @@ export default async function FgdRoomPage({ params }: { params: Promise<{ sessio
     scopeSql = sql`p.category IN ('BI', 'BC')`;
   }
 
-  // Query proposals with their screening verdict via JOIN + filter by verdict
   const rawProposals = await db.execute(sql`
     SELECT 
       p.id,
@@ -55,10 +58,13 @@ export default async function FgdRoomPage({ params }: { params: Promise<{ sessio
       ROW_NUMBER() OVER (PARTITION BY p.category, p.region_center ORDER BY p.id ASC) as "rowNumber",
       sr.verdict
     FROM proposals p
-    INNER JOIN screening_results sr ON sr.proposal_id = p.id
+    LEFT JOIN screening_results sr ON sr.proposal_id = p.id
     WHERE p.competition_id = ${fgd.competitionId}
-      AND sr.verdict IN (${sql.raw(rawStatuses.map(s => `'${s}'`).join(', '))})
-      AND ${scopeSql}
+      AND (
+        (${fgd.fgdType} = 'promoter' AND p.status = 'promotor_selection')
+        OR 
+        (${fgd.fgdType} = 'curator' AND sr.verdict IN (${sql.raw(rawStatuses.map(s => `'${s}'`).join(', '))}) AND ${scopeSql})
+      )
     ORDER BY p.category, p.region_center, p.id ASC
   `);
 
