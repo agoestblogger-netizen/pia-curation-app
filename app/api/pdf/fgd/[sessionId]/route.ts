@@ -6,7 +6,7 @@ import { db } from '@/lib/db';
 import { 
   fgdSessions, fgdComments, fgdVotes, proposals, competitions, users, auditLogs 
 } from '@/lib/db/schema';
-import { eq, inArray } from 'drizzle-orm';
+import { eq, inArray, sql } from 'drizzle-orm';
 import React from 'react';
 import { audit } from '@/lib/audit';
 
@@ -79,10 +79,49 @@ export async function GET(
     }));
   }
 
-  const generatedAt = new Date().toLocaleString('id-ID');
-  const generatedBy = session.name;
-  let filename = `Berita_Acara_FGD_${fgd.name.replace(/\s+/g, '_')}.pdf`;
-  const scopeText = fgd.scope === 'regional' ? `Regional (${fgd.regionCenter})` : 'Nasional (BI & BC)';
+  // Calculate pool size
+  const rawStatuses = Array.isArray(fgd.filterStatuses) && fgd.filterStatuses.length > 0 ? (fgd.filterStatuses as string[]) : ['lolos'];
+  let poolSql = sql`p.category IN ('BI', 'BC')`;
+  if (fgd.fgdType === 'promoter') {
+    poolSql = sql`p.status = 'promotor_selection'`;
+  } else if (fgd.scope === 'regional' && fgd.regionCenter) {
+    if (fgd.regionCenter === 'Kantor Pusat') {
+      poolSql = sql`p.category = 'PUSAT'`;
+    } else {
+      poolSql = sql`(p.category = 'WILAYAH' AND p.region_center = ${fgd.regionCenter})`;
+    }
+  }
+
+  let queryCondition = sql`p.status = 'promotor_selection'`;
+  if (fgd.fgdType !== 'promoter') {
+    queryCondition = sql`sr.verdict IN (${sql.raw(rawStatuses.map(s => `'${s}'`).join(', '))}) AND ${poolSql}`;
+  }
+
+  const rawPool = await db.execute(sql`
+    SELECT COUNT(*) as count
+    FROM proposals p
+    LEFT JOIN screening_results sr ON sr.proposal_id = p.id
+    WHERE p.competition_id = ${fgd.competitionId}
+      AND ${queryCondition}
+  `);
+  
+  const poolSize = parseInt((rawPool[0] as any).count, 10) || 0;
+  const lolosCount = finalProposals.length;
+  const tidakLolosCount = Math.max(0, poolSize - lolosCount);
+
+  // Date formatting
+  const today = new Date();
+  const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+  const months = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+  
+  const dayName = days[today.getDay()];
+  const dateNum = today.getDate().toString();
+  const monthName = months[today.getMonth()];
+  
+  // helper to convert number to words for year, assuming year is 2026/2027 etc.
+  // We can simplify this and just pass the string representation for year.
+  // Actually, we can just say "Dua Ribu Dua Puluh Enam" for 2026, but let's make it generic or stick to the digits since it's safer.
+  const yearStr = today.getFullYear().toString();
 
   // @ts-ignore
   const stream = await renderToStream(
@@ -91,8 +130,23 @@ export async function GET(
       competitionName: `${activeComp?.name || ''} ${activeComp?.year || ''}`,
       proposals: finalProposals,
       participants: participantsData,
+      stats: {
+        total: poolSize,
+        admin: poolSize,
+        lolos: lolosCount,
+        tidakLolos: tidakLolosCount
+      },
+      dateInfo: {
+        dayName,
+        dateNum,
+        monthName,
+        yearStr,
+        place: 'Jakarta'
+      }
     })
   );
+
+  let filename = `Berita_Acara_FGD_${fgd.name.replace(/\s+/g, '_')}.pdf`;
 
   await audit.pdfExport('fgd_berita_acara', activeComp?.id || 0);
 

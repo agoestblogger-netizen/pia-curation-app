@@ -53,10 +53,6 @@ const styles = StyleSheet.create({
 
 interface FgdBeritaAcaraProps {
   competitionName: string;
-  sessionName: string;
-  scopeText: string;
-  generatedAt: string;
-  generatedBy: string;
   proposals: Array<{
     id: number;
     subId: string;
@@ -69,12 +65,27 @@ interface FgdBeritaAcaraProps {
     name: string;
     role: string;
   }>;
+  stats?: {
+    total: number;
+    admin: number;
+    lolos: number;
+    tidakLolos: number;
+  };
+  dateInfo?: {
+    dayName: string;
+    dateNum: string;
+    monthName: string;
+    yearStr: string;
+    place: string;
+  };
 }
 
 export const FgdBeritaAcaraReport = ({
   competitionName,
   proposals,
-  participants
+  participants,
+  stats,
+  dateInfo
 }: FgdBeritaAcaraProps) => (
   <Document>
     <Page size="A4" style={styles.page}>
@@ -88,7 +99,7 @@ export const FgdBeritaAcaraReport = ({
       </View>
 
       <Text style={styles.paragraph}>
-        Pada hari ini ____________, tanggal ____________ bulan ____________ tahun Dua Ribu Dua Puluh Enam, bertempat di ____________________, Tim Task Force Kurator {competitionName} telah melaksanakan Rapat Penetapan Hasil Kurasi Internal terhadap proposal inovasi yang telah diterima dari seluruh Unit Kerja di lingkungan PT Pegadaian.
+        Pada hari ini {dateInfo?.dayName || '____________'}, tanggal {dateInfo?.dateNum || '____________'} bulan {dateInfo?.monthName || '____________'} tahun {dateInfo?.yearStr || 'Dua Ribu Dua Puluh Enam'}, bertempat di {dateInfo?.place || '____________________'}, Tim Task Force Kurator {competitionName} telah melaksanakan Rapat Penetapan Hasil Kurasi Internal terhadap proposal inovasi yang telah diterima dari seluruh Unit Kerja di lingkungan PT Pegadaian.
       </Text>
 
       <Text style={styles.paragraph}>
@@ -143,19 +154,19 @@ export const FgdBeritaAcaraReport = ({
         </View>
         <View style={styles.rowSummary}>
           <View style={styles.colSummaryUraian}><Text>Total Proposal yang Diterima</Text></View>
-          <View style={styles.colSummaryJumlah}><Text>.... Proposal</Text></View>
+          <View style={styles.colSummaryJumlah}><Text>{stats?.total ?? '....'} Proposal</Text></View>
         </View>
         <View style={styles.rowSummary}>
           <View style={styles.colSummaryUraian}><Text>Proposal Memenuhi Persyaratan Administrasi</Text></View>
-          <View style={styles.colSummaryJumlah}><Text>.... Proposal</Text></View>
+          <View style={styles.colSummaryJumlah}><Text>{stats?.admin ?? '....'} Proposal</Text></View>
         </View>
         <View style={styles.rowSummary}>
           <View style={styles.colSummaryUraian}><Text>Proposal Lolos Kurasi Internal</Text></View>
-          <View style={styles.colSummaryJumlah}><Text>.... Proposal</Text></View>
+          <View style={styles.colSummaryJumlah}><Text>{stats?.lolos ?? '....'} Proposal</Text></View>
         </View>
         <View style={styles.rowSummary}>
           <View style={styles.colSummaryUraian}><Text>Proposal Belum Lolos Kurasi Internal</Text></View>
-          <View style={styles.colSummaryJumlah}><Text>.... Proposal</Text></View>
+          <View style={styles.colSummaryJumlah}><Text>{stats?.tidakLolos ?? '....'} Proposal</Text></View>
         </View>
       </View>
 
@@ -167,8 +178,8 @@ export const FgdBeritaAcaraReport = ({
       </Text>
 
       <View style={styles.signatureSection}>
-        <Text>Ditetapkan di : _______________________</Text>
-        <Text>Pada tanggal : _______________________</Text>
+        <Text>Ditetapkan di : {dateInfo?.place || '_______________________'}</Text>
+        <Text>Pada tanggal : {dateInfo ? `${dateInfo.dateNum} ${dateInfo.monthName} ${dateInfo.yearStr}` : '_______________________'}</Text>
         <Text style={[styles.headerTextBold, { marginTop: 15 }]}>TIM TASK FORCE KURATOR</Text>
         <Text style={styles.headerTextBold}>{competitionName.toUpperCase()}</Text>
 
