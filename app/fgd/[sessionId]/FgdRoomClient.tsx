@@ -45,7 +45,7 @@ type Proposal = {
   rowNumber: number;
   verdict: string;
   aiAnalysis?: any;
-  additionalDocument?: any;
+  additionalDocuments?: any[];
 };
 
 type Vote = { id: number; proposalId: number; curatorId: number; vote: string };

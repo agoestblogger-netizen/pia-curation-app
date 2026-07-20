@@ -80,7 +80,7 @@ export default async function FgdRoomPage({ params }: { params: Promise<{ sessio
     rowNumber: number;
     verdict: string;
     aiAnalysis?: any;
-    additionalDocument?: any;
+    additionalDocuments?: any[];
   }>;
 
   // Fetch AI analyses for the proposals in this session
