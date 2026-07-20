@@ -10,7 +10,7 @@ import {
   screeningResults,
 } from './schema';
 import { SCREENING_VERDICTS } from '../constants/screening';
-import bcrypt from 'bcryptjs';
+import bcrypt from 'bcrypt';
 
 async function seed() {
   console.log('Seeding database...');

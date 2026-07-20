@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { createUserAction, toggleUserStatusAction } from '@/app/actions/users';
 import { db } from '@/lib/db';
 import { users } from '@/lib/db/schema';
-import bcrypt from 'bcryptjs';
+import bcrypt from 'bcrypt';
 
 // Mock dependencies
 vi.mock('@/lib/db', () => ({

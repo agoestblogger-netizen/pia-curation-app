@@ -6,7 +6,7 @@ import { requireRole } from '@/lib/auth/helpers';
 import { eq, and, isNull, ne } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { createAuditLog, audit } from '@/lib/audit';
-import bcrypt from 'bcryptjs';
+import bcrypt from 'bcrypt';
 import { z } from 'zod';
 
 const createUserSchema = z.object({

@@ -4,7 +4,7 @@ import { db } from '@/lib/db';
 import { users } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 import { createSession, setSessionCookie, clearSessionCookie, getSession } from '@/lib/auth/session';
-import bcrypt from 'bcryptjs';
+import bcrypt from 'bcrypt';
 import { redirect } from 'next/navigation';
 import { z } from 'zod';
 
