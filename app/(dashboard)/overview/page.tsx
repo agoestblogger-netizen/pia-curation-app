@@ -1,4 +1,4 @@
-import { getActiveCompetition, advancePhaseAction } from '@/app/actions/competitions';
+import { getActiveCompetition } from '@/app/actions/competitions';
 import { getSession } from '@/lib/auth/session';
 import { db } from '@/lib/db';
 import { proposals, curatorAssignments, users } from '@/lib/db/schema';
@@ -327,22 +327,7 @@ export default async function OverviewDashboard() {
         </div>
       )}
 
-      {session?.roles?.includes('coordinator') && (
-        <div className="mt-8 bg-indigo-50 p-6 rounded-xl border border-indigo-100">
-          <h3 className="text-lg font-bold text-indigo-900 mb-2">Administrasi Tahap Kompetisi</h3>
-          <p className="text-sm text-indigo-700 mb-4">
-            Saat ini berada di tahap: <strong className="uppercase">{activeComp.phase.replace(/_/g, ' ')}</strong>
-          </p>
-          <form action={async () => {
-            'use server';
-            await advancePhaseAction(activeComp.id);
-          }}>
-            <button type="submit" className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 text-sm font-medium shadow-sm transition">
-              Lanjut ke Tahap Berikutnya
-            </button>
-          </form>
-        </div>
-      )}
+
     </div>
   );
 }

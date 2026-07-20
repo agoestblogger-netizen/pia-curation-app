@@ -57,41 +57,6 @@ export async function createCompetitionAction(
   return { success: true };
 }
 
-export async function advancePhaseAction(
-  competitionId: number,
-  overrideReason?: string
-): Promise<CompetitionActionState> {
-  const session = await requireRole('coordinator');
-
-  const [competition] = await db
-    .select()
-    .from(competitions)
-    .where(eq(competitions.id, competitionId))
-    .limit(1);
-
-  if (!competition) return { error: 'Kompetisi tidak ditemukan' };
-
-  const currentIndex = PHASE_ORDER.indexOf(competition.phase as CompetitionPhase);
-  if (currentIndex === -1 || currentIndex >= PHASE_ORDER.length - 1) {
-    return { error: 'Kompetisi sudah berada di tahap akhir' };
-  }
-
-  const nextPhase = PHASE_ORDER[currentIndex + 1];
-
-  await db
-    .update(competitions)
-    .set({
-      phase: nextPhase,
-      phaseLockedAt: new Date(),
-      phaseLockedBy: session.userId,
-      updatedAt: new Date(),
-    })
-    .where(eq(competitions.id, competitionId));
-
-  await audit.closePhase(competitionId, nextPhase, overrideReason);
-  revalidatePath('/overview');
-  return { success: true };
-}
 
 export async function getActiveCompetition() {
   const [comp] = await db
