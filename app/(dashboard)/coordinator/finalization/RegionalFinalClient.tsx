@@ -46,35 +46,30 @@ export default function RegionalFinalClient({ competitionId, groups }: Props) {
       
       setError(e => ({ ...e, [group.region]: '' }));
       next.set(group.region, set);
-      
-      // Trigger Auto-Save
-      const newIds = Array.from(set);
-      const regionKey = group.category === 'PUSAT' ? 'PUSAT' : group.region;
-      startTransition(async () => {
-        setSuccess(s => ({ ...s, [group.region]: 'Menyimpan...' }));
-        const result = await setRegionalFinalistsAction(competitionId, regionKey, newIds);
-        if (result?.error) {
-          setError(e => ({ ...e, [group.region]: result.error! }));
-        } else {
-          setSuccess(s => ({ ...s, [group.region]: 'Pilihan tersimpan otomatis ✅' }));
-          setTimeout(() => setSuccess(s => ({ ...s, [group.region]: '' })), 2500);
-        }
-      });
-
       return Object.fromEntries(next);
     });
   };
 
   const handleLock = (group: RegionalGroup) => {
     const regionKey = group.category === 'PUSAT' ? 'PUSAT' : group.region;
+    const ids = Array.from(selections[group.region] ?? []);
+    
     if (!confirm(`Kunci grup ${group.region}? Proposal yang tidak terpilih akan di-takeout dan tidak bisa dikembalikan kecuali buka kembali secara manual.`)) return;
 
     startTransition(async () => {
-      const result = await lockRegionalGroupAction(competitionId, regionKey);
-      if (result?.error) {
-        setError(e => ({ ...e, [group.region]: result.error! }));
+      // 1. Simpan state pilihan (checkbox) ke database
+      const saveResult = await setRegionalFinalistsAction(competitionId, regionKey, ids);
+      if (saveResult?.error) {
+        setError(e => ({ ...e, [group.region]: saveResult.error! }));
+        return;
+      }
+      
+      // 2. Kunci grup (permanenkan pilihan & takeout sisanya)
+      const lockResult = await lockRegionalGroupAction(competitionId, regionKey);
+      if (lockResult?.error) {
+        setError(e => ({ ...e, [group.region]: lockResult.error! }));
       } else {
-        setSuccess(s => ({ ...s, [group.region]: `Grup dikunci. ${result.finalistCount} finalis, ${result.takeoutCount} takeout.` }));
+        setSuccess(s => ({ ...s, [group.region]: `Grup dikunci. ${lockResult.finalistCount} finalis, ${lockResult.takeoutCount} takeout.` }));
       }
     });
   };
