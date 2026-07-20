@@ -70,72 +70,52 @@ export default function ClientSidebar({ session }: { session: Session }) {
         </div>
 
         <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
-          {session && (
-            <Link href="/overview" className="block px-4 py-2 rounded hover:bg-indigo-800" onClick={() => setIsOpen(false)}>
-              Dashboard
-            </Link>
-          )}
+          {(() => {
+            if (!session) return null;
+            const userRoles = session.roles || [];
+            const hasRole = (roles: string[]) => roles.some(r => userRoles.includes(r));
 
-          {session?.roles?.includes('coordinator') && (
-            <>
-              <Link href="/coordinator/batches" className="block px-4 py-2 rounded hover:bg-indigo-800 text-sm" onClick={() => setIsOpen(false)}>
-                Assign Proposal
-              </Link>
-              <Link href="/coordinator/fgd" className="block px-4 py-2 rounded hover:bg-indigo-800 text-sm" onClick={() => setIsOpen(false)}>
-                Ruang FGD
-              </Link>
+            const MENU_ITEMS = [
+              { label: 'Dashboard', path: '/overview', roles: ['coordinator', 'curator', 'promoter', 'sponsor', 'admin'] },
+              { label: 'Assign Proposal', path: '/coordinator/batches', roles: ['coordinator'] },
+              { label: 'Daftar Proposal (Kurator)', path: '/curator', roles: ['curator'], iconRight: '→' },
+              { label: 'Papan Penilaian (Promotor)', path: '/promoter', roles: ['promoter'], iconRight: '→' },
+              { label: 'Ruang FGD', path: '/coordinator/fgd', roles: ['coordinator', 'curator', 'promoter'] },
+              { isDivider: true, roles: ['coordinator'] },
+              { label: 'Semua Proposal', path: '/coordinator/proposals', roles: ['coordinator'] },
+              { label: 'Manajemen User', path: '/coordinator/users', roles: ['coordinator'] },
+              { label: 'Audit Log', path: '/coordinator/audit-log', roles: ['coordinator'] },
+              { isDivider: true, roles: ['admin'] },
+              { isHeader: true, headerText: 'Admin Zone', roles: ['admin'] },
+              { label: 'Reset Data Testing', path: '/admin/reset-data', roles: ['admin'], customClass: 'hover:bg-red-900/50 text-red-300' },
+            ];
 
-              <div className="border-t border-indigo-800 my-2" />
-              <Link href="/coordinator/proposals" className="block px-4 py-2 rounded hover:bg-indigo-800 text-sm" onClick={() => setIsOpen(false)}>
-                Semua Proposal
-              </Link>
-              <Link href="/coordinator/users" className="block px-4 py-2 rounded hover:bg-indigo-800 text-sm" onClick={() => setIsOpen(false)}>
-                Manajemen User
-              </Link>
-              <Link href="/coordinator/audit-log" className="block px-4 py-2 rounded hover:bg-indigo-800 text-sm" onClick={() => setIsOpen(false)}>
-                Audit Log
-              </Link>
-            </>
-          )}
-
-          {session?.roles?.includes('admin') && (
-            <>
-              <div className="border-t border-indigo-800 my-2" />
-              <div className="px-4 py-1 text-xs font-bold text-red-400 uppercase tracking-wider">
-                Admin Zone
-              </div>
-              <Link href="/admin/reset-data" className="block px-4 py-2 rounded hover:bg-red-900/50 text-red-300 text-sm font-medium transition-colors" onClick={() => setIsOpen(false)}>
-                Reset Data Testing
-              </Link>
-            </>
-          )}
-
-          {session?.roles?.includes('curator') && (
-            <>
-              <div className="border-t border-indigo-800 my-2" />
-              <Link href="/curator" className="block px-4 py-2 rounded hover:bg-indigo-800 text-sm flex items-center justify-between" onClick={() => setIsOpen(false)}>
-                <span>Daftar Proposal (Kurator)</span>
-                <span className="text-indigo-400">→</span>
-              </Link>
-              <Link href="/coordinator/fgd" className="block px-4 py-2 rounded hover:bg-indigo-800 text-sm" onClick={() => setIsOpen(false)}>
-                Ruang FGD
-              </Link>
-            </>
-          )}
-
-          {session?.roles?.includes('promoter') && (
-            <>
-              <div className="border-t border-indigo-800 my-2" />
-              <Link href="/promoter" className="block px-4 py-2 rounded hover:bg-indigo-800 text-sm flex items-center justify-between" onClick={() => setIsOpen(false)}>
-                <span>Papan Penilaian (Promotor)</span>
-                <span className="text-indigo-400">→</span>
-              </Link>
-              <Link href="/coordinator/fgd" className="block px-4 py-2 rounded hover:bg-indigo-800 text-sm" onClick={() => setIsOpen(false)}>
-                Ruang FGD
-              </Link>
-            </>
-          )}
-
+            return MENU_ITEMS.filter(item => hasRole(item.roles)).map((item, idx) => {
+              if (item.isDivider) {
+                return <div key={`divider-${idx}`} className="border-t border-indigo-800 my-2" />;
+              }
+              if (item.isHeader) {
+                return (
+                  <div key={`header-${idx}`} className="px-4 py-1 text-xs font-bold text-red-400 uppercase tracking-wider">
+                    {item.headerText}
+                  </div>
+                );
+              }
+              return (
+                <Link 
+                  key={item.path}
+                  href={item.path!} 
+                  className={`block px-4 py-2 rounded text-sm transition-colors ${
+                    item.customClass ? item.customClass : 'hover:bg-indigo-800'
+                  } ${item.iconRight ? 'flex items-center justify-between' : ''}`}
+                  onClick={() => setIsOpen(false)}
+                >
+                  <span>{item.label}</span>
+                  {item.iconRight && <span className="text-indigo-400">{item.iconRight}</span>}
+                </Link>
+              );
+            });
+          })()}
         </nav>
       </div>
     </>
