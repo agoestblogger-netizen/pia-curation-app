@@ -16,6 +16,7 @@ export default function ResetDataClient({ stats }: { stats: any }) {
     resetFgd: false,
     resetPromotor: false,
     resetRegionalFinal: false,
+    resetSponsor: false,
     resetAuditLog: false,
   });
 
