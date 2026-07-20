@@ -19,16 +19,7 @@ export default async function CuratorDashboard() {
   let totalCompleted = 0;
   
   if (activeComp) {
-    // Get deterministic row numbers for all proposals in this competition first
-    const rnResult = await db.execute(sql`
-      SELECT id, ROW_NUMBER() OVER (PARTITION BY category, region_center ORDER BY id ASC) as rn 
-      FROM proposals 
-      WHERE competition_id = ${activeComp.id}
-    `);
-    const rnMap = new Map();
-    for (const row of rnResult) {
-      rnMap.set(row.id, Number(row.rn));
-    }
+
 
     // Get all assignments for this curator
     const assignments = await db
@@ -42,6 +33,7 @@ export default async function CuratorDashboard() {
         regionCenter: proposals.regionCenter,
         aiCidaTotal: proposals.aiCidaTotal,
         assignmentStatus: curatorAssignments.status,
+        nomorUrut: proposals.nomorUrut,
       })
       .from(curatorAssignments)
       .innerJoin(proposals, eq(curatorAssignments.proposalId, proposals.id))
@@ -63,7 +55,7 @@ export default async function CuratorDashboard() {
       regionCenter: a.regionCenter,
       status: a.assignmentStatus,
       aiScore: a.aiCidaTotal ? a.aiCidaTotal.toFixed(1) : '-',
-      proposalRowNumber: rnMap.get(a.id) || 0,
+      proposalRowNumber: a.nomorUrut || 0,
     }));
 
     mappedProposals.sort((a, b) => a.proposalRowNumber - b.proposalRowNumber);

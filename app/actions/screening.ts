@@ -87,36 +87,39 @@ export async function submitScreeningAction(
 
   if (assignment.status === 'completed') return { error: 'Screening sudah selesai' };
 
-  // Insert or update screening result
-  await db
-    .insert(screeningResults)
-    .values({
-      assignmentId,
-      proposalId: assignment.proposalId,
-      curatorId: session.userId,
-      verdict,
-      notes: notes ?? null,
-      recommendation: recommendation ?? null,
-    })
-    .onConflictDoUpdate({
-      target: [screeningResults.assignmentId],
-      set: { verdict, notes: notes ?? null, recommendation: recommendation ?? null, submittedAt: new Date() },
-    });
-
-  // Update assignment status
-  await db
-    .update(curatorAssignments)
-    .set({ status: 'completed', completedAt: new Date() })
-    .where(eq(curatorAssignments.id, assignmentId));
-
-  // Update proposal status
   const newStatus = verdict === 'lolos' ? 'curation_passed' : 'curation_rejected';
-  await db
-    .update(proposals)
-    .set({ status: newStatus, updatedAt: new Date() })
-    .where(eq(proposals.id, assignment.proposalId));
 
-  await audit.screeningSubmit(assignmentId, verdict);
+  await Promise.all([
+    // Insert or update screening result
+    db
+      .insert(screeningResults)
+      .values({
+        assignmentId,
+        proposalId: assignment.proposalId,
+        curatorId: session.userId,
+        verdict,
+        notes: notes ?? null,
+        recommendation: recommendation ?? null,
+      })
+      .onConflictDoUpdate({
+        target: [screeningResults.assignmentId],
+        set: { verdict, notes: notes ?? null, recommendation: recommendation ?? null, submittedAt: new Date() },
+      }),
+      
+    // Update assignment status
+    db
+      .update(curatorAssignments)
+      .set({ status: 'completed', completedAt: new Date() })
+      .where(eq(curatorAssignments.id, assignmentId)),
+      
+    // Update proposal status
+    db
+      .update(proposals)
+      .set({ status: newStatus, updatedAt: new Date() })
+      .where(eq(proposals.id, assignment.proposalId)),
+      
+    audit.screeningSubmit(assignmentId, verdict)
+  ]);
   revalidatePath('/curator', 'layout');
 
   return { success: true };

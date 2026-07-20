@@ -156,6 +156,9 @@ export const proposals = pgTable('proposals', {
   regionalFinalistRank: integer('regional_finalist_rank'),
   regionalFinalizedAt: timestamp('regional_finalized_at', { withTimezone: true }),
   regionalFinalizedBy: integer('regional_finalized_by').references(() => users.id),
+
+  // ─── OPTIMIZATION ─────────────────────────────────────────────────────────
+  nomorUrut: integer('nomor_urut'),
 }, (table) => [
   index('proposals_competition_id_idx').on(table.competitionId),
   index('proposals_category_idx').on(table.category),
@@ -234,6 +237,7 @@ export const curatorAssignments = pgTable('curator_assignments', {
   uniqueIndex('curator_assignment_batch_proposal').on(table.batchId, table.proposalId),
   index('curator_assignment_curator_idx').on(table.curatorId),
   index('curator_assignment_batch_idx').on(table.batchId),
+  index('curator_assignment_proposal_idx').on(table.proposalId),
 ]);
 
 // ─── ASSIGNMENT HISTORY ───────────────────────────────────────────────────────
@@ -281,7 +285,9 @@ export const screeningResults = pgTable('screening_results', {
   notes: text('notes'),
   recommendation: text('recommendation'),
   submittedAt: timestamp('submitted_at', { withTimezone: true }).notNull().defaultNow(),
-});
+}, (table) => [
+  index('screening_results_proposal_idx').on(table.proposalId),
+]);
 
 // ─── PROMOTER SELECTIONS ──────────────────────────────────────────────────────
 export const promoterSelections = pgTable('promoter_selections', {
@@ -293,6 +299,7 @@ export const promoterSelections = pgTable('promoter_selections', {
 }, (table) => [
   uniqueIndex('promoter_selection_promoter_proposal').on(table.promoterId, table.proposalId),
   index('promoter_selection_competition_idx').on(table.competitionId),
+  index('promoter_selection_proposal_idx').on(table.proposalId),
 ]);
 
 // ─── GRAND FINAL SELECTIONS ───────────────────────────────────────────────────

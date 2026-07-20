@@ -98,6 +98,20 @@ export async function importProposalsAction(
     imported++;
   }
 
+  if (imported > 0) {
+    // Re-calculate nomor_urut for all proposals in this competition to ensure consistency
+    await db.execute(sql`
+      UPDATE proposals p
+      SET nomor_urut = sub.rn
+      FROM (
+        SELECT id, ROW_NUMBER() OVER (PARTITION BY category, region_center ORDER BY id ASC) as rn
+        FROM proposals
+        WHERE competition_id = ${competitionId}
+      ) sub
+      WHERE p.id = sub.id;
+    `);
+  }
+
   await audit.importProposals(competitionId, imported);
   revalidatePath('/overview');
 
@@ -112,15 +126,12 @@ export async function getProposalsByCompetition(competitionId: number) {
 }
 
 export async function getProposalsWithRowNumber(competitionId: number) {
-  // Using SQL directly for row_number to get stable sequential numbering per category/region
+  // Use the pre-computed nomor_urut instead of on-the-fly window function
   const result = await db.execute(sql`
-    SELECT p.*,
-      ROW_NUMBER() OVER (
-        PARTITION BY p.category, p.region_center 
-        ORDER BY p.id ASC
-      ) as row_number
+    SELECT p.*, p.nomor_urut as row_number
     FROM proposals p
     WHERE p.competition_id = ${competitionId}
+    ORDER BY p.id ASC
   `);
   
   // Transform db.execute raw result keys from snake_case to camelCase
