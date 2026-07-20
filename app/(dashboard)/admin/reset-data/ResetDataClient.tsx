@@ -46,6 +46,7 @@ export default function ResetDataClient({ stats }: { stats: any }) {
           resetFgd: false,
           resetPromotor: false,
           resetRegionalFinal: false,
+          resetSponsor: false,
           resetAuditLog: false,
         });
         setConfirmText('');
@@ -138,6 +139,19 @@ export default function ResetDataClient({ stats }: { stats: any }) {
             <div>
               <div className="font-semibold text-gray-900">Finalisasi Regional & Grand Final</div>
               <div className="text-sm text-gray-500">Mereset {stats.regionalFinal} status proposal dari Finalis Regional ke atas, menjadi curation_passed. Hapus data ranking.</div>
+            </div>
+          </label>
+
+          <label className="flex items-start space-x-3 p-4 border rounded-lg hover:bg-gray-50 cursor-pointer">
+            <input 
+              type="checkbox" 
+              className="mt-1 w-5 h-5 text-red-600 rounded border-gray-300 focus:ring-red-500"
+              checked={options.resetSponsor}
+              onChange={(e) => setOptions(prev => ({ ...prev, resetSponsor: e.target.checked }))}
+            />
+            <div>
+              <div className="font-semibold text-gray-900">Penilaian Sponsor & Final Result</div>
+              <div className="text-sm text-gray-500">Hapus {stats.sponsor} skor sponsor, snapshots, dan final results. Proposal akan kembali ke status grand_finalist.</div>
             </div>
           </label>
 

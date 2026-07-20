@@ -11,7 +11,10 @@ import {
   promoterAssignments,
   promoterSelections,
   curationBatches,
-  auditLogs
+  auditLogs,
+  sponsorScores,
+  scoringSnapshots,
+  finalResults
 } from '@/lib/db/schema';
 import { requireRole } from '@/lib/auth/helpers';
 import { eq, inArray, and, sql } from 'drizzle-orm';
@@ -24,6 +27,7 @@ export type ResetOptions = {
   resetFgd: boolean;
   resetPromotor: boolean;
   resetRegionalFinal: boolean;
+  resetSponsor?: boolean;
   resetAuditLog: boolean;
 };
 
@@ -93,6 +97,24 @@ export async function resetDataAction(options: ResetOptions) {
           )
         );
       executedActions.push('Finalisasi Regional & Grand Final');
+    }
+
+    // Penilaian Sponsor & Hasil Akhir
+    if (options.resetSponsor) {
+      await db.delete(sponsorScores).where(eq(sponsorScores.competitionId, compId));
+      await db.delete(scoringSnapshots).where(eq(scoringSnapshots.competitionId, compId));
+      await db.delete(finalResults).where(eq(finalResults.competitionId, compId));
+      
+      // Optionally reset status from winner | selected back to grand_finalist
+      await db.update(proposals)
+        .set({ status: 'grand_finalist' })
+        .where(
+          and(
+            eq(proposals.competitionId, compId),
+            inArray(proposals.status, ['winner', 'selected'])
+          )
+        );
+      executedActions.push('Penilaian Sponsor & Hasil Akhir');
     }
 
     // 4. Hasil Screening (and reset to assigned/imported)
@@ -212,12 +234,17 @@ export async function getResetStatsAction() {
     SELECT count(*) FROM audit_logs
   `);
 
+  const [sponsorCount] = await db.execute(sql`
+    SELECT count(*) FROM sponsor_scores WHERE competition_id = ${compId}
+  `);
+
   return {
     screening: Number((screeningCount as any)?.count || 0),
     assignment: Number((assignmentCount as any)?.count || 0),
     fgdSession: Number((fgdSessionCount as any)?.count || 0),
     promotor: Number((promotorCount as any)?.count || 0),
     regionalFinal: Number((regionalFinalCount as any)?.count || 0),
+    sponsor: Number((sponsorCount as any)?.count || 0),
     auditLog: Number((auditLogCount as any)?.count || 0),
   };
 }
