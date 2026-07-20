@@ -4,7 +4,7 @@ import { Document, Page, Text, View, StyleSheet, Font } from '@react-pdf/rendere
 // Register fonts if needed, assuming the project uses standard fonts or we just stick to defaults.
 const styles = StyleSheet.create({
   page: { padding: 40, fontFamily: 'Helvetica', fontSize: 10, color: '#000', lineHeight: 1.4 },
-  header: { marginBottom: 20 },
+  header: { marginBottom: 20, alignItems: 'center', textAlign: 'center' },
   headerTextBold: { fontSize: 11, fontWeight: 'bold', fontFamily: 'Helvetica-Bold' },
   headerTitle: { fontSize: 11, fontWeight: 'bold', fontFamily: 'Helvetica-Bold', marginTop: 10 },
   paragraph: { textAlign: 'justify', marginBottom: 10 },
@@ -12,7 +12,7 @@ const styles = StyleSheet.create({
   listItem: { flexDirection: 'row', marginBottom: 3 },
   listBullet: { width: 15, textAlign: 'center' },
   listText: { flex: 1, textAlign: 'justify' },
-  sectionTitle: { fontWeight: 'bold', fontFamily: 'Helvetica-Bold', marginTop: 10, marginBottom: 5 },
+  sectionTitle: { fontWeight: 'bold', fontFamily: 'Helvetica-Bold', marginTop: 10, marginBottom: 5, textAlign: 'center' },
   
   // Table Summary
   tableSummary: { width: '80%', marginBottom: 10 },
@@ -32,7 +32,7 @@ const styles = StyleSheet.create({
   colSigTtd: { width: '30%' },
   textBold: { fontWeight: 'bold', fontFamily: 'Helvetica-Bold' },
 
-  mengetahui: { marginTop: 20 },
+  mengetahui: { marginTop: 20, alignItems: 'flex-end' },
   mengetahuiTitle: { marginBottom: 40 },
   
   // Lampiran
@@ -98,16 +98,16 @@ export const FgdBeritaAcaraReport = ({
         <Text style={styles.headerTextBold}>BERITA ACARA</Text>
         <Text style={styles.headerTextBold}>PENETAPAN HASIL KURASI INTERNAL</Text>
         <Text style={styles.headerTextBold}>TIM TASK FORCE KURATOR</Text>
-        <Text style={styles.headerTitle}>{competitionName.toUpperCase()}</Text>
+        <Text style={styles.headerTitle}>PEGADAIAN INNOVATION AWARD (PIA) S12 TAHUN 2026</Text>
         <Text style={{ marginTop: 10 }}>Nomor: BA-____/IC/PIA/X/2026</Text>
       </View>
 
       <Text style={styles.paragraph}>
-        Pada hari ini {dateInfo?.dayName || '____________'}, tanggal {dateInfo?.dateNum || '____________'} bulan {dateInfo?.monthName || '____________'} tahun {dateInfo?.yearStr || 'Dua Ribu Dua Puluh Enam'}, bertempat di {dateInfo?.place || '____________________'}, Tim Task Force Kurator {competitionName} telah melaksanakan Rapat Penetapan Hasil Kurasi Internal terhadap proposal inovasi yang telah diterima dari seluruh Unit Kerja di lingkungan PT Pegadaian.
+        Pada hari ini {dateInfo?.dayName || '____________'}, tanggal {dateInfo?.dateNum || '____________'} bulan {dateInfo?.monthName || '____________'} tahun {dateInfo?.yearStr || 'Dua Ribu Dua Puluh Enam'}, bertempat di {dateInfo?.place || '____________________'}, Tim Task Force Kurator Pegadaian Innovation Award (PIA) S12 Tahun 2026 telah melaksanakan Rapat Penetapan Hasil Kurasi Internal terhadap proposal inovasi yang telah diterima dari seluruh Unit Kerja di lingkungan PT Pegadaian.
       </Text>
 
       <Text style={styles.paragraph}>
-        Kurasi Internal dilaksanakan sebagai tahapan seleksi untuk memastikan bahwa proposal inovasi yang diajukan telah memenuhi persyaratan administrasi, substansi, kualitas inovasi, serta kesesuaian dengan pedoman {competitionName} sebelum diajukan ke Tahap Kurasi Tingkat Promotor.
+        Kurasi Internal dilaksanakan sebagai tahapan seleksi untuk memastikan bahwa proposal inovasi yang diajukan telah memenuhi persyaratan administrasi, substansi, kualitas inovasi, serta kesesuaian dengan pedoman Pegadaian Innovation Award (PIA) S12 Tahun 2026 sebelum diajukan ke Tahap Kurasi Tingkat Promotor.
       </Text>
 
       <Text style={styles.paragraph}>
@@ -116,17 +116,17 @@ export const FgdBeritaAcaraReport = ({
 
       <Text style={styles.sectionTitle}>KESATU</Text>
       <Text style={styles.paragraph}>
-        Menetapkan hasil Kurasi Internal terhadap seluruh proposal inovasi yang masuk pada {competitionName} sebagaimana tercantum dalam Lampiran Berita Acara ini.
+        Menetapkan hasil Kurasi Internal terhadap seluruh proposal inovasi yang masuk pada Pegadaian Innovation Award (PIA) S12 Tahun 2026 sebagaimana tercantum dalam Lampiran Berita Acara ini.
       </Text>
 
       <Text style={styles.sectionTitle}>KEDUA</Text>
       <Text style={styles.paragraph}>
-        Proposal yang dinyatakan Lolos Kurasi Internal merupakan proposal yang telah memenuhi persyaratan administrasi dan memperoleh hasil penilaian sesuai kriteria kurasi yang ditetapkan dalam Pedoman {competitionName}.
+        Proposal yang dinyatakan Lolos Kurasi Internal merupakan proposal yang telah memenuhi persyaratan administrasi dan memperoleh hasil penilaian sesuai kriteria kurasi yang ditetapkan dalam Pedoman Pegadaian Innovation Award (PIA) S12 Tahun 2026.
       </Text>
 
       <Text style={styles.sectionTitle}>KETIGA</Text>
       <Text style={styles.paragraph}>
-        Proposal yang dinyatakan Lolos Kurasi Internal direkomendasikan untuk mengikuti Tahap Kurasi Tingkat Promotor sesuai mekanisme dan jadwal pelaksanaan {competitionName}.
+        Proposal yang dinyatakan Lolos Kurasi Internal direkomendasikan untuk mengikuti Tahap Kurasi Tingkat Promotor sesuai mekanisme dan jadwal pelaksanaan Pegadaian Innovation Award (PIA) S12 Tahun 2026.
       </Text>
 
       <Text style={styles.sectionTitle}>KEEMPAT</Text>
@@ -139,7 +139,7 @@ export const FgdBeritaAcaraReport = ({
         Hasil penetapan ini merupakan hasil musyawarah Tim Task Force Kurator berdasarkan prinsip:
       </Text>
       <View style={styles.listContainer}>
-        {['Objektif;', 'Transparan;', 'Akuntabel;', 'Independen;', 'Profesional; dan', `Berpedoman pada ketentuan ${competitionName}.`].map((item, idx) => (
+        {['Objektif;', 'Transparan;', 'Akuntabel;', 'Independen;', 'Profesional; dan', `Berpedoman pada ketentuan Pegadaian Innovation Award (PIA) S12 Tahun 2026.`].map((item, idx) => (
           <View key={idx} style={styles.listItem}>
             <Text style={styles.listBullet}>•</Text>
             <Text style={styles.listText}>{item}</Text>
@@ -174,14 +174,18 @@ export const FgdBeritaAcaraReport = ({
         Daftar lengkap proposal sebagaimana dimaksud menjadi bagian yang tidak terpisahkan dari Berita Acara ini (Lampiran I).
       </Text>
       <Text style={styles.paragraph}>
-        Demikian Berita Acara ini dibuat dengan sebenarnya untuk dipergunakan sebagaimana mestinya sebagai dasar pengajuan proposal inovasi ke Tahap Kurasi Tingkat Promotor {competitionName}.
+        Demikian Berita Acara ini dibuat dengan sebenarnya untuk dipergunakan sebagaimana mestinya sebagai dasar pengajuan proposal inovasi ke Tahap Kurasi Tingkat Promotor Pegadaian Innovation Award (PIA) S12 Tahun 2026.
       </Text>
 
       <View style={styles.signatureSection}>
-        <Text>Ditetapkan di : {dateInfo?.place || '_______________________'}</Text>
-        <Text>Pada tanggal : {dateInfo ? `${dateInfo.dateNum} ${dateInfo.monthName} ${dateInfo.yearStr}` : '_______________________'}</Text>
-        <Text style={[styles.headerTextBold, { marginTop: 15 }]}>TIM TASK FORCE KURATOR</Text>
-        <Text style={styles.headerTextBold}>{competitionName.toUpperCase()}</Text>
+        <View style={{ alignItems: 'flex-end', marginBottom: 15 }}>
+          <Text>Ditetapkan di : {dateInfo?.place || '_______________________'}</Text>
+          <Text>Pada tanggal : {dateInfo ? `${dateInfo.dateNum} ${dateInfo.monthName} ${dateInfo.yearStr}` : '_______________________'}</Text>
+        </View>
+        <View style={{ alignItems: 'center' }}>
+          <Text style={styles.headerTextBold}>TIM TASK FORCE KURATOR</Text>
+          <Text style={styles.headerTextBold}>PEGADAIAN INNOVATION AWARD (PIA) S12 TAHUN 2026</Text>
+        </View>
 
         <View style={[styles.tableSig, { marginTop: 15 }]}>
           <View style={styles.rowSigHeader}>
@@ -224,7 +228,7 @@ export const FgdBeritaAcaraReport = ({
 
         <View style={styles.mengetahui}>
           <Text>Mengetahui,</Text>
-          <Text style={styles.mengetahuiTitle}>Head Division Innovation Center</Text>
+          <Text style={styles.mengetahuiTitle}>Kepala Divisi Innovation Center</Text>
           <Text>(...................................)</Text>
           <Text>NIK. ..........................</Text>
         </View>
@@ -233,10 +237,10 @@ export const FgdBeritaAcaraReport = ({
 
     {/* LAMPIRAN */}
     <Page size="A4" style={styles.page} orientation="landscape">
-      <View style={styles.lampiranHeader}>
+      <View style={[styles.lampiranHeader, { alignItems: 'center', textAlign: 'center' }]}>
         <Text style={styles.headerTextBold}>Lampiran I</Text>
-        <Text style={[styles.headerTextBold, { marginTop: 10 }]}>DAFTAR PROPOSAL LOLOS KURASI INTERNAL</Text>
-        <Text style={styles.headerTextBold}>{competitionName}</Text>
+        <Text style={[styles.headerTextBold, { marginTop: 10 }]}>DAFTAR PROPOSAL LOLOS KE KURASI PROMOTOR</Text>
+        <Text style={styles.headerTextBold}>PEGADAIAN INNOVATION AWARD (PIA) S12 TAHUN 2026</Text>
       </View>
 
       <View style={styles.table}>
