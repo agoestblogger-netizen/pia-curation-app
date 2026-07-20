@@ -7,6 +7,7 @@ import Link from 'next/link';
 import AutoStartScreening from './AutoStartScreening';
 import ScreeningForm from './ScreeningForm';
 import { checkHardLock } from '@/app/actions/screening';
+import FormattedTextDisplay from '@/app/components/FormattedTextDisplay';
 
 export default async function ProposalDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const session = await getSession();
@@ -185,9 +186,13 @@ export default async function ProposalDetailPage({ params }: { params: Promise<{
             {/* Description / Summary */}
             <div className="mb-8">
               <h3 className="font-bold text-gray-900 mb-3 border-b border-gray-100 pb-2">Deskripsi / Summary</h3>
-              <div className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">
-                {proposal.summary || 'Tidak ada deskripsi singkat.'}
-              </div>
+              <FormattedTextDisplay 
+                proposalId={proposal.id}
+                fieldName="summary"
+                originalText={proposal.summary}
+                formattedText={(proposal.formattedTexts as any)?.summary}
+                canFormat={isCoordinator || isCurator || session.roles.includes('promoter')}
+              />
             </div>
 
             {/* Kategori Spesifik */}

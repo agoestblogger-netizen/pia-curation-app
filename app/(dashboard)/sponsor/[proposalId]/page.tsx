@@ -4,6 +4,7 @@ import { getCriteria, getSponsorScores } from '@/app/actions/scoring';
 import { notFound } from 'next/navigation';
 import ScoringFormClient from './ScoringFormClient';
 import { getActiveCompetition } from '@/app/actions/competitions';
+import FormattedTextDisplay from '@/app/components/FormattedTextDisplay';
 
 export default async function ScoringDetailPage({
   params,
@@ -47,9 +48,13 @@ export default async function ScoringDetailPage({
         </div>
         <div className="p-6">
           <h3 className="font-semibold text-gray-900 mb-2">Summary</h3>
-          <p className="text-gray-700 text-sm whitespace-pre-wrap leading-relaxed">
-            {proposal.summary || 'Tidak ada summary.'}
-          </p>
+          <FormattedTextDisplay 
+            proposalId={proposal.id}
+            fieldName="summary"
+            originalText={proposal.summary}
+            formattedText={(proposal.formattedTexts as any)?.summary}
+            canFormat={session.roles.includes('coordinator')}
+          />
         </div>
       </div>
 

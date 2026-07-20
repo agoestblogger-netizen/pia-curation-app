@@ -64,6 +64,7 @@ export const proposals = pgTable('proposals', {
   division: text('division'),
   regionCenter: text('region_center'),
   summary: text('summary'),
+  formattedTexts: jsonb('formatted_texts'),
   // Status progression
   status: text('status').notNull().default('imported'),
   takeoutReason: text('takeout_reason'),

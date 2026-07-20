@@ -1,0 +1,1 @@
+ALTER TABLE "proposals" ADD COLUMN "formatted_texts" jsonb;
