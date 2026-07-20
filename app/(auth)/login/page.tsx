@@ -8,7 +8,7 @@ export default function LoginPage() {
   const [state, action, isPending] = useActionState(loginAction, {});
 
   return (
-    <div className="flex min-h-full flex-col justify-center px-6 py-12 lg:px-8">
+    <div className="flex min-h-screen flex-col justify-center px-6 py-12 lg:px-8 bg-[#f5f5f5]">
       <div className="sm:mx-auto sm:w-full sm:max-w-sm">
         <div className="flex justify-center">
           <Image
@@ -21,7 +21,7 @@ export default function LoginPage() {
           />
         </div>
         <h2 className="mt-6 text-center text-2xl font-bold leading-9 tracking-tight text-gray-900">
-          Login ke SIA (Sistem Inovasi App)
+          SISTEM INOVASI PEGADAIAN (SIP)
         </h2>
       </div>
 
