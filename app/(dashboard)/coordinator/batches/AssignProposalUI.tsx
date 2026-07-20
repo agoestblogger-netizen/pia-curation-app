@@ -737,8 +737,8 @@ export default function AssignProposalUI({
               Pilih bagaimana Tim Promotor mengakses proposal final (dari pool {promotorProposals.length} proposal hasil FGD Nasional).
             </p>
             
-            <div className="flex space-x-4">
-              <label className={`flex items-center p-3 rounded border cursor-pointer transition ${promotorAccessMode === 'open' ? 'bg-white border-indigo-500 ring-1 ring-indigo-500' : 'bg-white/50 border-gray-300 hover:bg-white'}`}>
+            <div className="flex space-x-4 items-center">
+              <label className={`flex items-center p-3 rounded border cursor-pointer transition ${promotorAccessMode === 'open' ? 'bg-white border-indigo-500 ring-1 ring-indigo-500' : 'bg-white/50 border-gray-300 hover:bg-white'} ${isTogglingMode ? 'opacity-50 cursor-not-allowed' : ''}`}>
                 <input 
                   type="radio" 
                   name="promotorMode" 
@@ -749,7 +749,7 @@ export default function AssignProposalUI({
                 />
                 <span className="ml-3 font-semibold text-gray-900 text-sm">Akses all Proposal</span>
               </label>
-              <label className={`flex items-center p-3 rounded border cursor-pointer transition ${promotorAccessMode === 'assigned' ? 'bg-white border-indigo-500 ring-1 ring-indigo-500' : 'bg-white/50 border-gray-300 hover:bg-white'}`}>
+              <label className={`flex items-center p-3 rounded border cursor-pointer transition ${promotorAccessMode === 'assigned' ? 'bg-white border-indigo-500 ring-1 ring-indigo-500' : 'bg-white/50 border-gray-300 hover:bg-white'} ${isTogglingMode ? 'opacity-50 cursor-not-allowed' : ''}`}>
                 <input 
                   type="radio" 
                   name="promotorMode" 
@@ -760,6 +760,15 @@ export default function AssignProposalUI({
                 />
                 <span className="ml-3 font-semibold text-gray-900 text-sm">Assigned (Per Promotor)</span>
               </label>
+              {isTogglingMode && (
+                <div className="flex items-center text-sm text-indigo-600 font-medium animate-pulse ml-2 bg-indigo-100/50 px-3 py-1.5 rounded-full border border-indigo-200">
+                  <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-indigo-600" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Sedang memproses...
+                </div>
+              )}
             </div>
             
             {promotorAccessMode === 'open' && (
