@@ -80,6 +80,7 @@ export default function UserManagementClient({ users: initialUsers, currentUserI
     setFormError(null);
     setFormSuccess(null);
     setShowForm(true);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const openEditForm = (user: UserRow) => {
@@ -87,6 +88,7 @@ export default function UserManagementClient({ users: initialUsers, currentUserI
     setFormError(null);
     setFormSuccess(null);
     setShowForm(true);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleFormSubmit = (e: React.FormEvent<HTMLFormElement>) => {
