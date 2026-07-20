@@ -39,6 +39,13 @@ export default async function FgdRoomPage({ params }: { params: Promise<{ sessio
     scopeSql = sql`p.category IN ('BI', 'BC')`;
   }
 
+  let queryCondition: ReturnType<typeof sql>;
+  if (fgd.fgdType === 'promoter') {
+    queryCondition = sql`p.status = 'promotor_selection'`;
+  } else {
+    queryCondition = sql`sr.verdict IN (${sql.raw(rawStatuses.map(s => `'${s}'`).join(', '))}) AND ${scopeSql}`;
+  }
+
   const rawProposals = await db.execute(sql`
     SELECT 
       p.id,
@@ -60,11 +67,7 @@ export default async function FgdRoomPage({ params }: { params: Promise<{ sessio
     FROM proposals p
     LEFT JOIN screening_results sr ON sr.proposal_id = p.id
     WHERE p.competition_id = ${fgd.competitionId}
-      AND (
-        (${fgd.fgdType} = 'promoter' AND p.status = 'promotor_selection')
-        OR 
-        (${fgd.fgdType} = 'curator' AND sr.verdict IN (${sql.raw(rawStatuses.map(s => `'${s}'`).join(', '))}) AND ${scopeSql})
-      )
+      AND ${queryCondition}
     ORDER BY p.category, p.region_center, p.id ASC
   `);
 
