@@ -6,6 +6,7 @@ import { submitFgdCommentAction, submitFgdVoteAction, lockFgdSessionAction } fro
 import { generateFgdAiAnalysis } from '@/app/actions/aiAnalysis';
 import { uploadFgdAdditionalDocument } from '@/app/actions/uploadDocument';
 import { deleteFgdAdditionalDocument } from '@/app/actions/deleteDocument';
+import confetti from 'canvas-confetti';
 
 // 5 warna per verdict — sesuai SCREENING_VERDICT_COLORS
 const VERDICT_COLORS: Record<string, string> = {
@@ -217,6 +218,17 @@ export default function FgdRoomClient({
   // ─── Actions ──────────────────────────────────────────────────────────────
   async function handleVote(proposalId: number, voteType: string) {
     if (fgd.status === 'locked') return;
+    
+    // Tembakkan confetti jika user berhasil memberikan vote "nominate"
+    if (voteType === 'nominate' && myVote(proposalId) !== 'nominate') {
+      confetti({
+        particleCount: 150,
+        spread: 80,
+        origin: { y: 0.6 },
+        colors: ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6']
+      });
+    }
+
     await submitFgdVoteAction(fgd.id, proposalId, voteType as any);
     refresh();
   }
@@ -683,6 +695,18 @@ export default function FgdRoomClient({
                           👎 Tidak Nominasikan
                         </button>
                       </div>
+
+                      {myVote(activeProposal.id) && (
+                        <div className="mt-3 text-center">
+                          <button
+                            onClick={() => handleVote(activeProposal.id, 'cancel')}
+                            disabled={fgd.status === 'locked'}
+                            className="text-xs font-semibold text-gray-500 hover:text-gray-700 underline"
+                          >
+                            Batalkan Pilihan
+                          </button>
+                        </div>
+                      )}
                       <div className="mt-4 flex justify-center gap-4 text-sm font-semibold">
                         <span className="text-blue-700">
                           {voteCount(activeProposal.id, 'nominate')} Nominasikan

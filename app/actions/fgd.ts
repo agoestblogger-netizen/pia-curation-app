@@ -93,20 +93,30 @@ export async function submitFgdCommentAction(sessionId: number, proposalId: numb
 /**
  * Submit vote (Nominasikan / Tidak Nominasikan)
  */
-export async function submitFgdVoteAction(sessionId: number, proposalId: number, vote: 'nominate' | 'not_nominate') {
+export async function submitFgdVoteAction(sessionId: number, proposalId: number, vote: 'nominate' | 'not_nominate' | 'cancel') {
   const session = await getSession();
   if (!session) return { error: 'Unauthorized' };
 
-  // Upsert vote
-  await db.insert(fgdVotes).values({
-    sessionId,
-    proposalId,
-    curatorId: session.userId,
-    vote,
-  }).onConflictDoUpdate({
-    target: [fgdVotes.sessionId, fgdVotes.proposalId, fgdVotes.curatorId],
-    set: { vote, createdAt: new Date() },
-  });
+  if (vote === 'cancel') {
+    await db.delete(fgdVotes).where(
+      and(
+        eq(fgdVotes.sessionId, sessionId),
+        eq(fgdVotes.proposalId, proposalId),
+        eq(fgdVotes.curatorId, session.userId)
+      )
+    );
+  } else {
+    // Upsert vote
+    await db.insert(fgdVotes).values({
+      sessionId,
+      proposalId,
+      curatorId: session.userId,
+      vote,
+    }).onConflictDoUpdate({
+      target: [fgdVotes.sessionId, fgdVotes.proposalId, fgdVotes.curatorId],
+      set: { vote, createdAt: new Date() },
+    });
+  }
 
   revalidatePath(`/fgd/${sessionId}`);
   return { success: true };
