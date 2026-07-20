@@ -79,11 +79,11 @@ export async function GET(
     }));
   }
 
-  // Calculate pool size
+  // Calculate pool size and other stats
   const rawStatuses = Array.isArray(fgd.filterStatuses) && fgd.filterStatuses.length > 0 ? (fgd.filterStatuses as string[]) : ['lolos'];
   let poolSql = sql`p.category IN ('BI', 'BC')`;
   if (fgd.fgdType === 'promoter') {
-    poolSql = sql`p.status = 'promotor_selection'`;
+    poolSql = sql`1=1`; // For promoter, pool is just anything with status 'promotor_selection'
   } else if (fgd.scope === 'regional' && fgd.regionCenter) {
     if (fgd.regionCenter === 'Kantor Pusat') {
       poolSql = sql`p.category = 'PUSAT'`;
@@ -92,6 +92,27 @@ export async function GET(
     }
   }
 
+  // 1. Total Proposal yang Diterima (Total in Region/Scope)
+  const rawTotalRegion = await db.execute(sql`
+    SELECT COUNT(*) as count
+    FROM proposals p
+    WHERE p.competition_id = ${fgd.competitionId}
+      AND ${poolSql}
+  `);
+  const totalDiterima = parseInt((rawTotalRegion[0] as any).count, 10) || 0;
+
+  // 2. Proposal Memenuhi Persyaratan Administrasi (Total with verdict = lolos in Region/Scope)
+  const rawTotalAdmin = await db.execute(sql`
+    SELECT COUNT(*) as count
+    FROM proposals p
+    LEFT JOIN screening_results sr ON sr.proposal_id = p.id
+    WHERE p.competition_id = ${fgd.competitionId}
+      AND ${poolSql}
+      AND sr.verdict = 'lolos'
+  `);
+  const totalAdmin = parseInt((rawTotalAdmin[0] as any).count, 10) || 0;
+
+  // 3. Proposal Lolos Kurasi Internal (Pool FGD)
   let queryCondition = sql`p.status = 'promotor_selection'`;
   if (fgd.fgdType !== 'promoter') {
     queryCondition = sql`sr.verdict IN (${sql.raw(rawStatuses.map(s => `'${s}'`).join(', '))}) AND ${poolSql}`;
@@ -106,8 +127,9 @@ export async function GET(
   `);
   
   const poolSize = parseInt((rawPool[0] as any).count, 10) || 0;
+  
+  // 4. Proposal yang lolos ke kurasi Promotor (Final FGD)
   const lolosCount = finalProposals.length;
-  const tidakLolosCount = Math.max(0, poolSize - lolosCount);
 
   // Date formatting
   const today = new Date();
@@ -131,10 +153,10 @@ export async function GET(
       proposals: finalProposals,
       participants: participantsData,
       stats: {
-        total: poolSize,
-        admin: poolSize,
-        lolos: lolosCount,
-        tidakLolos: tidakLolosCount
+        total: totalDiterima,
+        admin: totalAdmin,
+        lolos: poolSize,
+        promotor: lolosCount
       },
       dateInfo: {
         dayName,

@@ -69,7 +69,7 @@ interface FgdBeritaAcaraProps {
     total: number;
     admin: number;
     lolos: number;
-    tidakLolos: number;
+    promotor: number;
   };
   dateInfo?: {
     dayName: string;
@@ -165,8 +165,8 @@ export const FgdBeritaAcaraReport = ({
           <View style={styles.colSummaryJumlah}><Text>{stats?.lolos ?? '....'} Proposal</Text></View>
         </View>
         <View style={styles.rowSummary}>
-          <View style={styles.colSummaryUraian}><Text>Proposal Belum Lolos Kurasi Internal</Text></View>
-          <View style={styles.colSummaryJumlah}><Text>{stats?.tidakLolos ?? '....'} Proposal</Text></View>
+          <View style={styles.colSummaryUraian}><Text>Proposal yang Lolos ke Kurasi Promotor</Text></View>
+          <View style={styles.colSummaryJumlah}><Text>{stats?.promotor ?? '....'} Proposal</Text></View>
         </View>
       </View>
 
