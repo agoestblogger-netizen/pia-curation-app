@@ -41,6 +41,7 @@ export const competitions = pgTable('competitions', {
   phaseLockedAt: timestamp('phase_locked_at', { withTimezone: true }),
   phaseLockedBy: integer('phase_locked_by').references(() => users.id),
   promotorAccessMode: text('promotor_access_mode').notNull().default('open'), // 'assigned' | 'open'
+  sponsorScoreVisibility: text('sponsor_score_visibility').notNull().default('closed'), // 'open' | 'closed'
   isActive: boolean('is_active').notNull().default(true),
   createdBy: integer('created_by').references(() => users.id),
   claimDeadline: timestamp('claim_deadline', { withTimezone: true }),
@@ -313,6 +314,25 @@ export const grandFinalSelections = pgTable('grand_final_selections', {
   lockedBy: integer('locked_by').references(() => users.id),
 });
 
+// ─── GRAND FINAL ASSESSMENTS (SPONSOR SCORES) ───────────────────────────────
+export const grandFinalAssessments = pgTable('grand_final_assessments', {
+  id: serial('id').primaryKey(),
+  competitionId: integer('competition_id').notNull().references(() => competitions.id),
+  proposalId: integer('proposal_id').notNull().references(() => proposals.id),
+  sponsorId: integer('sponsor_id').notNull().references(() => users.id),
+  param1Score: integer('param1_score').notNull(),
+  param2Score: integer('param2_score').notNull(),
+  param3Score: integer('param3_score').notNull(),
+  param4Score: integer('param4_score').notNull(),
+  totalScore: integer('total_score').notNull(),
+  classification: text('classification').notNull(), // Diamond | Platinum | Gold | Silver | Bronze
+  notes: text('notes'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [
+  uniqueIndex('grand_final_assessments_unique').on(table.competitionId, table.proposalId, table.sponsorId),
+]);
+
 // ─── SCORING CRITERIA ─────────────────────────────────────────────────────────
 export const scoringCriteria = pgTable('scoring_criteria', {
   id: serial('id').primaryKey(),
@@ -468,6 +488,8 @@ export type CuratorAssignment = typeof curatorAssignments.$inferSelect;
 export type ScreeningResult = typeof screeningResults.$inferSelect;
 export type PromoterSelection = typeof promoterSelections.$inferSelect;
 export type GrandFinalSelection = typeof grandFinalSelections.$inferSelect;
+export type GrandFinalAssessment = typeof grandFinalAssessments.$inferSelect;
+
 export type ScoringCriterion = typeof scoringCriteria.$inferSelect;
 export type SponsorScore = typeof sponsorScores.$inferSelect;
 export type FinalResult = typeof finalResults.$inferSelect;

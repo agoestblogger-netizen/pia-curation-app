@@ -9,9 +9,10 @@ import Link from 'next/link';
 
 export default async function FgdRoomPage({ params }: { params: Promise<{ sessionId: string }> }) {
   const session = await getSession();
-  if (!session || (!session.roles.includes('coordinator') && !session.roles.includes('curator') && !session.roles.includes('promoter'))) {
+  if (!session || (!session.roles.includes('coordinator') && !session.roles.includes('curator') && !session.roles.includes('promoter') && !session.roles.includes('viewer'))) {
     return <div>Unauthorized</div>;
   }
+  const isViewerOnly = session.roles.includes('viewer') && !session.roles.some(r => ['coordinator', 'curator', 'promoter', 'admin'].includes(r));
 
   const { sessionId } = await params;
   const sId = parseInt(sessionId, 10);
@@ -204,6 +205,7 @@ export default async function FgdRoomPage({ params }: { params: Promise<{ sessio
           proposals={allRawProposals as any}
           votes={votesRaw}
           comments={commentsRaw as any}
+          readOnly={isViewerOnly}
         />
       </main>
     </div>

@@ -1,14 +1,10 @@
-import { getSession } from '@/lib/auth/session';
+import { requireRole } from '@/lib/auth/helpers';
 import { getActiveCompetition } from '@/app/actions/competitions';
 import { getGrandFinalProposals, getCriteria } from '@/app/actions/scoring';
 import Link from 'next/link';
 
 export default async function SponsorDashboard() {
-  const session = await getSession();
-  
-  if (!session || !session.roles.includes('sponsor')) {
-    return <div>Unauthorized</div>;
-  }
+  const session = await requireRole('sponsor');
 
   const activeComp = await getActiveCompetition();
 
@@ -49,7 +45,7 @@ export default async function SponsorDashboard() {
                 <td className="px-6 py-4 text-sm font-medium text-gray-900">{p.title}</td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{p.category}</td>
                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                  <Link href={`/sponsor/${p.id}`} className="text-indigo-600 hover:text-indigo-900">
+                  <Link href={`/sponsor/assess/${p.id}`} className="text-indigo-600 hover:text-indigo-900">
                     Beri Nilai &rarr;
                   </Link>
                 </td>

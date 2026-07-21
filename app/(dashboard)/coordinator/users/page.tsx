@@ -4,8 +4,10 @@ import { listUsersAction } from '@/app/actions/users';
 import UserManagementClient from './UserManagementClient';
 
 export default async function UsersPage() {
-  const session = await requireRole('coordinator');
+  const session = await requireRole(['coordinator', 'viewer']);
   const users = await listUsersAction();
+  
+  const isViewerOnly = session.roles.includes('viewer') && !session.roles.includes('coordinator') && !session.roles.includes('admin');
 
   return (
     <div className="p-8 max-w-5xl">
@@ -21,6 +23,7 @@ export default async function UsersPage() {
         users={users.map(u => ({ ...u, createdAt: u.createdAt ?? null }))}
         currentUserId={session.userId}
         currentUserRoles={session.roles}
+        readOnly={isViewerOnly}
       />
     </div>
   );

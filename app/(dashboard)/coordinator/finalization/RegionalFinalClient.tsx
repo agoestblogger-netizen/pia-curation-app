@@ -7,6 +7,7 @@ import type { RegionalGroup } from '@/app/actions/regional-final';
 interface Props {
   competitionId: number;
   groups: RegionalGroup[];
+  readOnly?: boolean;
 }
 
 const CATEGORY_COLORS: Record<string, string> = {
@@ -14,7 +15,7 @@ const CATEGORY_COLORS: Record<string, string> = {
   'WILAYAH': 'bg-[#059669]',
 };
 
-export default function RegionalFinalClient({ competitionId, groups }: Props) {
+export default function RegionalFinalClient({ competitionId, groups, readOnly }: Props) {
   const [expandedGroup, setExpandedGroup] = useState<string | null>(groups[0]?.region ?? null);
   const [selections, setSelections] = useState<Record<string, Set<number>>>(() => {
     const init: Record<string, Set<number>> = {};
@@ -28,7 +29,7 @@ export default function RegionalFinalClient({ competitionId, groups }: Props) {
   const [isPending, startTransition] = useTransition();
 
   const toggleSelection = (group: RegionalGroup, proposalId: number, isLocked: boolean) => {
-    if (isLocked) return;
+    if (readOnly || isLocked) return;
 
     const currentSet = selections[group.region] ?? new Set();
     
@@ -236,24 +237,27 @@ export default function RegionalFinalClient({ competitionId, groups }: Props) {
                             📄 Download Surat Penetapan
                           </a>
                         )}
-                        <button
-                          onClick={() => handleReopen(group)}
-                          disabled={isPending}
-                          className="px-4 py-2 text-sm font-medium text-orange-600 border border-orange-300 rounded-lg hover:bg-orange-50 transition-colors disabled:opacity-50"
-                        >
-                          Buka Kembali
-                        </button>
+                        {!readOnly && (
+                          <button
+                            onClick={() => handleReopen(group)}
+                            disabled={isPending}
+                            className="px-4 py-2 text-sm font-medium text-orange-600 border border-orange-300 rounded-lg hover:bg-orange-50 transition-colors disabled:opacity-50"
+                          >
+                            Buka Kembali
+                          </button>
+                        )}
                       </>
                     ) : (
                       <>
-
-                        <button
-                          onClick={() => handleLock(group)}
-                          disabled={isPending || selected.size === 0}
-                          className="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50"
-                        >
-                          🔒 Kunci Grup
-                        </button>
+                        {!readOnly && (
+                          <button
+                            onClick={() => handleLock(group)}
+                            disabled={isPending || selected.size === 0}
+                            className="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50"
+                          >
+                            🔒 Kunci Grup
+                          </button>
+                        )}
                       </>
                     )}
                   </div>

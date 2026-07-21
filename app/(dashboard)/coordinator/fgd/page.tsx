@@ -8,7 +8,7 @@ import FgdListClient from './FgdListClient';
 
 export default async function FgdPage() {
   const session = await getSession();
-  if (!session || !session.roles.some(r => ['coordinator', 'curator', 'promoter'].includes(r))) {
+  if (!session || !session.roles.some(r => ['coordinator', 'curator', 'promoter', 'viewer'].includes(r))) {
     return <div>Unauthorized</div>;
   }
   

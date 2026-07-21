@@ -18,6 +18,7 @@ const ROLE_LABELS: Record<string, string> = {
   curator: 'Kurator',
   promoter: 'Promotor',
   sponsor: 'Sponsor',
+  viewer: 'Viewer',
 };
 
 const AVAILABLE_ROLES = [
@@ -26,6 +27,7 @@ const AVAILABLE_ROLES = [
   { id: 'curator', label: 'Tim Kurator' },
   { id: 'promoter', label: 'Tim Promotor' },
   { id: 'sponsor', label: 'Tim Sponsor (BOD)' },
+  { id: 'viewer', label: 'Viewer (Read-only)' },
 ];
 
 const ROLE_COLORS: Record<string, string> = {
@@ -34,15 +36,17 @@ const ROLE_COLORS: Record<string, string> = {
   curator: 'bg-blue-100 text-blue-700',
   promoter: 'bg-yellow-100 text-yellow-700',
   sponsor: 'bg-green-100 text-green-700',
+  viewer: 'bg-gray-100 text-gray-700',
 };
 
 interface Props {
   users: UserRow[];
   currentUserId: number;
   currentUserRoles: string[];
+  readOnly?: boolean;
 }
 
-export default function UserManagementClient({ users: initialUsers, currentUserId, currentUserRoles }: Props) {
+export default function UserManagementClient({ users: initialUsers, currentUserId, currentUserRoles, readOnly = false }: Props) {
   const [users, setUsers] = useState(initialUsers);
   const [togglingId, setTogglingId] = useState<number | null>(null);
   
@@ -154,16 +158,18 @@ export default function UserManagementClient({ users: initialUsers, currentUserI
           <h2 className="text-lg font-bold text-gray-900">Daftar User</h2>
           <p className="text-sm text-gray-500">{users.length} user terdaftar</p>
         </div>
-        <button
-          onClick={() => showForm ? setShowForm(false) : openAddForm()}
-          className="px-5 py-2 bg-indigo-600 text-white text-sm font-semibold rounded-xl hover:bg-indigo-700 transition-colors"
-        >
-          {showForm ? 'Tutup Form' : '+ Tambah User'}
-        </button>
+        {!readOnly && (
+          <button
+            onClick={() => showForm ? setShowForm(false) : openAddForm()}
+            className="px-5 py-2 bg-indigo-600 text-white text-sm font-semibold rounded-xl hover:bg-indigo-700 transition-colors"
+          >
+            {showForm ? 'Tutup Form' : '+ Tambah User'}
+          </button>
+        )}
       </div>
 
       {/* Add/Edit User Form */}
-      {showForm && (
+      {!readOnly && showForm && (
         <div ref={formRef} className="mb-8 bg-white p-6 rounded-xl border border-indigo-200 shadow-sm">
           <h3 className="font-bold text-gray-900 mb-4">{editMode ? 'Edit User' : 'Tambah User Baru'}</h3>
 
@@ -294,7 +300,7 @@ export default function UserManagementClient({ users: initialUsers, currentUserI
               <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Role(s)</th>
               <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Dibuat</th>
               <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Status</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase text-right">Aksi</th>
+              {!readOnly && <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase text-right">Aksi</th>}
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
@@ -319,28 +325,30 @@ export default function UserManagementClient({ users: initialUsers, currentUserI
                     {user.isActive ? '● Aktif' : '● Nonaktif'}
                   </span>
                 </td>
-                <td className="px-4 py-3 text-right">
-                  <div className="flex justify-end items-center gap-2">
-                    <button
-                      onClick={() => openEditForm(user)}
-                      className="text-xs px-2 py-1 bg-gray-100 text-gray-700 rounded hover:bg-gray-200 transition-colors"
-                      title="Edit User"
-                    >
-                      ✏️ Edit
-                    </button>
-                    {user.id !== currentUserId ? (
+                {!readOnly && (
+                  <td className="px-4 py-3 text-right">
+                    <div className="flex justify-end items-center gap-2">
                       <button
-                        onClick={() => handleDelete(user.id, user.name)}
-                        className="text-xs px-2 py-1 bg-red-100 text-red-700 rounded hover:bg-red-200 transition-colors"
-                        title="Hapus (Soft Delete)"
+                        onClick={() => openEditForm(user)}
+                        className="text-xs px-2 py-1 bg-gray-100 text-gray-700 rounded hover:bg-gray-200 transition-colors"
+                        title="Edit User"
                       >
-                        🗑️ Hapus
+                        ✏️ Edit
                       </button>
-                    ) : (
-                      <span className="text-xs text-gray-300 w-12 text-center">—</span>
-                    )}
-                  </div>
-                </td>
+                      {user.id !== currentUserId ? (
+                        <button
+                          onClick={() => handleDelete(user.id, user.name)}
+                          className="text-xs px-2 py-1 bg-red-100 text-red-700 rounded hover:bg-red-200 transition-colors"
+                          title="Hapus (Soft Delete)"
+                        >
+                          🗑️ Hapus
+                        </button>
+                      ) : (
+                        <span className="text-xs text-gray-300 w-12 text-center">—</span>
+                      )}
+                    </div>
+                  </td>
+                )}
               </tr>
             ))}
           </tbody>

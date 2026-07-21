@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { logoutAction } from '@/app/actions/auth';
 
 type Session = {
@@ -12,6 +13,12 @@ type Session = {
 
 export default function ClientSidebar({ session }: { session: Session }) {
   const [isOpen, setIsOpen] = useState(false);
+  const pathname = usePathname();
+
+  // Hide sidebar on specific full-width pages
+  if (pathname.includes('/sponsor/assess/')) {
+    return null;
+  }
 
   return (
     <>

@@ -53,13 +53,14 @@ type Vote = { id: number; proposalId: number; curatorId: number; vote: string };
 type Comment = { id: number; proposalId: number; curatorId: number; content: string; createdAt: string; curatorName: string | null };
 
 export default function FgdRoomClient({ 
-  session, fgd, proposals, votes, comments 
+  session, fgd, proposals, votes, comments, readOnly = false
 }: { 
   session: any;
   fgd: any;
   proposals: Proposal[];
   votes: Vote[];
   comments: Comment[];
+  readOnly?: boolean;
 }) {
   const router = useRouter();
   const [, startRefresh] = useTransition();
@@ -577,7 +578,7 @@ export default function FgdRoomClient({
                         </h4>
                         
                         {/* Koordinator Only Upload Button */}
-                        {session?.roles?.includes('coordinator') && (
+                        {!readOnly && session?.roles?.includes('coordinator') && (
                           <div className="flex flex-col items-end">
                             <label className={`cursor-pointer inline-flex items-center px-3 py-1.5 rounded text-xs font-semibold shadow-sm transition-colors ${
                               isUploadingDoc[activeProposal.id] 
@@ -615,7 +616,7 @@ export default function FgdRoomClient({
                         <div className="space-y-4 text-sm text-gray-700 border-t border-gray-100 pt-3">
                           {localAdditionalDocs[activeProposal.id].map((doc: any, idx: number) => (
                             <div key={doc.id || idx} className="bg-gray-50 p-4 rounded border border-gray-200 relative">
-                              {session?.roles?.includes('coordinator') && (
+                              {!readOnly && session?.roles?.includes('coordinator') && (
                                 <button 
                                   onClick={() => handleDeleteDocument(activeProposal.id, doc.id)}
                                   disabled={isDeletingDoc[doc.id]}
@@ -662,12 +663,12 @@ export default function FgdRoomClient({
                       ) : (
                         <div className="text-center py-6 text-gray-400 text-sm border-2 border-dashed border-gray-200 rounded">
                           Belum ada dokumen tambahan untuk proposal ini.<br />
-                          {session?.roles?.includes('coordinator') && "Koordinator dapat mengunggah file PDF untuk dianalisis oleh AI."}
+                          {!readOnly && session?.roles?.includes('coordinator') && "Koordinator dapat mengunggah file PDF untuk dianalisis oleh AI."}
                         </div>
                       )}
                     </div>
 
-                    {/* VOTE AREA */}
+                    {!readOnly && (
                     <div className="bg-blue-50 border border-blue-100 p-5 rounded-md">
                       <h4 className="font-semibold text-blue-900 mb-1 text-center">Voting Konsensus</h4>
                       <p className="text-xs text-blue-600 text-center mb-4">Vote Anda bisa diubah kapan saja selama sesi masih aktif</p>
@@ -707,6 +708,9 @@ export default function FgdRoomClient({
                           </button>
                         </div>
                       )}
+                    </div>
+                    )}
+
                       <div className="mt-4 flex justify-center gap-4 text-sm font-semibold">
                         <span className="text-blue-700">
                           {voteCount(activeProposal.id, 'nominate')} Nominasikan
@@ -716,7 +720,6 @@ export default function FgdRoomClient({
                           {voteCount(activeProposal.id, 'not_nominate')} Tidak
                         </span>
                       </div>
-                    </div>
                   </div>
 
                   {/* RIGHT: Diskusi Thread */}
@@ -747,7 +750,7 @@ export default function FgdRoomClient({
                     </div>
 
                     {/* Input */}
-                    {fgd.status !== 'locked' && (
+                    {fgd.status !== 'locked' && !readOnly && (
                       <form onSubmit={handleComment} className="flex-shrink-0">
                         <div className="flex space-x-2 bg-white rounded-lg shadow-sm border border-gray-200 p-2">
                           <input
@@ -815,7 +818,7 @@ export default function FgdRoomClient({
               <table className="w-full text-left text-sm">
                 <thead className="bg-gray-50 border-b border-gray-200">
                   <tr>
-                    {session.roles.includes('coordinator') && fgd.status !== 'locked' && (
+                    {!readOnly && session.roles.includes('coordinator') && fgd.status !== 'locked' && (
                       <th className="px-4 py-3 w-12 text-center font-semibold text-gray-600">Pilih</th>
                     )}
                     <th className="px-4 py-3 font-semibold text-gray-600 w-8">#</th>
@@ -834,7 +837,7 @@ export default function FgdRoomClient({
                         key={p.id}
                         className={`transition ${isSelected ? 'bg-teal-50' : 'hover:bg-gray-50'}`}
                       >
-                        {session.roles.includes('coordinator') && fgd.status !== 'locked' && (
+                        {!readOnly && session.roles.includes('coordinator') && fgd.status !== 'locked' && (
                           <td className="px-4 py-3 text-center">
                             <input
                               type="checkbox"
@@ -875,7 +878,7 @@ export default function FgdRoomClient({
             </div>
 
             {/* Lock Button */}
-            {session.roles.includes('coordinator') && fgd.status !== 'locked' && (
+            {!readOnly && session.roles.includes('coordinator') && fgd.status !== 'locked' && (
               <div className="mt-6 flex items-center justify-between flex-shrink-0">
                 <p className="text-xs text-gray-400">
                   {selectedForFinal.length === 0

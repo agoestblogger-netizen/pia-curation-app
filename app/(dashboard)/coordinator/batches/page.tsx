@@ -8,9 +8,10 @@ import AssignProposalUI from './AssignProposalUI';
 
 export default async function BatchesPage() {
   const session = await getSession();
-  if (!session || !session.roles.includes('coordinator')) {
+  if (!session || (!session.roles.includes('coordinator') && !session.roles.includes('viewer'))) {
     return <div className="p-8 text-red-500">Unauthorized</div>;
   }
+  const isViewerOnly = session.roles.includes('viewer') && !session.roles.includes('coordinator') && !session.roles.includes('admin');
 
   const activeComp = await getActiveCompetition();
   if (!activeComp) {
@@ -99,6 +100,7 @@ export default async function BatchesPage() {
         promoters={promoters}
         promoterAssignments={promAssignments}
         promotorProposals={promotorProposals}
+        readOnly={isViewerOnly}
       />
     </div>
   );

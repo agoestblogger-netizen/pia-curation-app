@@ -3,8 +3,8 @@ import { getActiveCompetition } from '@/app/actions/competitions';
 import { getRegionalGroups } from '@/app/actions/regional-final';
 import RegionalFinalClient from './RegionalFinalClient';
 
-export default async function RegionalTab() {
-  await requireRole('coordinator');
+export default async function RegionalTab({ readOnly }: { readOnly?: boolean }) {
+  await requireRole(['coordinator', 'viewer']);
   const activeComp = await getActiveCompetition();
 
   if (!activeComp) {
@@ -54,7 +54,7 @@ export default async function RegionalTab() {
           <p className="text-sm">Proposal WILAYAH dan PUSAT yang sudah lolos screening (status: curation_passed) akan tampil di sini.</p>
         </div>
       ) : (
-        <RegionalFinalClient competitionId={activeComp.id} groups={groups} />
+        <RegionalFinalClient competitionId={activeComp.id} groups={groups} readOnly={readOnly} />
       )}
     </div>
   );

@@ -72,6 +72,7 @@ export default function AssignProposalUI({
   promoters,
   promoterAssignments,
   promotorProposals,
+  readOnly = false,
 }: {
   batchId: number;
   competitionId: number;
@@ -82,6 +83,7 @@ export default function AssignProposalUI({
   promoters: UserRole[];
   promoterAssignments: Assignment[];
   promotorProposals: any[];
+  readOnly?: boolean;
 }) {
   const [targetTab, setTargetTab] = useState<'kurator' | 'promotor'>('kurator');
 
@@ -416,8 +418,9 @@ export default function AssignProposalUI({
         </div>
 
         {selectedUserId && (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+          <div className={`grid grid-cols-1 ${!readOnly ? 'lg:grid-cols-2' : ''} gap-6 items-start`}>
             {/* Panel Kiri: Form Input */}
+            {!readOnly && (
             <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
               <h3 className="text-lg font-semibold mb-4 text-gray-900">Tambah Range Baru</h3>
               <form action={action} className="space-y-4">
@@ -582,12 +585,13 @@ export default function AssignProposalUI({
                 </div>
               </form>
             </div>
+            )}
 
             {/* Panel Kanan: Daftar Assignment (Range Blocks) */}
             <div className="bg-gray-50 p-6 rounded-lg shadow-inner border border-gray-200 flex flex-col max-h-[650px]">
               <div className="flex justify-between items-center mb-6 flex-shrink-0">
                 <h3 className="text-lg font-semibold text-gray-900">Daftar Proposal yang Dikurasi</h3>
-                {checkedBlocks.size > 0 && (
+                {!readOnly && checkedBlocks.size > 0 && (
                   <button
                     onClick={() => handleBulkDelete(role, blocks)}
                     disabled={isPendingAny}
@@ -634,16 +638,18 @@ export default function AssignProposalUI({
                                <svg className={`w-4 h-4 text-gray-400 mr-2 transition-transform duration-200 ${isExpanded ? 'rotate-90' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" /></svg>
                                <span className="font-semibold text-gray-900">{displayCat} <span className="font-medium text-gray-500 text-xs ml-2 bg-gray-200 px-2 py-0.5 rounded-full">{totalProps} proposal</span></span>
                              </div>
-                             <div className="flex items-center ml-4" onClick={(e) => e.stopPropagation()}>
-                               <input 
-                                 type="checkbox" 
-                                 checked={allBlocksChecked}
-                                 onChange={handleToggleCategoryCheck}
-                                 onClick={(e) => e.stopPropagation()}
-                                 className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded cursor-pointer"
-                                 title="Pilih semua range di kategori ini"
-                               />
-                             </div>
+                             {!readOnly && (
+                               <div className="flex items-center ml-4" onClick={(e) => e.stopPropagation()}>
+                                 <input 
+                                   type="checkbox" 
+                                   checked={allBlocksChecked}
+                                   onChange={handleToggleCategoryCheck}
+                                   onClick={(e) => e.stopPropagation()}
+                                   className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded cursor-pointer"
+                                   title="Pilih semua range di kategori ini"
+                                 />
+                               </div>
+                             )}
                           </div>
                           
                           {isExpanded && (
@@ -652,30 +658,34 @@ export default function AssignProposalUI({
                                  const blockKey = `${b.displayCategory}-${b.start}-${b.end}`;
                                  const isChecked = checkedBlocks.has(blockKey);
                                  return (
-                                   <div key={blockKey} className={`flex justify-between items-center px-4 py-3 cursor-pointer transition ${isChecked ? 'bg-indigo-50/30' : 'hover:bg-gray-50'}`} onClick={() => toggleBlock(blockKey)}>
+                                   <div key={blockKey} className={`flex justify-between items-center px-4 py-3 cursor-pointer transition ${isChecked ? 'bg-indigo-50/30' : 'hover:bg-gray-50'}`} onClick={() => !readOnly && toggleBlock(blockKey)}>
                                      <div className="flex items-center flex-1">
-                                       <input 
-                                         type="checkbox" 
-                                         checked={isChecked}
-                                         onChange={() => toggleBlock(blockKey)}
-                                         onClick={(e) => e.stopPropagation()}
-                                         className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded mr-4 cursor-pointer"
-                                       />
+                                       {!readOnly && (
+                                         <input 
+                                           type="checkbox" 
+                                           checked={isChecked}
+                                           onChange={() => toggleBlock(blockKey)}
+                                           onClick={(e) => e.stopPropagation()}
+                                           className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded mr-4 cursor-pointer"
+                                         />
+                                       )}
                                        <div>
                                          <div className="text-sm font-bold text-gray-700 max-w-sm truncate" title={b.title}>
                                            No. {b.start} – {b.title}
                                          </div>
                                        </div>
                                      </div>
-                                     <div className="flex-shrink-0 ml-4">
-                                       <button 
-                                         onClick={(e) => { e.stopPropagation(); handleDelete(role, b.proposalIds); }}
-                                         disabled={isPendingAny}
-                                         className="text-red-600 hover:text-red-800 text-xs font-bold px-3 py-1.5 rounded-md bg-red-50 hover:bg-red-100 disabled:opacity-50 transition"
-                                       >
-                                         Hapus
-                                       </button>
-                                     </div>
+                                     {!readOnly && (
+                                       <div className="flex-shrink-0 ml-4">
+                                         <button 
+                                           onClick={(e) => { e.stopPropagation(); handleDelete(role, b.proposalIds); }}
+                                           disabled={isPendingAny}
+                                           className="text-red-600 hover:text-red-800 text-xs font-bold px-3 py-1.5 rounded-md bg-red-50 hover:bg-red-100 disabled:opacity-50 transition"
+                                         >
+                                           Hapus
+                                         </button>
+                                       </div>
+                                     )}
                                    </div>
                                  );
                               })}

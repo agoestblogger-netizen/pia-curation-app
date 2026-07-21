@@ -6,7 +6,7 @@ import { getActiveCompetition } from '@/app/actions/competitions';
 import CoordinatorBoard from './CoordinatorBoard';
 
 export default async function ProposalsPage() {
-  await requireRole('coordinator');
+  await requireRole(['coordinator', 'viewer']);
 
   const activeComp = await getActiveCompetition();
 

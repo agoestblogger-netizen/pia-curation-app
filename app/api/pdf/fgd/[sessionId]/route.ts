@@ -73,11 +73,41 @@ export async function GET(
   let participantsData: any[] = [];
   if (participantIds.size > 0) {
     const pUsers = await db.select({ name: users.name, roles: users.roles }).from(users).where(inArray(users.id, Array.from(participantIds)));
-    participantsData = pUsers.map(u => ({
-      name: u.name,
-      role: u.roles.includes('coordinator') ? 'Koordinator' : (fgd.fgdType === 'promoter' ? 'Tim Promotor' : 'Tim Kurator')
-    }));
+    participantsData = pUsers.map(u => {
+      let role = u.roles.includes('coordinator') ? 'Koordinator' : (fgd.fgdType === 'promoter' ? 'Anggota Promotor' : 'Anggota Kurator');
+      if (u.name === fgd.ketuaName) {
+        role = fgd.fgdType === 'promoter' ? 'Ketua Promotor' : 'Ketua Task Force Kurator';
+      } else if (u.name === fgd.sekretarisName) {
+        role = fgd.fgdType === 'promoter' ? 'Sekretaris Promotor' : 'Sekretaris Task Force Kurator';
+      }
+      return { name: u.name, role };
+    });
   }
+
+  // Ensure ketua and sekretaris are present
+  if (fgd.ketuaName && !participantsData.find(p => p.name === fgd.ketuaName)) {
+    participantsData.push({
+      name: fgd.ketuaName,
+      role: fgd.fgdType === 'promoter' ? 'Ketua Promotor' : 'Ketua Task Force Kurator'
+    });
+  }
+  if (fgd.sekretarisName && !participantsData.find(p => p.name === fgd.sekretarisName)) {
+    participantsData.push({
+      name: fgd.sekretarisName,
+      role: fgd.fgdType === 'promoter' ? 'Sekretaris Promotor' : 'Sekretaris Task Force Kurator'
+    });
+  }
+
+  // Sort: Ketua first, Sekretaris second, others later
+  participantsData.sort((a, b) => {
+    if (a.role.startsWith('Ketua')) return -1;
+    if (b.role.startsWith('Ketua')) return 1;
+    if (a.role.startsWith('Sekretaris')) return -1;
+    if (b.role.startsWith('Sekretaris')) return 1;
+    if (a.role === 'Koordinator') return 1;
+    if (b.role === 'Koordinator') return -1;
+    return 0;
+  });
 
   // Calculate pool size and other stats
   const rawStatuses = Array.isArray(fgd.filterStatuses) && fgd.filterStatuses.length > 0 ? (fgd.filterStatuses as string[]) : ['lolos'];
@@ -101,7 +131,7 @@ export async function GET(
   const totalAdmin = parseInt((rawTotalAdmin[0] as any).count, 10) || 0;
 
   // 3. Proposal Lolos Kurasi Internal (Pool FGD)
-  let queryCondition = sql`p.status = 'promotor_selection'`;
+  let queryCondition = sql`p.status IN ('promotor_selection', 'takeout_promotor', 'grand_final', 'winner')`;
   if (fgd.fgdType !== 'promoter') {
     queryCondition = sql`sr.verdict IN (${sql.raw(rawStatuses.map(s => `'${s}'`).join(', '))}) AND ${poolSql}`;
   }
@@ -133,17 +163,26 @@ export async function GET(
   // Actually, we can just say "Dua Ribu Dua Puluh Enam" for 2026, but let's make it generic or stick to the digits since it's safer.
   const yearStr = today.getFullYear().toString();
 
-  // @ts-ignore
+  const generatedAt = today.toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' }) + ' WIB';
+  const generatedBy = session.name || 'System';
+  const curatorName = session.name || 'Tim Kurator';
+  const regionName = fgd.category === 'PUSAT' ? 'Kantor Pusat' : fgd.category;
+
+  // @ts-expect-error React 19 types
   const stream = await renderToStream(
-    // @ts-ignore
+    // @ts-expect-error React 19 types
     React.createElement(FgdBeritaAcaraReport, {
       competitionName: `${activeComp?.name || ''} ${activeComp?.year || ''}`,
+      regionName,
+      generatedAt,
+      generatedBy,
+      curatorName,
       proposals: finalProposals,
       participants: participantsData,
       ketuaName: fgd.ketuaName || null,
       sekretarisName: fgd.sekretarisName || null,
       stats: {
-        total: 0, // Unused
+        total: 0,
         admin: totalAdmin,
         lolos: poolSize,
         promotor: lolosCount
@@ -154,7 +193,8 @@ export async function GET(
         monthName,
         yearStr,
         place: 'Jakarta'
-      }
+      },
+      fgdType: fgd.fgdType
     })
   );
 

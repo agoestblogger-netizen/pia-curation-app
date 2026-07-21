@@ -1,6 +1,7 @@
 import { getSession } from '@/lib/auth/session';
 import RegionalTab from './RegionalTab';
 import RankingTab from './RankingTab';
+import GrandFinalTab from './GrandFinalTab';
 import Link from 'next/link';
 
 export default async function FinalizationPage({
@@ -10,16 +11,19 @@ export default async function FinalizationPage({
 }) {
   const session = await getSession();
   
-  if (!session || !session.roles.includes('coordinator')) {
+  if (!session || !session.roles.some(r => ['coordinator', 'viewer'].includes(r))) {
     return <div className="p-8 text-red-500">Unauthorized</div>;
   }
+  
+  const isViewerOnly = session.roles.includes('viewer') && !session.roles.some(r => ['coordinator', 'admin'].includes(r));
 
   const resolvedParams = await searchParams;
   const currentTab = resolvedParams.tab || 'regional';
 
   const tabs = [
     { id: 'regional', label: '1. Regional' },
-    { id: 'ranking', label: '2. Ranking & Hasil Akhir' },
+    { id: 'ranking', label: '2. Ranking' },
+    { id: 'grand-final', label: '3. Grand Final' },
   ];
 
   return (
@@ -48,8 +52,9 @@ export default async function FinalizationPage({
       </div>
 
       <div className="flex-1 overflow-auto">
-        {currentTab === 'regional' && <RegionalTab />}
-        {currentTab === 'ranking' && <RankingTab />}
+        {currentTab === 'regional' && <RegionalTab readOnly={isViewerOnly} />}
+        {currentTab === 'ranking' && <RankingTab readOnly={isViewerOnly} />}
+        {currentTab === 'grand-final' && <GrandFinalTab readOnly={isViewerOnly} />}
       </div>
     </div>
   );

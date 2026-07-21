@@ -4,10 +4,10 @@ import { getFinalResults, getRankedProposals, getLatestScoringSnapshot } from '@
 import { finalLockAction, setFinalResultAction } from '@/app/actions/finalization';
 import Link from 'next/link';
 
-export default async function RankingTab() {
+export default async function RankingTab({ readOnly }: { readOnly?: boolean }) {
   const session = await getSession();
 
-  if (!session || !session.roles.includes('coordinator')) {
+  if (!session || !session.roles.some(r => ['coordinator', 'viewer'].includes(r))) {
     return <div className="p-8 text-red-500">Unauthorized</div>;
   }
 
@@ -51,7 +51,7 @@ export default async function RankingTab() {
             </span>
           </p>
         </div>
-        {!isLocked && (
+        {!isLocked && !readOnly && (
           <form action={async (formData) => {
             'use server';
             const code = formData.get('confirmCode') as string;
@@ -107,7 +107,7 @@ export default async function RankingTab() {
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 font-semibold">{item.avgScore}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{item.raterCount} penilai</td>
                       <td className="px-6 py-4 whitespace-nowrap text-right">
-                        {isLocked ? (
+                        {isLocked || readOnly ? (
                           <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
                             existingResult?.resultStatus === 'winner' ? 'bg-yellow-100 text-yellow-800' :
                             existingResult?.resultStatus === 'selected' ? 'bg-green-100 text-green-800' :

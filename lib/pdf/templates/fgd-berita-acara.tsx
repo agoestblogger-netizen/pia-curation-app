@@ -24,7 +24,7 @@ const styles = StyleSheet.create({
   signatureSection: { marginTop: 30 },
   signatureTitle: { fontWeight: 'bold', fontFamily: 'Helvetica-Bold', marginBottom: 5 },
   tableSig: { width: '100%', marginBottom: 30 },
-  rowSigHeader: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#000', paddingBottom: 5, marginBottom: 10 },
+  rowSigHeader: { flexDirection: 'row', borderBottomWidth: 2, borderBottomColor: '#000', paddingBottom: 5, marginBottom: 15 },
   rowSig: { flexDirection: 'row', marginBottom: 30 },
   colSigNo: { width: '10%' },
   colSigNama: { width: '30%' },
@@ -80,6 +80,11 @@ interface FgdBeritaAcaraProps {
   };
   ketuaName?: string | null;
   sekretarisName?: string | null;
+  regionName?: string;
+  generatedAt?: string;
+  generatedBy?: string;
+  curatorName?: string;
+  fgdType?: string;
 }
 
 export const FgdBeritaAcaraReport = ({
@@ -89,54 +94,66 @@ export const FgdBeritaAcaraReport = ({
   stats,
   dateInfo,
   ketuaName,
-  sekretarisName
-}: FgdBeritaAcaraProps) => (
+  sekretarisName,
+  regionName,
+  generatedAt,
+  generatedBy,
+  curatorName,
+  fgdType
+}: FgdBeritaAcaraProps) => {
+  const isPromoter = fgdType === 'promoter';
+  const tahapName = isPromoter ? 'Kurasi Tingkat Promotor' : 'Kurasi Internal';
+  const prevTahapName = isPromoter ? 'Kurasi Tingkat Kurator' : 'Kurasi Internal';
+  const nextTahapName = isPromoter ? 'Grand Final' : 'Kurasi Tingkat Promotor';
+  const timName = isPromoter ? 'Tim Promotor' : 'Tim Task Force Kurator';
+
+  return (
   <Document>
     <Page size="A4" style={styles.page}>
       <View style={styles.header}>
         <Text style={styles.headerTextBold}>PT PEGADAIAN</Text>
         <Text style={styles.headerTextBold}>BERITA ACARA</Text>
-        <Text style={styles.headerTextBold}>PENETAPAN HASIL KURASI INTERNAL</Text>
-        <Text style={styles.headerTextBold}>TIM TASK FORCE KURATOR</Text>
+        <Text style={styles.headerTextBold}>PENETAPAN HASIL {isPromoter ? 'KURASI TINGKAT PROMOTOR' : 'KURASI INTERNAL'}</Text>
+        {!isPromoter && <Text style={styles.headerTextBold}>{timName.toUpperCase()}</Text>}
         <Text style={styles.headerTitle}>PEGADAIAN INNOVATION AWARD (PIA) S12 TAHUN 2026</Text>
         <Text style={{ marginTop: 10 }}>Nomor: BA-____/IC/PIA/X/2026</Text>
       </View>
 
       <Text style={styles.paragraph}>
-        Pada hari ini {dateInfo?.dayName || '____________'}, tanggal {dateInfo?.dateNum || '____________'} bulan {dateInfo?.monthName || '____________'} tahun {dateInfo?.yearStr || 'Dua Ribu Dua Puluh Enam'}, bertempat di {dateInfo?.place || '____________________'}, Tim Task Force Kurator Pegadaian Innovation Award (PIA) S12 Tahun 2026 telah melaksanakan Rapat Penetapan Hasil Kurasi Internal terhadap proposal inovasi yang telah diterima dari seluruh Unit Kerja di lingkungan PT Pegadaian.
+        Pada hari ini {dateInfo?.dayName}, tanggal {dateInfo?.dateNum} bulan {dateInfo?.monthName} tahun {dateInfo?.yearStr}, bertempat di Jakarta, {timName} Pegadaian Innovation Award (PIA) S12 Tahun 2026 telah melaksanakan Rapat Penetapan Hasil {tahapName} terhadap proposal inovasi yang telah diterima dari seluruh Unit Kerja di lingkungan PT Pegadaian.
       </Text>
 
       <Text style={styles.paragraph}>
-        Kurasi Internal dilaksanakan sebagai tahapan seleksi untuk memastikan bahwa proposal inovasi yang diajukan telah memenuhi persyaratan administrasi, substansi, kualitas inovasi, serta kesesuaian dengan pedoman Pegadaian Innovation Award (PIA) S12 Tahun 2026 sebelum diajukan ke Tahap Kurasi Tingkat Promotor.
+        {tahapName} dilaksanakan sebagai tahapan seleksi untuk memastikan bahwa proposal inovasi yang diajukan telah memenuhi persyaratan administrasi, substansi, kualitas inovasi, serta kesesuaian dengan pedoman Pegadaian Innovation Award (PIA) S12 Tahun 2026 sebelum diajukan ke Tahap {nextTahapName}.
       </Text>
 
       <Text style={styles.paragraph}>
-        Berdasarkan hasil pembahasan, penilaian, klarifikasi, dan musyawarah Tim Task Force Kurator, dengan ini diputuskan sebagai berikut:
+        Berdasarkan hasil pembahasan, penilaian, klarifikasi, dan musyawarah {timName}, dengan ini diputuskan sebagai berikut:
       </Text>
 
       <Text style={styles.sectionTitle}>KESATU</Text>
       <Text style={styles.paragraph}>
-        Menetapkan hasil Kurasi Internal terhadap seluruh proposal inovasi yang masuk pada Pegadaian Innovation Award (PIA) S12 Tahun 2026 sebagaimana tercantum dalam Lampiran Berita Acara ini.
+        Menetapkan hasil {tahapName} terhadap seluruh proposal inovasi yang masuk pada Pegadaian Innovation Award (PIA) S12 Tahun 2026 sebagaimana tercantum dalam Lampiran Berita Acara ini.
       </Text>
 
       <Text style={styles.sectionTitle}>KEDUA</Text>
       <Text style={styles.paragraph}>
-        Proposal yang dinyatakan Lolos Kurasi Internal merupakan proposal yang telah memenuhi persyaratan administrasi dan memperoleh hasil penilaian sesuai kriteria kurasi yang ditetapkan dalam Pedoman Pegadaian Innovation Award (PIA) S12 Tahun 2026.
+        Proposal yang dinyatakan Lolos {tahapName} merupakan proposal yang telah memenuhi persyaratan administrasi dan memperoleh hasil penilaian sesuai kriteria kurasi yang ditetapkan dalam Pedoman Pegadaian Innovation Award (PIA) S12 Tahun 2026.
       </Text>
 
       <Text style={styles.sectionTitle}>KETIGA</Text>
       <Text style={styles.paragraph}>
-        Proposal yang dinyatakan Lolos Kurasi Internal direkomendasikan untuk mengikuti Tahap Kurasi Tingkat Promotor sesuai mekanisme dan jadwal pelaksanaan Pegadaian Innovation Award (PIA) S12 Tahun 2026.
+        Proposal yang dinyatakan Lolos {tahapName} direkomendasikan untuk mengikuti Tahap {nextTahapName} sesuai mekanisme dan jadwal pelaksanaan Pegadaian Innovation Award (PIA) S12 Tahun 2026.
       </Text>
 
       <Text style={styles.sectionTitle}>KEEMPAT</Text>
       <Text style={styles.paragraph}>
-        Tim Task Force Kurator berhak memberikan catatan, rekomendasi penyempurnaan, maupun perbaikan terhadap proposal sebelum dilakukan proses Kurasi Tingkat Promotor.
+        {timName} berhak memberikan catatan, rekomendasi penyempurnaan, maupun perbaikan terhadap proposal sebelum dilakukan proses {nextTahapName}.
       </Text>
 
       <Text style={styles.sectionTitle}>KELIMA</Text>
       <Text style={styles.paragraph}>
-        Hasil penetapan ini merupakan hasil musyawarah Tim Task Force Kurator berdasarkan prinsip:
+        Hasil penetapan ini merupakan hasil musyawarah {timName} berdasarkan prinsip:
       </Text>
       <View style={styles.listContainer}>
         {['Objektif;', 'Transparan;', 'Akuntabel;', 'Independen;', 'Profesional; dan', `Berpedoman pada ketentuan Pegadaian Innovation Award (PIA) S12 Tahun 2026.`].map((item, idx) => (
@@ -149,7 +166,7 @@ export const FgdBeritaAcaraReport = ({
 
       <Text style={styles.sectionTitle}>KEENAM</Text>
       <Text style={styles.paragraph}>
-        Ringkasan hasil Kurasi Internal adalah sebagai berikut:
+        Ringkasan hasil {tahapName} adalah sebagai berikut:
       </Text>
       <View style={styles.tableSummary}>
         <View style={styles.rowSummary}>
@@ -161,11 +178,11 @@ export const FgdBeritaAcaraReport = ({
           <View style={styles.colSummaryJumlah}><Text>{stats?.admin ?? '....'} Proposal</Text></View>
         </View>
         <View style={styles.rowSummary}>
-          <View style={styles.colSummaryUraian}><Text>Proposal Lolos Kurasi Internal</Text></View>
+          <View style={styles.colSummaryUraian}><Text>Proposal Lolos {prevTahapName}</Text></View>
           <View style={styles.colSummaryJumlah}><Text>{stats?.lolos ?? '....'} Proposal</Text></View>
         </View>
         <View style={styles.rowSummary}>
-          <View style={styles.colSummaryUraian}><Text>Proposal yang Lolos ke Kurasi Promotor</Text></View>
+          <View style={styles.colSummaryUraian}><Text>Proposal yang Lolos ke {nextTahapName}</Text></View>
           <View style={styles.colSummaryJumlah}><Text>{stats?.promotor ?? '....'} Proposal</Text></View>
         </View>
       </View>
@@ -174,69 +191,43 @@ export const FgdBeritaAcaraReport = ({
         Daftar lengkap proposal sebagaimana dimaksud menjadi bagian yang tidak terpisahkan dari Berita Acara ini (Lampiran I).
       </Text>
       <Text style={styles.paragraph}>
-        Demikian Berita Acara ini dibuat dengan sebenarnya untuk dipergunakan sebagaimana mestinya sebagai dasar pengajuan proposal inovasi ke Tahap Kurasi Tingkat Promotor Pegadaian Innovation Award (PIA) S12 Tahun 2026.
+        Demikian Berita Acara ini dibuat dengan sebenarnya untuk dipergunakan sebagaimana mestinya sebagai dasar pengajuan proposal inovasi ke Tahap {nextTahapName} Pegadaian Innovation Award (PIA) S12 Tahun 2026.
       </Text>
 
+      <View style={{ marginTop: 20, alignItems: 'flex-end' }}>
+        <Text>Ditetapkan di : Jakarta</Text>
+        <Text>Pada tanggal : {dateInfo?.dateNum} {dateInfo?.monthName} {dateInfo?.yearStr}</Text>
+      </View>
+
+      <View style={{ marginTop: 20, alignItems: 'center' }}>
+        {!isPromoter && <Text style={styles.headerTextBold}>{timName.toUpperCase()}</Text>}
+        <Text style={styles.headerTextBold}>PEGADAIAN INNOVATION AWARD (PIA) S12 TAHUN 2026</Text>
+      </View>
+
       <View style={styles.signatureSection}>
-        <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginBottom: 20 }}>
-          <View style={{ width: '40%', alignItems: 'flex-start' }}>
-            <Text style={{ fontSize: 9, marginBottom: 2 }}>Ditetapkan di : {dateInfo?.place || '_______________________'}</Text>
-            <Text style={{ fontSize: 9 }}>Pada tanggal  : {dateInfo ? `${dateInfo.dateNum} ${dateInfo.monthName} ${dateInfo.yearStr}` : '_______________________'}</Text>
-          </View>
+        <View style={styles.rowSigHeader}>
+          <Text style={[styles.colSigNo, styles.textBold]}>No</Text>
+          <Text style={[styles.colSigNama, styles.textBold]}>Nama</Text>
+          <Text style={[styles.colSigJabatan, styles.textBold]}>Jabatan</Text>
+          <Text style={[styles.colSigTtd, styles.textBold]}>Tanda Tangan</Text>
         </View>
         
-        <View style={{ alignItems: 'center' }}>
-          <Text style={styles.headerTextBold}>TIM TASK FORCE KURATOR</Text>
-          <Text style={styles.headerTextBold}>PEGADAIAN INNOVATION AWARD (PIA) S12 TAHUN 2026</Text>
-        </View>
-
-        <View style={[styles.tableSig, { marginTop: 15 }]}>
-          <View style={styles.rowSigHeader}>
-            <View style={styles.colSigNo}><Text style={styles.textBold}>No</Text></View>
-            <View style={styles.colSigNama}><Text style={styles.textBold}>Nama</Text></View>
-            <View style={styles.colSigJabatan}><Text style={styles.textBold}>Jabatan</Text></View>
-            <View style={styles.colSigTtd}><Text style={styles.textBold}>Tanda Tangan</Text></View>
+        {participants && participants.map((p, i) => (
+          <View style={styles.rowSig} key={i}>
+            <Text style={styles.colSigNo}>{i + 1}</Text>
+            <Text style={styles.colSigNama}>{p.name}</Text>
+            <Text style={styles.colSigJabatan}>{p.role}</Text>
+            <Text style={styles.colSigTtd}></Text>
           </View>
-          {(() => {
-            const defaultKetua = { nama: ketuaName || '....................', jabatan: 'Ketua Task Force Kurator' };
-            const defaultSekretaris = { nama: sekretarisName || '....................', jabatan: 'Sekretaris Task Force Kurator' };
-            
-            // Render basic rows first
-            const rows = [defaultKetua, defaultSekretaris];
-            
-            // Render remaining participants as Anggota
-            if (participants && participants.length > 0) {
-              participants.forEach(p => {
-                rows.push({
-                  nama: p.name,
-                  jabatan: 'Anggota Kurator'
-                });
-              });
-            } else {
-              rows.push({ nama: '....................', jabatan: 'Anggota Kurator' });
-              rows.push({ nama: '....................', jabatan: 'Anggota Kurator' });
-              rows.push({ nama: '....................', jabatan: 'Anggota Kurator' });
-            }
-            
-            return rows.map((row, i) => (
-              <View key={i} style={styles.rowSig}>
-                <View style={styles.colSigNo}><Text>{i + 1}</Text></View>
-                <View style={styles.colSigNama}><Text>{row.nama}</Text></View>
-                <View style={styles.colSigJabatan}><Text>{row.jabatan}</Text></View>
-                <View style={styles.colSigTtd}><Text></Text></View>
-              </View>
-            ));
-          })()}
-        </View>
+        ))}
+      </View>
 
-        <View style={{ marginTop: 20, flexDirection: 'row', justifyContent: 'flex-end' }}>
-          <View style={{ width: '40%', alignItems: 'center' }}>
-            <Text style={{ fontSize: 9 }}>Mengetahui,</Text>
-            <Text style={{ fontSize: 9, marginTop: 2 }}>Kepala Divisi Innovation Center</Text>
-            <View style={{ width: '100%', borderBottomWidth: 1, borderBottomColor: '#000', marginTop: 50, marginBottom: 5 }} />
-            <Text style={{ fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>(...................................)</Text>
-            <Text style={{ fontSize: 9, textAlign: 'center', color: '#666' }}>NIK. ..........................</Text>
-          </View>
+      <View style={styles.mengetahui}>
+        <View style={{ width: 180, alignItems: 'center' }}>
+          <Text style={{ textAlign: 'center' }}>Mengetahui,</Text>
+          <Text style={[styles.mengetahuiTitle, { textAlign: 'center' }]}>Kepala Divisi Innovation Center</Text>
+          <View style={{ width: 180, borderBottomWidth: 1, borderBottomColor: '#000', borderStyle: 'dashed', marginTop: 50, marginBottom: 5 }} />
+          <Text style={{ width: 180, textAlign: 'center', fontSize: 9 }}>NIK ..................................</Text>
         </View>
       </View>
     </Page>
@@ -245,7 +236,7 @@ export const FgdBeritaAcaraReport = ({
     <Page size="A4" style={styles.page} orientation="landscape">
       <View style={[styles.lampiranHeader, { alignItems: 'center', textAlign: 'center' }]}>
         <Text style={styles.headerTextBold}>Lampiran I</Text>
-        <Text style={[styles.headerTextBold, { marginTop: 10 }]}>DAFTAR PROPOSAL LOLOS KE KURASI PROMOTOR</Text>
+        <Text style={[styles.headerTextBold, { marginTop: 10 }]}>DAFTAR PROPOSAL LOLOS KE {nextTahapName.toUpperCase()}</Text>
         <Text style={styles.headerTextBold}>PEGADAIAN INNOVATION AWARD (PIA) S12 TAHUN 2026</Text>
       </View>
 
@@ -278,4 +269,5 @@ export const FgdBeritaAcaraReport = ({
       </Text>
     </Page>
   </Document>
-);
+  );
+};
