@@ -1,7 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useTransition } from 'react';
 import Link from 'next/link';
+import { updateDuplicateStatus } from '@/app/actions/duplicates';
 
 interface ProposalCard {
   id: number;
@@ -24,8 +25,10 @@ const CATEGORY_MAP: Record<string, { label: string, short: string, bg: string }>
   'BC': { label: 'Business Case', short: 'BC', bg: 'bg-[#B45309]' },
 };
 
-export default function CoordinatorBoard({ proposals }: { proposals: ProposalCard[] }) {
-  const [activeTab, setActiveTab] = useState<'assigned' | 'review'>('assigned');
+export default function CoordinatorBoard({ proposals, duplicates: initialDuplicates = [] }: { proposals: ProposalCard[], duplicates?: any[] }) {
+  const [activeTab, setActiveTab] = useState<'assigned' | 'review' | 'duplicates'>('assigned');
+  const [duplicates, setDuplicates] = useState(initialDuplicates);
+  const [isPending, startTransition] = useTransition();
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>({
     'PUSAT': true
@@ -130,10 +133,18 @@ export default function CoordinatorBoard({ proposals }: { proposals: ProposalCar
         <button 
           onClick={() => setActiveTab('review')}
           className={`px-6 py-2 rounded-full text-sm font-semibold transition-colors ${
-            activeTab === 'review' ? 'bg-[#0A4736] text-white' : 'text-gray-500 hover:text-gray-900'
+            activeTab === 'review' ? 'bg-indigo-600 text-white' : 'text-gray-500 hover:text-gray-900'
           }`}
         >
           Selesai Discreening
+        </button>
+        <button 
+          onClick={() => setActiveTab('duplicates')}
+          className={`px-6 py-2 rounded-full text-sm font-semibold transition-colors ${
+            activeTab === 'duplicates' ? 'bg-red-600 text-white' : 'text-gray-500 hover:text-gray-900'
+          }`}
+        >
+          Potensi Duplikat
         </button>
       </div>
 
@@ -154,7 +165,107 @@ export default function CoordinatorBoard({ proposals }: { proposals: ProposalCar
       </div>
 
       <div className="space-y-4">
-        {Object.entries(grouped).map(([cat, items]) => {
+        {activeTab === 'duplicates' ? (
+          duplicates.length === 0 ? (
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-12 text-center">
+              <h3 className="text-lg font-medium text-gray-900 mb-2">Belum ada potensi duplikat</h3>
+              <p className="text-gray-500">Belum ada kurator yang menandai potensi duplikasi.</p>
+            </div>
+          ) : (
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+              <div className="divide-y divide-gray-100">
+                {duplicates.map(d => (
+                  <div key={d.id} className="p-5 flex flex-col md:flex-row gap-4 items-start hover:bg-gray-50 transition-colors">
+                    <div className="flex-1 space-y-2">
+                      <div className="flex items-center gap-3">
+                        <Link href={`/curator/proposals/${d.proposalAId}?from=coordinator`} className="text-[15px] font-bold text-gray-900 hover:underline">
+                          {d.proposalATitle}
+                        </Link>
+                        <span className="text-xs text-gray-400">↔</span>
+                        <Link href={`/curator/proposals/${d.proposalBId}?from=coordinator`} className="text-[15px] font-bold text-gray-900 hover:underline">
+                          {d.proposalBTitle}
+                        </Link>
+                      </div>
+                      
+                      <div className="flex flex-wrap items-center gap-3 text-xs">
+                        <span className="px-2 py-0.5 rounded font-semibold bg-gray-100 text-gray-700 border border-gray-200">
+                          Ditandai oleh: {d.markedByName}
+                        </span>
+                        <span className={`px-2 py-0.5 rounded font-semibold ${
+                          d.aiSimilarityLevel === 'TINGGI' ? 'bg-red-100 text-red-700' :
+                          d.aiSimilarityLevel === 'SEDANG' ? 'bg-yellow-100 text-yellow-700' :
+                          'bg-green-100 text-green-700'
+                        }`}>
+                          AI: {d.aiSimilarityLevel}
+                        </span>
+                        
+                        <span className={`px-2 py-0.5 rounded font-semibold ${
+                          d.status === 'confirmed' ? 'bg-red-100 text-red-700 border border-red-200' :
+                          d.status === 'rejected' ? 'bg-gray-100 text-gray-700 border border-gray-200' :
+                          'bg-blue-100 text-blue-700 border border-blue-200'
+                        }`}>
+                          Status: {d.status === 'confirmed' ? 'Dikonfirmasi Duplikasi' : d.status === 'rejected' ? 'Ditolak (Bukan Duplikasi)' : 'Menunggu Review'}
+                        </span>
+                      </div>
+                      
+                      {d.note && (
+                        <p className="text-sm text-gray-600 bg-gray-50 p-2 rounded border border-gray-100 mt-2">
+                          <span className="font-semibold">Catatan Kurator:</span> {d.note}
+                        </p>
+                      )}
+                    </div>
+                    
+                    {/* Actions */}
+                    <div className="flex-shrink-0 flex flex-col md:flex-row gap-2">
+                      {d.status !== 'confirmed' && (
+                        <button
+                          disabled={isPending}
+                          onClick={() => {
+                            startTransition(async () => {
+                              const res = await updateDuplicateStatus(d.id, 'confirmed');
+                              if (!res.error) {
+                                setDuplicates(prev => prev.map(item => item.id === d.id ? { ...item, status: 'confirmed' } : item));
+                              }
+                            });
+                          }}
+                          className="px-3 py-1.5 text-xs font-semibold bg-red-50 text-red-700 hover:bg-red-100 border border-red-200 rounded transition-colors"
+                        >
+                          Konfirmasi Duplikasi
+                        </button>
+                      )}
+                      {d.status !== 'rejected' && (
+                        <button
+                          disabled={isPending}
+                          onClick={() => {
+                            startTransition(async () => {
+                              const res = await updateDuplicateStatus(d.id, 'rejected');
+                              if (!res.error) {
+                                setDuplicates(prev => prev.map(item => item.id === d.id ? { ...item, status: 'rejected' } : item));
+                              }
+                            });
+                          }}
+                          className="px-3 py-1.5 text-xs font-semibold bg-gray-50 text-gray-700 hover:bg-gray-100 border border-gray-200 rounded transition-colors"
+                        >
+                          Tolak
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )
+        ) : displayedProposals.length === 0 ? (
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-12 text-center">
+            <svg className="w-12 h-12 mx-auto text-gray-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
+            <h3 className="text-lg font-medium text-gray-900 mb-2">Belum ada proposal</h3>
+            <p className="text-gray-500">
+              {activeTab === 'assigned' 
+                ? 'Belum ada proposal yang di-assign ke Anda untuk discreening.'
+                : 'Belum ada proposal yang selesai discreening.'}
+            </p>
+          </div>
+        ) : Object.entries(grouped).map(([cat, items]) => {
           const isExpanded = expandedCategories[cat];
           const meta = CATEGORY_MAP[cat] || { label: cat, short: cat, bg: 'bg-gray-500' };
 

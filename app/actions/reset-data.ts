@@ -14,12 +14,18 @@ import {
   auditLogs,
   sponsorScores,
   scoringSnapshots,
-  finalResults
+  finalResults,
+  proposalAiAnalyses,
+  fgdAdditionalDocuments,
+  potentialDuplicates,
+  grandFinalSelections,
+  grandFinalAssessments
 } from '@/lib/db/schema';
 import { requireRole } from '@/lib/auth/helpers';
-import { eq, inArray, and, sql } from 'drizzle-orm';
+import { eq, inArray, and, sql, isNotNull } from 'drizzle-orm';
 import { getActiveCompetition } from './competitions';
 import { revalidatePath } from 'next/cache';
+import { del } from '@vercel/blob';
 
 export type ResetOptions = {
   resetScreening: boolean;
@@ -29,6 +35,9 @@ export type ResetOptions = {
   resetRegionalFinal: boolean;
   resetSponsor?: boolean;
   resetAuditLog: boolean;
+  resetAiCache?: boolean;
+  resetPdfs?: boolean;
+  resetDuplicates?: boolean;
 };
 
 export async function resetDataAction(options: ResetOptions) {
@@ -83,6 +92,7 @@ export async function resetDataAction(options: ResetOptions) {
 
     // 3. Finalisasi Regional & Grand Final
     if (options.resetRegionalFinal) {
+      await db.delete(grandFinalSelections).where(eq(grandFinalSelections.competitionId, compId));
       await db.update(proposals)
         .set({ 
           regionalFinalistRank: null,
@@ -101,6 +111,7 @@ export async function resetDataAction(options: ResetOptions) {
 
     // Penilaian Sponsor & Hasil Akhir
     if (options.resetSponsor) {
+      await db.delete(grandFinalAssessments).where(eq(grandFinalAssessments.competitionId, compId));
       await db.delete(sponsorScores).where(eq(sponsorScores.competitionId, compId));
       await db.delete(scoringSnapshots).where(eq(scoringSnapshots.competitionId, compId));
       await db.delete(finalResults).where(eq(finalResults.competitionId, compId));
@@ -176,6 +187,56 @@ export async function resetDataAction(options: ResetOptions) {
       executedActions.push('Audit Log');
     }
 
+    // 7. Cache Analisis AI
+    if (options.resetAiCache) {
+      const compProposals = await db.select({ id: proposals.id }).from(proposals).where(eq(proposals.competitionId, compId));
+      const compProposalIds = compProposals.map(p => p.id);
+      
+      if (compProposalIds.length > 0) {
+        await db.delete(proposalAiAnalyses).where(inArray(proposalAiAnalyses.proposalId, compProposalIds));
+        await db.update(proposals)
+          .set({ formattedTexts: null })
+          .where(inArray(proposals.id, compProposalIds));
+      }
+      executedActions.push('Cache Analisis AI');
+    }
+
+    // 8. Dokumen Tambahan PDF
+    if (options.resetPdfs) {
+      const compProposals = await db.select({ id: proposals.id }).from(proposals).where(eq(proposals.competitionId, compId));
+      const compProposalIds = compProposals.map(p => p.id);
+      
+      if (compProposalIds.length > 0) {
+        const docs = await db.select({ url: fgdAdditionalDocuments.fileUrl })
+          .from(fgdAdditionalDocuments)
+          .where(inArray(fgdAdditionalDocuments.proposalId, compProposalIds));
+          
+        if (docs.length > 0) {
+          const urls = docs.map(d => d.url);
+          try {
+            await del(urls);
+          } catch (e) {
+            console.error('Error deleting blobs from Vercel:', e);
+          }
+          await db.delete(fgdAdditionalDocuments).where(inArray(fgdAdditionalDocuments.proposalId, compProposalIds));
+        }
+      }
+      executedActions.push('Dokumen Tambahan PDF');
+    }
+
+    // 9. Potensi Duplikat
+    if (options.resetDuplicates) {
+      const compProposals = await db.select({ id: proposals.id }).from(proposals).where(eq(proposals.competitionId, compId));
+      const compProposalIds = compProposals.map(p => p.id);
+      
+      if (compProposalIds.length > 0) {
+        await db.delete(potentialDuplicates).where(
+          inArray(potentialDuplicates.proposalAId, compProposalIds)
+        );
+      }
+      executedActions.push('Potensi Duplikat');
+    }
+
     // Create a new audit log for the reset action itself
     await db.insert(auditLogs).values({
       actorId: session.userId,
@@ -238,6 +299,29 @@ export async function getResetStatsAction() {
     SELECT count(*) FROM sponsor_scores WHERE competition_id = ${compId}
   `);
 
+  const [aiCacheCount] = await db.execute(sql`
+    SELECT count(*) FROM proposal_ai_analyses paa
+    JOIN proposals p ON p.id = paa.proposal_id
+    WHERE p.competition_id = ${compId}
+  `);
+  
+  const [formattedTextsCount] = await db.execute(sql`
+    SELECT count(*) FROM proposals p
+    WHERE p.competition_id = ${compId} AND p.formatted_texts IS NOT NULL
+  `);
+
+  const [pdfCount] = await db.execute(sql`
+    SELECT count(*) FROM fgd_additional_documents fad
+    JOIN proposals p ON p.id = fad.proposal_id
+    WHERE p.competition_id = ${compId}
+  `);
+
+  const [duplicatesCount] = await db.execute(sql`
+    SELECT count(*) FROM potential_duplicates pd
+    JOIN proposals p ON p.id = pd.proposal_a_id
+    WHERE p.competition_id = ${compId}
+  `);
+
   return {
     screening: Number((screeningCount as any)?.count || 0),
     assignment: Number((assignmentCount as any)?.count || 0),
@@ -246,5 +330,8 @@ export async function getResetStatsAction() {
     regionalFinal: Number((regionalFinalCount as any)?.count || 0),
     sponsor: Number((sponsorCount as any)?.count || 0),
     auditLog: Number((auditLogCount as any)?.count || 0),
+    aiCache: Number((aiCacheCount as any)?.count || 0) + Number((formattedTextsCount as any)?.count || 0),
+    pdfs: Number((pdfCount as any)?.count || 0),
+    duplicates: Number((duplicatesCount as any)?.count || 0),
   };
 }

@@ -473,6 +473,19 @@ export const fgdComments = pgTable('fgd_comments', {
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
+// ─── POTENTIAL DUPLICATES ───────────────────────────────────────────────────────
+export const potentialDuplicates = pgTable('potential_duplicates', {
+  id: serial('id').primaryKey(),
+  proposalAId: integer('proposal_a_id').notNull().references(() => proposals.id),
+  proposalBId: integer('proposal_b_id').notNull().references(() => proposals.id),
+  markedBy: integer('marked_by').notNull().references(() => users.id),
+  markedAt: timestamp('marked_at', { withTimezone: true }).notNull().defaultNow(),
+  aiSimilarityLevel: text('ai_similarity_level').notNull(),
+  note: text('note'),
+  // status: pending, confirmed, rejected
+  status: text('status').notNull().default('pending'),
+});
+
 // ─── TYPE EXPORTS ─────────────────────────────────────────────────────────────
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;

@@ -14,6 +14,7 @@ interface ProposalCard {
   status: string; // 'assigned', 'in_review', 'completed'
   aiScore: string;
   proposalRowNumber: number;
+  hasDuplicateWarning?: boolean;
 }
 
 const CATEGORY_MAP: Record<string, { label: string, short: string, bg: string }> = {
@@ -23,8 +24,8 @@ const CATEGORY_MAP: Record<string, { label: string, short: string, bg: string }>
   'BC': { label: 'Business Case', short: 'BC', bg: 'bg-[#B45309]' },
 };
 
-export default function CuratorBoard({ proposals }: { proposals: ProposalCard[] }) {
-  const [activeTab, setActiveTab] = useState<'assigned' | 'review'>('assigned');
+export default function CuratorBoard({ proposals, duplicates = [] }: { proposals: ProposalCard[], duplicates?: any[] }) {
+  const [activeTab, setActiveTab] = useState<'assigned' | 'review' | 'duplicates'>('assigned');
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>({
     'PUSAT': true
@@ -88,6 +89,12 @@ export default function CuratorBoard({ proposals }: { proposals: ProposalCard[] 
               <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-green-50 text-green-700 border border-green-200 whitespace-nowrap">
                 AI: {p.aiScore}
               </span>
+              {p.hasDuplicateWarning && (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-bold bg-amber-50 text-amber-700 border border-amber-200 whitespace-nowrap" title="Pernah ditandai sebagai Potensi Duplikat">
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                  Potensi Duplikat
+                </span>
+              )}
             </div>
             <div className="text-xs text-gray-600 font-semibold mb-2">
               {p.division || p.regionCenter || 'Operasional'}
@@ -129,6 +136,14 @@ export default function CuratorBoard({ proposals }: { proposals: ProposalCard[] 
         >
           Selesai Discreening
         </button>
+        <button 
+          onClick={() => setActiveTab('duplicates')}
+          className={`px-6 py-2 rounded-full text-sm font-semibold transition-colors ${
+            activeTab === 'duplicates' ? 'bg-red-600 text-white' : 'text-gray-500 hover:text-gray-900'
+          }`}
+        >
+          Potensi Duplikat
+        </button>
       </div>
 
       {/* Search Input */}
@@ -148,7 +163,58 @@ export default function CuratorBoard({ proposals }: { proposals: ProposalCard[] 
       </div>
 
       <div className="space-y-4">
-        {displayedProposals.length === 0 ? (
+        {activeTab === 'duplicates' ? (
+          duplicates.length === 0 ? (
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-12 text-center">
+              <h3 className="text-lg font-medium text-gray-900 mb-2">Belum ada potensi duplikat</h3>
+              <p className="text-gray-500">Anda belum menandai proposal apa pun sebagai potensi duplikasi.</p>
+            </div>
+          ) : (
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+              <div className="divide-y divide-gray-100">
+                {duplicates.map(d => (
+                  <div key={d.id} className="p-5 flex flex-col md:flex-row gap-4 items-start hover:bg-gray-50 transition-colors">
+                    <div className="flex-1 space-y-2">
+                      <div className="flex items-center gap-3">
+                        <Link href={`/curator/proposals/${d.proposalAId}`} className="text-[15px] font-bold text-gray-900 hover:underline">
+                          {d.proposalATitle}
+                        </Link>
+                        <span className="text-xs text-gray-400">↔</span>
+                        <Link href={`/curator/proposals/${d.proposalBId}`} className="text-[15px] font-bold text-gray-900 hover:underline">
+                          {d.proposalBTitle}
+                        </Link>
+                      </div>
+                      
+                      <div className="flex flex-wrap items-center gap-3 text-xs">
+                        <span className={`px-2 py-0.5 rounded font-semibold ${
+                          d.aiSimilarityLevel === 'TINGGI' ? 'bg-red-100 text-red-700' :
+                          d.aiSimilarityLevel === 'SEDANG' ? 'bg-yellow-100 text-yellow-700' :
+                          'bg-green-100 text-green-700'
+                        }`}>
+                          AI: {d.aiSimilarityLevel}
+                        </span>
+                        
+                        <span className={`px-2 py-0.5 rounded font-semibold ${
+                          d.status === 'confirmed' ? 'bg-red-100 text-red-700 border border-red-200' :
+                          d.status === 'rejected' ? 'bg-gray-100 text-gray-700 border border-gray-200' :
+                          'bg-blue-100 text-blue-700 border border-blue-200'
+                        }`}>
+                          Status: {d.status === 'confirmed' ? 'Dikonfirmasi Duplikasi' : d.status === 'rejected' ? 'Ditolak (Bukan Duplikasi)' : 'Menunggu Review'}
+                        </span>
+                      </div>
+                      
+                      {d.note && (
+                        <p className="text-sm text-gray-600 bg-gray-50 p-2 rounded border border-gray-100 mt-2">
+                          <span className="font-semibold">Catatan:</span> {d.note}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )
+        ) : displayedProposals.length === 0 ? (
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-12 text-center">
             <svg className="w-12 h-12 mx-auto text-gray-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
             <h3 className="text-lg font-medium text-gray-900 mb-2">Belum ada proposal</h3>

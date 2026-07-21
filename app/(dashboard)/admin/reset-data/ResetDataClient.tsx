@@ -18,6 +18,9 @@ export default function ResetDataClient({ stats }: { stats: any }) {
     resetRegionalFinal: false,
     resetSponsor: false,
     resetAuditLog: false,
+    resetAiCache: false,
+    resetPdfs: false,
+    resetDuplicates: false,
   });
 
   const [confirmText, setConfirmText] = useState('');
@@ -147,6 +150,45 @@ export default function ResetDataClient({ stats }: { stats: any }) {
             <div>
               <div className="font-semibold text-gray-900">Penilaian Sponsor & Final Result</div>
               <div className="text-sm text-gray-500">Hapus {stats.sponsor} skor sponsor, snapshots, dan final results. Proposal akan kembali ke status grand_finalist.</div>
+            </div>
+          </label>
+
+          <label className="flex items-start space-x-3 p-4 border rounded-lg hover:bg-gray-50 cursor-pointer">
+            <input 
+              type="checkbox" 
+              className="mt-1 w-5 h-5 text-red-600 rounded border-gray-300 focus:ring-red-500"
+              checked={options.resetAiCache}
+              onChange={(e) => setOptions(prev => ({ ...prev, resetAiCache: e.target.checked }))}
+            />
+            <div>
+              <div className="font-semibold text-gray-900">Cache Analisis AI</div>
+              <div className="text-sm text-gray-500">Hapus {stats.aiCache} data Rangkuman AI, Klaim & Angka Kunci, Poin Klarifikasi, Format AI. Proposal kembali ke kondisi belum dianalisis.</div>
+            </div>
+          </label>
+
+          <label className="flex items-start space-x-3 p-4 border rounded-lg hover:bg-gray-50 cursor-pointer">
+            <input 
+              type="checkbox" 
+              className="mt-1 w-5 h-5 text-red-600 rounded border-gray-300 focus:ring-red-500"
+              checked={options.resetPdfs}
+              onChange={(e) => setOptions(prev => ({ ...prev, resetPdfs: e.target.checked }))}
+            />
+            <div>
+              <div className="font-semibold text-gray-900">Dokumen Tambahan PDF</div>
+              <div className="text-sm text-gray-500">Hapus {stats.pdfs} dokumen dari database dan hapus file fisik secara permanen dari Vercel Blob Storage.</div>
+            </div>
+          </label>
+
+          <label className="flex items-start space-x-3 p-4 border rounded-lg hover:bg-gray-50 cursor-pointer">
+            <input 
+              type="checkbox" 
+              className="mt-1 w-5 h-5 text-red-600 rounded border-gray-300 focus:ring-red-500"
+              checked={options.resetDuplicates}
+              onChange={(e) => setOptions(prev => ({ ...prev, resetDuplicates: e.target.checked }))}
+            />
+            <div>
+              <div className="font-semibold text-gray-900">Potensi Duplikat</div>
+              <div className="text-sm text-gray-500">Hapus {stats.duplicates} entri penandaan potensi duplikat (semua status: pending/dikonfirmasi/ditolak).</div>
             </div>
           </label>
 

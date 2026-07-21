@@ -1,7 +1,7 @@
 import { getSession } from '@/lib/auth/session';
 import { db } from '@/lib/db';
 import { proposals, curatorAssignments, screeningResults } from '@/lib/db/schema';
-import { eq, and, sql } from 'drizzle-orm';
+import { eq, and, sql, inArray } from 'drizzle-orm';
 import { notFound, redirect } from 'next/navigation';
 import Link from 'next/link';
 import AutoStartScreening from './AutoStartScreening';
@@ -10,6 +10,9 @@ import { checkHardLock } from '@/app/actions/screening';
 import FormattedTextDisplay from '@/app/components/FormattedTextDisplay';
 
 import { maskProposalIdentity } from '@/lib/utils/blindReview';
+import CompareProposalsPanel from './CompareProposalsPanel';
+import DuplicateWarningBanner from './DuplicateWarningBanner';
+import { getProposalDuplicateWarnings } from '@/app/actions/duplicates';
 
 export default async function ProposalDetailPage({ 
   params, 
@@ -57,17 +60,28 @@ export default async function ProposalDetailPage({
   const proposalRowNumber = rnResult.length > 0 ? Number(rnResult[0].rn) : 0;
 
   // Get user's assignment
-  let assignment = null;
-  if (isCurator) {
-    const [found] = await db
-      .select()
-      .from(curatorAssignments)
-      .where(and(eq(curatorAssignments.proposalId, proposalId), eq(curatorAssignments.curatorId, session.userId)))
-      .limit(1);
-    assignment = found || null;
-  }
+  const [assignment] = await db.select().from(curatorAssignments).where(
+    and(
+      eq(curatorAssignments.curatorId, session.userId),
+      eq(curatorAssignments.proposalId, proposalId)
+    )
+  ).limit(1);
+
+  const warnings = await getProposalDuplicateWarnings(proposalId);
     
-  if (!assignment && !isCoordinator) {
+  let isLinkedToDuplicate = false;
+  if (!assignment && !isCoordinator && warnings.length > 0) {
+    const otherIds = warnings.map(w => w.otherProposalId);
+    const linkedAssignments = await db.select().from(curatorAssignments).where(
+      and(
+        eq(curatorAssignments.curatorId, session.userId),
+        inArray(curatorAssignments.proposalId, otherIds)
+      )
+    );
+    isLinkedToDuplicate = linkedAssignments.length > 0;
+  }
+
+  if (!assignment && !isCoordinator && !isLinkedToDuplicate) {
     return (
       <div className="p-8 text-center text-red-600">
         <h2 className="text-xl font-bold mb-2">Akses Ditolak</h2>
@@ -169,6 +183,8 @@ export default async function ProposalDetailPage({
           )}
         </div>
       </div>
+
+      <DuplicateWarningBanner warnings={warnings} />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left Column: Main Info */}
@@ -298,6 +314,16 @@ export default async function ProposalDetailPage({
               </div>
             )}
 
+            {/* Bandingkan dengan Proposal Lain */}
+            {(isCurator || isCoordinator) && (
+              <CompareProposalsPanel
+                proposalId={proposal.id}
+                proposalTitle={proposal.title}
+                category={proposal.category}
+                competitionId={proposal.competitionId}
+                isReadOnly={!assignment && !isCoordinator && isLinkedToDuplicate}
+              />
+            )}
 
           </div>
         </div>
@@ -332,7 +358,7 @@ export default async function ProposalDetailPage({
             </div>
           </div>
 
-          {assignment && (
+          {assignment ? (
             <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
               <h3 className="font-bold text-gray-900 mb-4">Form Screening Kelayakan</h3>
               <ScreeningForm 
@@ -342,7 +368,16 @@ export default async function ProposalDetailPage({
                 existingResult={existingResult}
               />
             </div>
-          )}
+          ) : isLinkedToDuplicate ? (
+            <div className="bg-blue-50 p-6 rounded-xl border border-blue-200 shadow-sm sticky top-6">
+              <h2 className="text-lg font-bold text-blue-900 mb-2">Mode Read-Only</h2>
+              <p className="text-blue-800 text-sm leading-relaxed">
+                Anda melihat proposal ini karena terhubung sebagai potensi duplikat dengan proposal jatah Anda.
+                <br /><br />
+                Anda <strong className="font-semibold">tidak dapat</strong> melakukan screening (submit/edit/reset) untuk proposal ini. Ini tetap wewenang kurator pemilik aslinya.
+              </p>
+            </div>
+          ) : null}
         </div>
       </div>
 

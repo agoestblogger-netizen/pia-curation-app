@@ -4,6 +4,7 @@ import { proposals, users, curatorAssignments } from '@/lib/db/schema';
 import { eq, and, sql } from 'drizzle-orm';
 import { getActiveCompetition } from '@/app/actions/competitions';
 import CoordinatorBoard from './CoordinatorBoard';
+import { getCoordinatorPotentialDuplicates } from '@/app/actions/duplicates';
 
 export default async function ProposalsPage() {
   await requireRole(['coordinator', 'viewer']);
@@ -65,6 +66,8 @@ export default async function ProposalsPage() {
   const completedCount = mappedProposals.filter(p => p.status === 'completed').length;
   const totalCount = mappedProposals.length;
 
+  const duplicates = await getCoordinatorPotentialDuplicates();
+
   return (
     <div className="p-8 max-w-[1200px] mx-auto">
       <div className="mb-8">
@@ -79,7 +82,7 @@ export default async function ProposalsPage() {
         </p>
       </div>
 
-      <CoordinatorBoard proposals={mappedProposals} />
+      <CoordinatorBoard proposals={mappedProposals} duplicates={duplicates} />
     </div>
   );
 }

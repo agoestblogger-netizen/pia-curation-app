@@ -4,6 +4,7 @@ import { proposals, curatorAssignments, competitions, users } from '@/lib/db/sch
 import { eq, and, sql } from 'drizzle-orm';
 import { maskProposalIdentity } from '@/lib/utils/blindReview';
 import CuratorBoard from './CuratorBoard';
+import { getCuratorPotentialDuplicates, getActiveDuplicateWarningsForProposals } from '@/app/actions/duplicates';
 
 export default async function CuratorDashboard() {
   const session = await getSession();
@@ -46,21 +47,32 @@ export default async function CuratorDashboard() {
     totalAssigned = assignments.length;
     totalCompleted = assignments.filter(a => a.assignmentStatus === 'completed').length;
 
-    mappedProposals = assignments.map(a => maskProposalIdentity({
-      id: a.id,
-      title: a.title,
-      category: a.category,
-      proposerName: a.proposerName,
-      division: a.division,
-      summary: a.summary,
-      regionCenter: a.regionCenter,
-      status: a.assignmentStatus,
-      aiScore: a.aiCidaTotal ? a.aiCidaTotal.toFixed(1) : '-',
-      proposalRowNumber: a.nomorUrut || 0,
+    const assignedProposalIds = assignments.map(a => a.id);
+    const activeWarnings = await getActiveDuplicateWarningsForProposals(assignedProposalIds);
+    const warningProposalIds = new Set(
+      activeWarnings.flatMap(w => [w.proposalAId, w.proposalBId])
+    );
+
+    mappedProposals = assignments.map(a => ({
+      ...maskProposalIdentity({
+        id: a.id,
+        title: a.title,
+        category: a.category,
+        proposerName: a.proposerName,
+        division: a.division,
+        summary: a.summary,
+        regionCenter: a.regionCenter,
+        status: a.assignmentStatus,
+        aiScore: a.aiCidaTotal ? a.aiCidaTotal.toFixed(1) : '-',
+        proposalRowNumber: a.nomorUrut || 0,
+      }),
+      hasDuplicateWarning: warningProposalIds.has(a.id)
     }));
 
     mappedProposals.sort((a, b) => a.proposalRowNumber - b.proposalRowNumber);
   }
+
+  const duplicates = await getCuratorPotentialDuplicates();
 
   // User details for Identity block
   const [user] = await db.select().from(users).where(eq(users.id, session.userId)).limit(1);
@@ -83,7 +95,7 @@ export default async function CuratorDashboard() {
       </div>
 
       {/* Main Content Area handled by Client Component for Tabs & Accordion interactivity */}
-      <CuratorBoard proposals={mappedProposals} />
+      <CuratorBoard proposals={mappedProposals} duplicates={duplicates} />
     </div>
   );
 }
