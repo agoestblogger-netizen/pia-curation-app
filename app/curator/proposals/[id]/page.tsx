@@ -9,7 +9,15 @@ import ScreeningForm from './ScreeningForm';
 import { checkHardLock } from '@/app/actions/screening';
 import FormattedTextDisplay from '@/app/components/FormattedTextDisplay';
 
-export default async function ProposalDetailPage({ params }: { params: Promise<{ id: string }> }) {
+import { maskProposalIdentity } from '@/lib/utils/blindReview';
+
+export default async function ProposalDetailPage({ 
+  params, 
+  searchParams 
+}: { 
+  params: Promise<{ id: string }>;
+  searchParams?: Promise<{ from?: string }>;
+}) {
   const session = await getSession();
   
   if (!session) {
@@ -23,12 +31,20 @@ export default async function ProposalDetailPage({ params }: { params: Promise<{
     redirect('/login');
   }
 
+  const resolvedSearchParams = searchParams ? await searchParams : {};
+  const isCoordinatorContext = session.roles.includes('coordinator') && resolvedSearchParams.from === 'coordinator';
+  const shouldMask = (session.roles.includes('curator') || session.roles.includes('promoter')) && !isCoordinatorContext && !session.roles.includes('admin');
+
   const { id } = await params;
   const proposalId = parseInt(id, 10);
   if (isNaN(proposalId)) notFound();
 
-  const [proposal] = await db.select().from(proposals).where(eq(proposals.id, proposalId)).limit(1);
+  let [proposal] = await db.select().from(proposals).where(eq(proposals.id, proposalId)).limit(1);
   if (!proposal) notFound();
+
+  if (shouldMask) {
+    proposal = maskProposalIdentity(proposal);
+  }
 
   const rnResult = await db.execute(sql`
     SELECT rn FROM (

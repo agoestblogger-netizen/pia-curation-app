@@ -4,6 +4,7 @@ import {
   fgdSessions, fgdVotes, fgdComments, users, proposalAiAnalyses, fgdAdditionalDocuments
 } from '@/lib/db/schema';
 import { eq, sql, inArray } from 'drizzle-orm';
+import { maskProposalIdentity } from '@/lib/utils/blindReview';
 import FgdRoomClient from './FgdRoomClient';
 import Link from 'next/link';
 
@@ -72,7 +73,7 @@ export default async function FgdRoomPage({ params }: { params: Promise<{ sessio
     ORDER BY p.category, p.region_center, p.id ASC
   `);
 
-  const allRawProposals = rawProposals as unknown as Array<{
+  let allRawProposals = rawProposals as unknown as Array<{
     id: number;
     title: string;
     proposerName: string;
@@ -92,6 +93,15 @@ export default async function FgdRoomPage({ params }: { params: Promise<{ sessio
     aiAnalysis?: any;
     additionalDocuments?: any[];
   }>;
+
+  // In FGD room: always mask identity for curator/promoter, even if they are dual-role (coordinator+curator)
+  // Coordinator-only users (no curator/promoter role) are NOT masked
+  const hasCuratorOrPromoter = session.roles.includes('curator') || session.roles.includes('promoter');
+  const isAdminOnly = session.roles.includes('admin') && !hasCuratorOrPromoter;
+  const shouldMask = (hasCuratorOrPromoter || isViewerOnly) && !isAdminOnly;
+  if (shouldMask) {
+    allRawProposals = allRawProposals.map(p => maskProposalIdentity(p));
+  }
 
   // Fetch AI analyses for the proposals in this session
   const proposalIds = allRawProposals.map(p => p.id);

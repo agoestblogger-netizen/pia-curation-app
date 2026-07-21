@@ -2,6 +2,7 @@ import { getSession } from '@/lib/auth/session';
 import { db } from '@/lib/db';
 import { proposals, curatorAssignments, competitions, users } from '@/lib/db/schema';
 import { eq, and, sql } from 'drizzle-orm';
+import { maskProposalIdentity } from '@/lib/utils/blindReview';
 import CuratorBoard from './CuratorBoard';
 
 export default async function CuratorDashboard() {
@@ -45,7 +46,7 @@ export default async function CuratorDashboard() {
     totalAssigned = assignments.length;
     totalCompleted = assignments.filter(a => a.assignmentStatus === 'completed').length;
 
-    mappedProposals = assignments.map(a => ({
+    mappedProposals = assignments.map(a => maskProposalIdentity({
       id: a.id,
       title: a.title,
       category: a.category,

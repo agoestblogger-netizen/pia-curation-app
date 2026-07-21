@@ -11,6 +11,7 @@ import { requireRole } from '@/lib/auth/helpers';
 import { eq, and, notInArray, inArray } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { audit } from '@/lib/audit';
+import { maskProposalIdentity } from '@/lib/utils/blindReview';
 
 type PromoterActionState = {
   success?: boolean;
@@ -167,6 +168,8 @@ export async function getPassedProposals(competitionId: number, promoterId: numb
     .where(eq(competitions.id, competitionId))
     .limit(1);
 
+  let proposalsData: any[] = [];
+
   if (comp?.promotorAccessMode === 'assigned') {
     const assignedIds = await db
       .select({ proposalId: promoterAssignments.proposalId })
@@ -179,28 +182,31 @@ export async function getPassedProposals(competitionId: number, promoterId: numb
       );
 
     const ids = assignedIds.map((a) => a.proposalId);
-    if (ids.length === 0) return []; // none assigned
-
-    return db
+    if (ids.length > 0) {
+      proposalsData = await db
+        .select()
+        .from(proposals)
+        .where(
+          and(
+            eq(proposals.competitionId, competitionId),
+            eq(proposals.status, 'promotor_selection'),
+            inArray(proposals.id, ids)
+          )
+        );
+    }
+  } else {
+    // default open
+    proposalsData = await db
       .select()
       .from(proposals)
       .where(
         and(
           eq(proposals.competitionId, competitionId),
-          eq(proposals.status, 'promotor_selection'),
-          inArray(proposals.id, ids)
+          eq(proposals.status, 'promotor_selection')
         )
       );
   }
 
-  // default open
-  return db
-    .select()
-    .from(proposals)
-    .where(
-      and(
-        eq(proposals.competitionId, competitionId),
-        eq(proposals.status, 'promotor_selection')
-      )
-    );
+  // Mask identity for promoters
+  return proposalsData.map(p => maskProposalIdentity(p));
 }
