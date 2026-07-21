@@ -11,8 +11,8 @@ export async function formatProposalFieldAction(
   fieldName: string,
   originalText: string
 ) {
-  // Hanya Koordinator, Kurator, atau Promotor yang boleh trigger
-  await requireRole(['coordinator', 'curator', 'promoter']);
+  // Hanya Koordinator, Kurator, Promotor, atau Sponsor yang boleh trigger
+  await requireRole(['coordinator', 'curator', 'promoter', 'sponsor']);
 
   if (!originalText || originalText.trim() === '') {
     return { error: 'Teks asli kosong.' };
