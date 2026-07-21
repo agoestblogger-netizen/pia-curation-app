@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useState, useTransition, useEffect, useRef } from 'react';
 import { formatProposalFieldAction } from '@/app/actions/formatText';
 
 type Props = {
@@ -9,6 +9,8 @@ type Props = {
   originalText: string | null;
   formattedText?: string | null;
   canFormat?: boolean; // HANYA true untuk coordinator, curator, promoter
+  autoFormatOnLoad?: boolean;
+  hideFormatButton?: boolean;
 };
 
 // Simple Markdown parser to avoid external dependencies
@@ -35,11 +37,21 @@ export default function FormattedTextDisplay({
   fieldName, 
   originalText, 
   formattedText,
-  canFormat = false
+  canFormat = false,
+  autoFormatOnLoad = false,
+  hideFormatButton = false
 }: Props) {
   const [isPending, startTransition] = useTransition();
   const [showOriginal, setShowOriginal] = useState(!formattedText);
   const [error, setError] = useState<string | null>(null);
+  const autoFormatTriggered = useRef(false);
+
+  useEffect(() => {
+    if (autoFormatOnLoad && !formattedText && originalText && canFormat && !autoFormatTriggered.current) {
+      autoFormatTriggered.current = true;
+      handleFormat();
+    }
+  }, [autoFormatOnLoad, formattedText, originalText, canFormat]);
 
   if (!originalText) {
     return <span className="text-gray-400 italic">Kosong</span>;
@@ -84,7 +96,14 @@ export default function FormattedTextDisplay({
           </button>
         )}
 
-        {!formattedText && canFormat && (
+        {isPending && autoFormatOnLoad && hideFormatButton && (
+          <div className="flex items-center gap-1.5 text-xs font-medium text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-md">
+            <svg className="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+            <span>Merapikan otomatis...</span>
+          </div>
+        )}
+
+        {!formattedText && canFormat && !hideFormatButton && (
           <button
             onClick={handleFormat}
             disabled={isPending}

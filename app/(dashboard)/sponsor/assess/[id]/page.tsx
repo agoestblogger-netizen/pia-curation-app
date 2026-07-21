@@ -83,6 +83,8 @@ export default async function AssessPage({
                 originalText={proposal.summary}
                 formattedText={(proposal.formattedTexts as any)?.summary}
                 canFormat={true}
+                autoFormatOnLoad={true}
+                hideFormatButton={true}
               />
             </div>
           </div>
