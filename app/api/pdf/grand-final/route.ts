@@ -5,6 +5,7 @@ import { competitions, proposals, grandFinalAssessments, users } from '@/lib/db/
 import { eq, and, sql } from 'drizzle-orm';
 import { renderToStream } from '@react-pdf/renderer';
 import { GrandFinalBeritaAcara } from '@/lib/pdf/templates/grand-final-berita-acara';
+import React from 'react';
 
 export async function GET(req: NextRequest) {
   try {
@@ -80,12 +81,13 @@ export async function GET(req: NextRequest) {
 
     // Create stream
     const stream = await renderToStream(
-      <GrandFinalBeritaAcara 
-        competitionName={activeComp.name}
-        dateStr={dateStr}
-        proposals={data}
-        sponsors={sponsorsList}
-      />
+      // @ts-ignore
+      React.createElement(GrandFinalBeritaAcara, {
+        competitionName: activeComp.name,
+        dateStr: dateStr,
+        proposals: data,
+        sponsors: sponsorsList
+      })
     );
 
     return new NextResponse(stream as any, {
