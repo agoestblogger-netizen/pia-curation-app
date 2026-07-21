@@ -1,4 +1,3 @@
-export const BLIND_REVIEW_TEXT = '[Disembunyikan]';
 
 export function maskProposalIdentity<T extends Record<string, any>>(proposal: T): T {
   // If the proposal is null or undefined, return it as is
@@ -22,11 +21,11 @@ export function maskProposalIdentity<T extends Record<string, any>>(proposal: T)
   for (const field of fieldsToMask) {
     if (field in masked) {
       if (Array.isArray(masked[field])) {
-        // If it's an array (like teamMembers), clear it
+        // If it's an array (like teamMembers), clear it so UI shows '-'
         (masked as any)[field] = [];
       } else if (masked[field] !== null && masked[field] !== undefined) {
-        // If it's a string or other value, replace with the blind review text
-        (masked as any)[field] = BLIND_REVIEW_TEXT;
+        // Set to null so UI fallback pattern `value || '-'` naturally shows '-'
+        (masked as any)[field] = null;
       }
     }
   }
