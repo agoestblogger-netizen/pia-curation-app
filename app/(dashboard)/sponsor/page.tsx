@@ -45,7 +45,9 @@ export default async function SponsorDashboard() {
               <tr key={p.id}>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 font-medium">{index + 1}</td>
                 <td className="px-6 py-4 text-sm font-medium text-gray-900">{p.title}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{p.category}</td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  {p.category === 'BC' ? 'Business Creation' : p.category === 'BI' ? 'Business Improvement' : p.category}
+                </td>
                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                   <Link href={`/sponsor/assess/${p.id}`} className="text-indigo-600 hover:text-indigo-900">
                     Beri Nilai &rarr;

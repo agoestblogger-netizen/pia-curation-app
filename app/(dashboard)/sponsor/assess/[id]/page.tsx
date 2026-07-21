@@ -62,7 +62,7 @@ export default async function AssessPage({
           <div>
             <div className="flex items-center space-x-3 mb-2">
               <span className="px-2.5 py-0.5 bg-indigo-100 text-indigo-800 text-xs font-semibold rounded-full">
-                {proposal.category}
+                {proposal.category === 'BC' ? 'Business Creation' : proposal.category === 'BI' ? 'Business Improvement' : proposal.category}
               </span>
               <span className="px-2.5 py-0.5 bg-green-100 text-green-800 text-xs font-semibold rounded-full">
                 {proposal.status}
