@@ -47,6 +47,7 @@ export default function FormattedTextDisplay({
   const autoFormatTriggered = useRef(false);
 
   const handleFormat = () => {
+    if (!originalText) return;
     setError(null);
     startTransition(async () => {
       const res = await formatProposalFieldAction(proposalId, fieldName, originalText);
