@@ -7,8 +7,8 @@ import { eq, desc } from 'drizzle-orm';
 export default async function AuditLogPage() {
   const session = await getSession();
 
-  if (!session || !session.roles.includes('coordinator')) {
-    return <div className="p-8 text-red-500">Unauthorized</div>;
+  if (!session || !session.roles.includes('admin')) {
+    return <div className="p-8 text-red-500">Unauthorized. Anda harus login sebagai Admin.</div>;
   }
 
   const logs = await db

@@ -85,9 +85,9 @@ export default function ClientSidebar({ session }: { session: Session }) {
               { label: 'Semua Proposal', path: '/coordinator/proposals', roles: ['coordinator'] },
               { label: 'Finalisasi & Ranking', path: '/coordinator/finalization', roles: ['coordinator'] },
               { label: 'Manajemen User', path: '/coordinator/users', roles: ['coordinator'] },
-              { label: 'Audit Log', path: '/coordinator/audit-log', roles: ['coordinator'] },
               { isDivider: true, roles: ['admin'] },
               { isHeader: true, headerText: 'Admin Zone', roles: ['admin'] },
+              { label: 'Audit Log', path: '/coordinator/audit-log', roles: ['admin'], customClass: 'hover:bg-red-900/50 text-red-300' },
               { label: 'Reset Data Testing', path: '/admin/reset-data', roles: ['admin'], customClass: 'hover:bg-red-900/50 text-red-300' },
             ];
 
