@@ -1,7 +1,7 @@
 import { getSession, SessionPayload } from './session';
 import { redirect } from 'next/navigation';
 
-export type Role = 'admin' | 'coordinator' | 'curator' | 'promoter' | 'sponsor';
+export type Role = 'admin' | 'coordinator' | 'curator' | 'promoter' | 'sponsor' | 'viewer';
 
 /**
  * Get current session or redirect to login.

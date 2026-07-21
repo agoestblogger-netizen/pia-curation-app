@@ -72,11 +72,11 @@ export default async function AssessPage({
           </div>
         </div>
         
-        {proposal.aiSummary && (
+        {proposal.summary && (
           <div className="mt-6 pt-6 border-t border-gray-200">
             <h3 className="text-sm font-semibold text-gray-900 mb-2">Rangkuman AI</h3>
-            <p className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed bg-gray-50 p-4 rounded-lg border border-gray-100">
-              {proposal.aiSummary}
+            <p className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed bg-gray-50 p-4 rounded-lg">
+              {proposal.summary}
             </p>
           </div>
         )}

@@ -166,9 +166,8 @@ export async function GET(
   const generatedAt = today.toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' }) + ' WIB';
   const generatedBy = session.name || 'System';
   const curatorName = session.name || 'Tim Kurator';
-  const regionName = fgd.category === 'PUSAT' ? 'Kantor Pusat' : fgd.category;
+  const regionName = fgd.regionCenter ? fgd.regionCenter : (fgd.scope === 'nasional' ? 'Nasional' : 'Regional');
 
-  // @ts-expect-error React 19 types
   const stream = await renderToStream(
     // @ts-expect-error React 19 types
     React.createElement(FgdBeritaAcaraReport, {
