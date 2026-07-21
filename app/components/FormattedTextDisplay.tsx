@@ -46,17 +46,6 @@ export default function FormattedTextDisplay({
   const [error, setError] = useState<string | null>(null);
   const autoFormatTriggered = useRef(false);
 
-  useEffect(() => {
-    if (autoFormatOnLoad && !formattedText && originalText && canFormat && !autoFormatTriggered.current) {
-      autoFormatTriggered.current = true;
-      handleFormat();
-    }
-  }, [autoFormatOnLoad, formattedText, originalText, canFormat]);
-
-  if (!originalText) {
-    return <span className="text-gray-400 italic">Kosong</span>;
-  }
-
   const handleFormat = () => {
     setError(null);
     startTransition(async () => {
@@ -69,6 +58,17 @@ export default function FormattedTextDisplay({
       }
     });
   };
+
+  useEffect(() => {
+    if (autoFormatOnLoad && !formattedText && originalText && canFormat && !autoFormatTriggered.current) {
+      autoFormatTriggered.current = true;
+      handleFormat();
+    }
+  }, [autoFormatOnLoad, formattedText, originalText, canFormat]);
+
+  if (!originalText) {
+    return <span className="text-gray-400 italic">Kosong</span>;
+  }
 
   const isFailed = !!error;
 
