@@ -5,6 +5,7 @@ import { eq, and } from 'drizzle-orm';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import AssessClient from './AssessClient';
+import FormattedTextDisplay from '@/app/components/FormattedTextDisplay';
 
 export default async function AssessPage({
   params,
@@ -74,10 +75,16 @@ export default async function AssessPage({
         
         {proposal.summary && (
           <div className="mt-6 pt-6 border-t border-gray-200">
-            <h3 className="text-sm font-semibold text-gray-900 mb-2">Rangkuman AI</h3>
-            <p className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed bg-gray-50 p-4 rounded-lg">
-              {proposal.summary}
-            </p>
+            <h3 className="text-sm font-semibold text-gray-900 mb-2">Review Proposal</h3>
+            <div className="bg-gray-50 rounded-lg">
+              <FormattedTextDisplay 
+                proposalId={proposal.id}
+                fieldName="summary"
+                originalText={proposal.summary}
+                formattedText={(proposal.formattedTexts as any)?.summary}
+                canFormat={true}
+              />
+            </div>
           </div>
         )}
       </div>
