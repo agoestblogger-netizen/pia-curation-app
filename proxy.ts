@@ -48,8 +48,8 @@ export async function proxy(request: NextRequest) {
   for (const [role, prefixes] of Object.entries(ROLE_ROUTES)) {
     for (const prefix of prefixes) {
       if (pathname.startsWith(prefix)) {
-        // Exception: Allow curator to access FGD list
-        if (pathname.startsWith('/coordinator/fgd') && session.roles.includes('curator')) {
+        // Exception: Allow curator, promoter, and viewer to access FGD list
+        if (pathname.startsWith('/coordinator/fgd') && (session.roles.includes('curator') || session.roles.includes('promoter') || session.roles.includes('viewer'))) {
           continue;
         }
         

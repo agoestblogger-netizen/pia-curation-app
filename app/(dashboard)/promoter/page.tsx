@@ -15,10 +15,10 @@ export default async function PromoterDashboard() {
   if (!activeComp || activeComp.phase !== 'promotor_selection') {
     return (
       <div className="p-8">
-        <h1 className="text-2xl font-bold mb-4">Pemilihan Promotor</h1>
+        <h1 className="text-2xl font-bold mb-4">Papan Penilaian (Promotor)</h1>
         <div className="bg-yellow-50 text-yellow-800 p-4 rounded-md">
           {activeComp 
-            ? `Tahap pemilihan promotor belum dibuka (Saat ini: ${activeComp.phase}).`
+            ? `Tahap penilaian oleh Promotor belum dibuka (Saat ini: ${activeComp.phase}).`
             : 'Belum ada kompetisi aktif.'}
         </div>
       </div>
