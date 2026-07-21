@@ -178,10 +178,13 @@ export const FgdBeritaAcaraReport = ({
       </Text>
 
       <View style={styles.signatureSection}>
-        <View style={{ alignItems: 'flex-end', marginBottom: 15 }}>
-          <Text>Ditetapkan di : {dateInfo?.place || '_______________________'}</Text>
-          <Text>Pada tanggal : {dateInfo ? `${dateInfo.dateNum} ${dateInfo.monthName} ${dateInfo.yearStr}` : '_______________________'}</Text>
+        <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginBottom: 20 }}>
+          <View style={{ width: '40%', alignItems: 'flex-start' }}>
+            <Text style={{ fontSize: 9, marginBottom: 2 }}>Ditetapkan di : {dateInfo?.place || '_______________________'}</Text>
+            <Text style={{ fontSize: 9 }}>Pada tanggal  : {dateInfo ? `${dateInfo.dateNum} ${dateInfo.monthName} ${dateInfo.yearStr}` : '_______________________'}</Text>
+          </View>
         </View>
+        
         <View style={{ alignItems: 'center' }}>
           <Text style={styles.headerTextBold}>TIM TASK FORCE KURATOR</Text>
           <Text style={styles.headerTextBold}>PEGADAIAN INNOVATION AWARD (PIA) S12 TAHUN 2026</Text>
@@ -226,11 +229,14 @@ export const FgdBeritaAcaraReport = ({
           })()}
         </View>
 
-        <View style={styles.mengetahui}>
-          <Text>Mengetahui,</Text>
-          <Text style={styles.mengetahuiTitle}>Kepala Divisi Innovation Center</Text>
-          <Text>(...................................)</Text>
-          <Text>NIK. ..........................</Text>
+        <View style={{ marginTop: 20, flexDirection: 'row', justifyContent: 'flex-end' }}>
+          <View style={{ width: '40%', alignItems: 'center' }}>
+            <Text style={{ fontSize: 9 }}>Mengetahui,</Text>
+            <Text style={{ fontSize: 9, marginTop: 2 }}>Kepala Divisi Innovation Center</Text>
+            <View style={{ width: '100%', borderBottomWidth: 1, borderBottomColor: '#000', marginTop: 50, marginBottom: 5 }} />
+            <Text style={{ fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>(...................................)</Text>
+            <Text style={{ fontSize: 9, textAlign: 'center', color: '#666' }}>NIK. ..........................</Text>
+          </View>
         </View>
       </View>
     </Page>
