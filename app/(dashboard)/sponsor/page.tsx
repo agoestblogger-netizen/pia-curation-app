@@ -34,14 +34,16 @@ export default async function SponsorDashboard() {
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-16">No</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Judul Proposal</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Kategori</th>
               <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {proposals.map((p) => (
+            {proposals.map((p, index) => (
               <tr key={p.id}>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 font-medium">{index + 1}</td>
                 <td className="px-6 py-4 text-sm font-medium text-gray-900">{p.title}</td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{p.category}</td>
                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
@@ -53,7 +55,7 @@ export default async function SponsorDashboard() {
             ))}
             {proposals.length === 0 && (
               <tr>
-                <td colSpan={3} className="px-6 py-4 text-center text-sm text-gray-500">
+                <td colSpan={4} className="px-6 py-4 text-center text-sm text-gray-500">
                   Tidak ada proposal Grand Final.
                 </td>
               </tr>

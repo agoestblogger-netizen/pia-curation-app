@@ -293,5 +293,6 @@ export async function getGrandFinalProposals(competitionId: number) {
         eq(proposals.competitionId, competitionId),
         eq(proposals.status, 'grand_final')
       )
-    );
+    )
+    .orderBy(proposals.id);
 }
