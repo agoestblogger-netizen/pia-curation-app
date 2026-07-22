@@ -102,10 +102,13 @@ export default async function CuratorRegionalFinalPage() {
     const proposalsSummary = sProposals.map(p => {
       const pAssessments = sAssessments.filter(a => a.proposalId === p.id);
       
+      const judgeScores: Record<number, number> = {};
       let finalScore = 0;
       if (pAssessments.length > 0) {
         const sum = pAssessments.reduce((acc, curr) => {
-          return acc + (curr.paramProblemFit + curr.paramDampak + curr.paramKelayakan + curr.paramProfessional) / 4;
+          const score = (curr.paramProblemFit + curr.paramDampak + curr.paramKelayakan + curr.paramProfessional) / 4;
+          judgeScores[curr.judgeUserId] = score;
+          return acc + score;
         }, 0);
         finalScore = sum / pAssessments.length;
       }
@@ -118,6 +121,7 @@ export default async function CuratorRegionalFinalPage() {
         proposerName: p.proposerName,
         category: p.category,
         assessmentCount: pAssessments.length,
+        judgeScores,
         finalScore,
         rank: pResult?.rank || null,
         isTieBreak: !!pResult?.tieBreakNote,

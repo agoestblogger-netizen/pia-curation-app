@@ -160,6 +160,12 @@ export default function CuratorRegionalFinalClient({ sessions }: { sessions: any
                     <tr>
                       <th className="py-3 px-4">ID</th>
                       <th className="py-3 px-4">Proposal</th>
+                      {s.judges.map((j: any) => (
+                        <th key={j.judgeId} className="py-3 px-4 text-center whitespace-nowrap" title={j.name}>
+                          <div className="font-semibold text-gray-800">{j.name}</div>
+                          <div className="text-[10px] text-gray-400 font-normal">{j.isFinalized ? '✓ Final' : 'Belum Final'}</div>
+                        </th>
+                      ))}
                       <th className="py-3 px-4 text-center">Status Dinilai</th>
                       <th className="py-3 px-4 text-center">Skor Akhir</th>
                       <th className="py-3 px-4 text-center">Ranking</th>
@@ -184,6 +190,20 @@ export default function CuratorRegionalFinalClient({ sessions }: { sessions: any
                             <div className="font-semibold text-gray-900">{p.title}</div>
                             <div className="text-xs text-gray-500">{p.proposerName}</div>
                           </td>
+                          {s.judges.map((j: any) => {
+                            const score = p.judgeScores?.[j.judgeId];
+                            return (
+                              <td key={j.judgeId} className="py-3 px-4 text-center whitespace-nowrap">
+                                {score !== undefined ? (
+                                  <span className="inline-block font-bold text-gray-900 bg-gray-100 px-2 py-1 rounded text-xs border border-gray-200">
+                                    {score.toFixed(1)}
+                                  </span>
+                                ) : (
+                                  <span className="text-gray-400 font-medium text-xs">-</span>
+                                )}
+                              </td>
+                            );
+                          })}
                           <td className="py-3 px-4 text-center">
                             <span className={`px-2 py-1 text-xs rounded-full font-medium ${
                               p.assessmentCount === s.judges.length && s.judges.length > 0 
