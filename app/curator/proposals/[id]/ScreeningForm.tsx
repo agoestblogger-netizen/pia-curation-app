@@ -82,13 +82,12 @@ export default function ScreeningForm({ assignmentId, isCompleted, hardLock, exi
         
       if (res?.error) {
         setError(res.error);
-        setLoading(false);
       } else if (isEditing) {
         setIsEditing(false);
-        setLoading(false);
       }
     } catch (err: any) {
       setError(err?.message || 'Terjadi kesalahan saat menyimpan');
+    } finally {
       setLoading(false);
     }
   };
