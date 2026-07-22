@@ -35,6 +35,7 @@ export default function ScreeningForm({ assignmentId, isCompleted, hardLock, exi
         setSubmitting(false);
       } else {
         router.refresh();
+        setTimeout(() => setSubmitting(false), 2000);
       }
     } catch (err: any) {
       setError(err?.message || 'Terjadi kesalahan');
@@ -101,9 +102,9 @@ export default function ScreeningForm({ assignmentId, isCompleted, hardLock, exi
       } else {
         if (isEditing) {
           setIsEditing(false);
-          setSubmitting(false);
         }
         router.refresh();
+        setTimeout(() => setSubmitting(false), 2000);
       }
     } catch (err: any) {
       setError(err?.message || 'Terjadi kesalahan saat menyimpan');
