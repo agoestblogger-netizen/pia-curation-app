@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { submitScreeningAction, editScreeningAction, resetScreeningAction } from '@/app/actions/screening';
 import { SCREENING_VERDICTS } from '@/lib/constants/screening';
@@ -17,6 +17,12 @@ export default function ScreeningForm({ assignmentId, isCompleted, hardLock, exi
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState(false);
+
+  useEffect(() => {
+    if (isCompleted && !isEditing) {
+      setSubmitting(false);
+    }
+  }, [isCompleted, isEditing, existingResult?.verdict, existingResult?.notes]);
 
   const handleReset = async () => {
     if (!confirm('Anda yakin ingin membatalkan/reset screening ini? Proposal akan kembali ke status awal (belum discreening).')) return;
@@ -93,7 +99,10 @@ export default function ScreeningForm({ assignmentId, isCompleted, hardLock, exi
         setError(res.error);
         setSubmitting(false);
       } else {
-        if (isEditing) setIsEditing(false);
+        if (isEditing) {
+          setIsEditing(false);
+          setSubmitting(false);
+        }
         router.refresh();
       }
     } catch (err: any) {
