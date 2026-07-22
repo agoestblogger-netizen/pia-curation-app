@@ -64,9 +64,13 @@ export default async function SponsorDashboard() {
                       Beri Nilai &rarr;
                     </Link>
                     {assessedIds.has(p.id) && (
-                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-semibold bg-emerald-50 text-emerald-600 border border-emerald-200/60 shadow-sm" title="Anda sudah memberikan penilaian">
-                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" /></svg>
-                        Sudah Dinilai
+                      <span 
+                        className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-emerald-100 text-emerald-600 shadow-sm cursor-help" 
+                        title="Sudah Dinilai"
+                      >
+                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth="3" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+                        </svg>
                       </span>
                     )}
                   </div>
