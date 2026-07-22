@@ -45,8 +45,8 @@ export default async function SponsorDashboard() {
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-16">No</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Judul Proposal</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Kategori</th>
-              <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Done</th>
               <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
+              <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Done</th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
@@ -58,6 +58,11 @@ export default async function SponsorDashboard() {
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                   {p.category === 'BC' ? 'Business Case' : p.category === 'BI' ? 'Breakthrough Innovation' : p.category}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                  <Link href={`/sponsor/assess/${p.id}`} className="text-indigo-600 hover:text-indigo-900 transition-colors">
+                    Beri Nilai &rarr;
+                  </Link>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-center text-sm">
                   {assessedIds.has(p.id) ? (
@@ -72,11 +77,6 @@ export default async function SponsorDashboard() {
                   ) : (
                     <span className="text-gray-300">-</span>
                   )}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                  <Link href={`/sponsor/assess/${p.id}`} className="text-indigo-600 hover:text-indigo-900 transition-colors">
-                    Beri Nilai &rarr;
-                  </Link>
                 </td>
               </tr>
             ))}
