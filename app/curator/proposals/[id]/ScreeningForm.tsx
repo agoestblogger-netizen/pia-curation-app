@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { submitScreeningAction, editScreeningAction, resetScreeningAction } from '@/app/actions/screening';
 import { SCREENING_VERDICTS } from '@/lib/constants/screening';
 
@@ -12,9 +13,14 @@ type ScreeningFormProps = {
 };
 
 export default function ScreeningForm({ assignmentId, isCompleted, hardLock, existingResult }: ScreeningFormProps) {
+  const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState(false);
+
+  useEffect(() => {
+    setLoading(false);
+  }, [assignmentId, isCompleted, existingResult?.verdict, existingResult?.notes]);
 
   const handleReset = async () => {
     if (!confirm('Anda yakin ingin membatalkan/reset screening ini? Proposal akan kembali ke status awal (belum discreening).')) return;
@@ -22,7 +28,11 @@ export default function ScreeningForm({ assignmentId, isCompleted, hardLock, exi
     setError(null);
     try {
       const res = await resetScreeningAction(assignmentId);
-      if (res.error) setError(res.error);
+      if (res.error) {
+        setError(res.error);
+      } else {
+        router.refresh();
+      }
     } finally {
       setLoading(false);
     }
@@ -82,8 +92,9 @@ export default function ScreeningForm({ assignmentId, isCompleted, hardLock, exi
         
       if (res?.error) {
         setError(res.error);
-      } else if (isEditing) {
-        setIsEditing(false);
+      } else {
+        if (isEditing) setIsEditing(false);
+        router.refresh();
       }
     } catch (err: any) {
       setError(err?.message || 'Terjadi kesalahan saat menyimpan');
