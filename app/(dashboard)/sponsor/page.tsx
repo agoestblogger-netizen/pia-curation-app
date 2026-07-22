@@ -2,6 +2,9 @@ import { requireRole } from '@/lib/auth/helpers';
 import { getActiveCompetition } from '@/app/actions/competitions';
 import { getGrandFinalProposals, getCriteria } from '@/app/actions/scoring';
 import Link from 'next/link';
+import { db } from '@/lib/db';
+import { grandFinalAssessments } from '@/lib/db/schema';
+import { eq, and } from 'drizzle-orm';
 
 export default async function SponsorDashboard() {
   const session = await requireRole('sponsor');
@@ -22,6 +25,11 @@ export default async function SponsorDashboard() {
   }
 
   const proposals = await getGrandFinalProposals(activeComp.id);
+
+  const myAssessments = await db.select({ proposalId: grandFinalAssessments.proposalId })
+    .from(grandFinalAssessments)
+    .where(eq(grandFinalAssessments.sponsorId, session.userId));
+  const assessedIds = new Set(myAssessments.map(a => a.proposalId));
 
   return (
     <div className="p-8">
@@ -44,7 +52,14 @@ export default async function SponsorDashboard() {
             {proposals.map((p, index) => (
               <tr key={p.id}>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 font-medium">{index + 1}</td>
-                <td className="px-6 py-4 text-sm font-medium text-gray-900">{p.title}</td>
+                <td className="px-6 py-4 text-sm font-medium text-gray-900">
+                  {p.title}
+                  {assessedIds.has(p.id) && (
+                    <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
+                      Sudah Dinilai
+                    </span>
+                  )}
+                </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                   {p.category === 'BC' ? 'Business Case' : p.category === 'BI' ? 'Breakthrough Innovation' : p.category}
                 </td>
