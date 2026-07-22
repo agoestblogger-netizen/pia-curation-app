@@ -45,6 +45,7 @@ export default async function SponsorDashboard() {
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-16">No</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Judul Proposal</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Kategori</th>
+              <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Done</th>
               <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
             </tr>
           </thead>
@@ -58,29 +59,30 @@ export default async function SponsorDashboard() {
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                   {p.category === 'BC' ? 'Business Case' : p.category === 'BI' ? 'Breakthrough Innovation' : p.category}
                 </td>
+                <td className="px-6 py-4 whitespace-nowrap text-center text-sm">
+                  {assessedIds.has(p.id) ? (
+                    <span 
+                      className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-emerald-100 text-emerald-600 shadow-sm cursor-help" 
+                      title="Sudah Dinilai"
+                    >
+                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth="3" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+                      </svg>
+                    </span>
+                  ) : (
+                    <span className="text-gray-300">-</span>
+                  )}
+                </td>
                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                  <div className="flex items-center justify-end gap-3">
-                    <Link href={`/sponsor/assess/${p.id}`} className="text-indigo-600 hover:text-indigo-900 transition-colors">
-                      Beri Nilai &rarr;
-                    </Link>
-                    {assessedIds.has(p.id) && (
-                      <span 
-                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold bg-emerald-50 text-emerald-600 border border-emerald-200/60 shadow-sm"
-                        title="Done"
-                      >
-                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
-                        </svg>
-                        Done
-                      </span>
-                    )}
-                  </div>
+                  <Link href={`/sponsor/assess/${p.id}`} className="text-indigo-600 hover:text-indigo-900 transition-colors">
+                    Beri Nilai &rarr;
+                  </Link>
                 </td>
               </tr>
             ))}
             {proposals.length === 0 && (
               <tr>
-                <td colSpan={4} className="px-6 py-4 text-center text-sm text-gray-500">
+                <td colSpan={5} className="px-6 py-4 text-center text-sm text-gray-500">
                   Tidak ada proposal Grand Final.
                 </td>
               </tr>
