@@ -56,19 +56,20 @@ export default async function SponsorDashboard() {
                   {p.title}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  <div className="flex items-center gap-2">
-                    <span>{p.category === 'BC' ? 'Business Case' : p.category === 'BI' ? 'Breakthrough Innovation' : p.category}</span>
+                  {p.category === 'BC' ? 'Business Case' : p.category === 'BI' ? 'Breakthrough Innovation' : p.category}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                  <div className="flex items-center justify-end gap-3">
+                    <Link href={`/sponsor/assess/${p.id}`} className="text-indigo-600 hover:text-indigo-900 transition-colors">
+                      Beri Nilai &rarr;
+                    </Link>
                     {assessedIds.has(p.id) && (
-                      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
+                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-semibold bg-emerald-50 text-emerald-600 border border-emerald-200/60 shadow-sm" title="Anda sudah memberikan penilaian">
+                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" /></svg>
                         Sudah Dinilai
                       </span>
                     )}
                   </div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                  <Link href={`/sponsor/assess/${p.id}`} className="text-indigo-600 hover:text-indigo-900">
-                    Beri Nilai &rarr;
-                  </Link>
                 </td>
               </tr>
             ))}
