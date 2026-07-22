@@ -54,14 +54,16 @@ export default async function SponsorDashboard() {
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 font-medium">{index + 1}</td>
                 <td className="px-6 py-4 text-sm font-medium text-gray-900">
                   {p.title}
-                  {assessedIds.has(p.id) && (
-                    <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
-                      Sudah Dinilai
-                    </span>
-                  )}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {p.category === 'BC' ? 'Business Case' : p.category === 'BI' ? 'Breakthrough Innovation' : p.category}
+                  <div className="flex items-center gap-2">
+                    <span>{p.category === 'BC' ? 'Business Case' : p.category === 'BI' ? 'Breakthrough Innovation' : p.category}</span>
+                    {assessedIds.has(p.id) && (
+                      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
+                        Sudah Dinilai
+                      </span>
+                    )}
+                  </div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                   <Link href={`/sponsor/assess/${p.id}`} className="text-indigo-600 hover:text-indigo-900">
