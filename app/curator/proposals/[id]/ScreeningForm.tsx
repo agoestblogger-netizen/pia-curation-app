@@ -69,25 +69,33 @@ export default function ScreeningForm({ assignmentId, isCompleted, hardLock, exi
     );
   }
 
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (loading) return;
+    setLoading(true);
+    setError(null);
+    const formData = new FormData(e.currentTarget);
+    try {
+      const res = isEditing 
+        ? await editScreeningAction({}, formData)
+        : await submitScreeningAction({}, formData);
+        
+      if (res?.error) {
+        setError(res.error);
+        setLoading(false);
+      } else if (isEditing) {
+        setIsEditing(false);
+        setLoading(false);
+      }
+    } catch (err: any) {
+      setError(err?.message || 'Terjadi kesalahan saat menyimpan');
+      setLoading(false);
+    }
+  };
+
   return (
     <form 
-      action={async (formData) => {
-        setLoading(true);
-        setError(null);
-        try {
-          const res = isEditing 
-            ? await editScreeningAction({}, formData)
-            : await submitScreeningAction({}, formData);
-            
-          if (res.error) {
-            setError(res.error);
-          } else if (isEditing) {
-            setIsEditing(false);
-          }
-        } finally {
-          setLoading(false);
-        }
-      }}
+      onSubmit={handleSubmit}
       className="space-y-6"
     >
       <input type="hidden" name="assignmentId" value={assignmentId} />
