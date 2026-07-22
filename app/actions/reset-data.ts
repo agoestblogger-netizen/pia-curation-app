@@ -299,6 +299,10 @@ export async function getResetStatsAction() {
     SELECT count(*) FROM sponsor_scores WHERE competition_id = ${compId}
   `);
 
+  const [gfAssessmentCount] = await db.execute(sql`
+    SELECT count(*) FROM grand_final_assessments WHERE competition_id = ${compId}
+  `);
+
   const [aiCacheCount] = await db.execute(sql`
     SELECT count(*) FROM proposal_ai_analyses paa
     JOIN proposals p ON p.id = paa.proposal_id
@@ -329,6 +333,7 @@ export async function getResetStatsAction() {
     promotor: Number((promotorCount as any)?.count || 0),
     regionalFinal: Number((regionalFinalCount as any)?.count || 0),
     sponsor: Number((sponsorCount as any)?.count || 0),
+    gfAssessments: Number((gfAssessmentCount as any)?.count || 0),
     auditLog: Number((auditLogCount as any)?.count || 0),
     aiCache: Number((aiCacheCount as any)?.count || 0) + Number((formattedTextsCount as any)?.count || 0),
     pdfs: Number((pdfCount as any)?.count || 0),

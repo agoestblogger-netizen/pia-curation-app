@@ -149,7 +149,7 @@ export default function ResetDataClient({ stats }: { stats: any }) {
             />
             <div>
               <div className="font-semibold text-gray-900">Penilaian Sponsor & Final Result</div>
-              <div className="text-sm text-gray-500">Hapus {stats.sponsor} skor sponsor, snapshots, dan final results. Proposal akan kembali ke status grand_finalist.</div>
+              <div className="text-sm text-gray-500">Hapus {stats.sponsor} skor sponsor, {stats.gfAssessments} penilaian grand final, snapshots, dan final results. Proposal akan kembali ke status grand_finalist.</div>
             </div>
           </label>
 
