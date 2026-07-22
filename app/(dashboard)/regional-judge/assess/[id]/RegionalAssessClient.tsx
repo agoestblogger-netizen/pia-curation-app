@@ -27,6 +27,11 @@ const getBoundsForLevel = (levelNum: number) => {
   return { min: 0, max: 59 };
 };
 
+const getRandomScoreForLevel = (levelNum: number) => {
+  const { min, max } = getBoundsForLevel(levelNum);
+  return Math.floor(Math.random() * (max - min + 1)) + min;
+};
+
 const RUBRIC = {
   paramProblemFit: {
     title: 'Problem & Solution Fit',
@@ -107,20 +112,25 @@ export default function RegionalAssessClient({
     paramProfessional: getLevelForScore(existingAssessment?.paramProfessional || 0),
   });
 
-  const getInitialScores = (key: string, existingScore: number) => {
-    const scores: Record<number, number> = { 1: 50, 2: 70, 3: 85, 4: 95 };
+  const getInitialScores = (existingScore: number) => {
+    const scores: Record<number, number> = {
+      1: getRandomScoreForLevel(1),
+      2: getRandomScoreForLevel(2),
+      3: getRandomScoreForLevel(3),
+      4: getRandomScoreForLevel(4),
+    };
     const lvl = getLevelForScore(existingScore);
-    if (lvl) {
+    if (lvl && existingScore > 0) {
       scores[lvl] = existingScore;
     }
     return scores;
   };
 
   const [levelScores, setLevelScores] = useState<LevelScores>({
-    paramProblemFit: getInitialScores('paramProblemFit', existingAssessment?.paramProblemFit || 0),
-    paramDampak: getInitialScores('paramDampak', existingAssessment?.paramDampak || 0),
-    paramKelayakan: getInitialScores('paramKelayakan', existingAssessment?.paramKelayakan || 0),
-    paramProfessional: getInitialScores('paramProfessional', existingAssessment?.paramProfessional || 0),
+    paramProblemFit: getInitialScores(existingAssessment?.paramProblemFit || 0),
+    paramDampak: getInitialScores(existingAssessment?.paramDampak || 0),
+    paramKelayakan: getInitialScores(existingAssessment?.paramKelayakan || 0),
+    paramProfessional: getInitialScores(existingAssessment?.paramProfessional || 0),
   });
 
   const [saveStatus, setSaveStatus] = useState('');
@@ -204,7 +214,7 @@ export default function RegionalAssessClient({
                 <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${
                   isSelected ? colors.dotSelected : colors.dotUnselected
                 }`}>
-                  {level.score}
+                  {currentLevelScore || level.score}
                 </div>
               </div>
               <p className={`text-sm leading-relaxed ${isSelected ? 'text-gray-900 font-medium' : 'text-gray-500'}`}>

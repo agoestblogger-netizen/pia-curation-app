@@ -17,33 +17,41 @@ export default async function CuratorRegionalFinalPage() {
     return <div className="p-8">Tidak ada kompetisi aktif.</div>;
   }
 
-  // Get all regional sessions this user is PIC for.
-  const myPicSessions = await db.select({
-    sessionId: regionalFinalPics.sessionId
-  })
-  .from(regionalFinalPics)
-  .where(eq(regionalFinalPics.userId, session.userId));
-  
-  const mySessionIds = myPicSessions.map(p => p.sessionId);
+  let sessions: any[] = [];
+  const isAdminOrCoordinator = session.roles.some(r => ['admin', 'coordinator', 'curator'].includes(r));
 
-  if (mySessionIds.length === 0) {
-    return (
-      <div className="p-8 max-w-4xl mx-auto">
-        <h1 className="text-2xl font-bold text-gray-900 mb-6">Setup Final Regional</h1>
-        <div className="bg-white p-6 rounded-xl border shadow-sm">
-          Anda tidak terdaftar sebagai PIC Regional untuk grup final regional manapun pada kompetisi ini.
+  if (isAdminOrCoordinator) {
+    sessions = await db.select().from(regionalFinalSessions)
+      .where(eq(regionalFinalSessions.competitionId, activeComp.id));
+  } else {
+    // Get sessions where user is assigned as PIC
+    const myPicSessions = await db.select({
+      sessionId: regionalFinalPics.sessionId
+    })
+    .from(regionalFinalPics)
+    .where(eq(regionalFinalPics.userId, session.userId));
+    
+    const mySessionIds = myPicSessions.map(p => p.sessionId);
+
+    if (mySessionIds.length === 0) {
+      return (
+        <div className="p-8 max-w-4xl mx-auto">
+          <h1 className="text-2xl font-bold text-gray-900 mb-6">Setup Final Regional</h1>
+          <div className="bg-white p-6 rounded-xl border shadow-sm text-gray-600">
+            Anda belum ditugaskan sebagai PIC Regional untuk grup manapun pada kompetisi ini.
+          </div>
         </div>
-      </div>
-    );
-  }
+      );
+    }
 
-  const sessions = await db.select().from(regionalFinalSessions)
-    .where(
-      and(
-        eq(regionalFinalSessions.competitionId, activeComp.id),
-        inArray(regionalFinalSessions.id, mySessionIds)
-      )
-    );
+    sessions = await db.select().from(regionalFinalSessions)
+      .where(
+        and(
+          eq(regionalFinalSessions.competitionId, activeComp.id),
+          inArray(regionalFinalSessions.id, mySessionIds)
+        )
+      );
+  }
 
   const sessionIds = sessions.map(s => s.id);
   

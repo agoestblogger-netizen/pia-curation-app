@@ -14,13 +14,18 @@ export default function CuratorRegionalFinalClient({ sessions }: { sessions: any
     
     setLoading(sessionId);
     setError('');
-    const res = await updateRegionalSessionStatusAction(sessionId, newStatus);
-    if (res?.error) {
-      setError(res.error);
-    } else {
-      router.refresh();
+    try {
+      const res = await updateRegionalSessionStatusAction(sessionId, newStatus);
+      if (res?.error) {
+        setError(res.error);
+      } else {
+        router.refresh();
+      }
+    } catch (err: any) {
+      setError(err?.message || 'Terjadi kesalahan koneksi server saat mengubah status.');
+    } finally {
+      setLoading(null);
     }
-    setLoading(null);
   };
   
   const handleLock = async (sessionId: number) => {
@@ -28,31 +33,36 @@ export default function CuratorRegionalFinalClient({ sessions }: { sessions: any
     
     setLoading(sessionId);
     setError('');
-    const res = await lockRegionalFinalResultsAction(sessionId);
-    if (res?.error) {
-      if (res.needsTieBreak) {
-        const tieWinnerStr = prompt(`Terdapat nilai seri!\n\n${res.error}\n\nMasukkan ID Proposal pemenang tie-break (ID: ${res.tiedProposals?.join(' / ')}):`);
-        if (tieWinnerStr) {
-          const note = prompt('Catatan tie-break (opsional):');
-          const winnerId = parseInt(tieWinnerStr, 10);
-          if (!isNaN(winnerId)) {
-            const retryRes = await lockRegionalFinalResultsAction(sessionId, winnerId, note || undefined);
-            if (retryRes?.error) {
-              setError(retryRes.error);
+    try {
+      const res = await lockRegionalFinalResultsAction(sessionId);
+      if (res?.error) {
+        if (res.needsTieBreak) {
+          const tieWinnerStr = prompt(`Terdapat nilai seri!\n\n${res.error}\n\nMasukkan ID Proposal pemenang tie-break (ID: ${res.tiedProposals?.join(' / ')}):`);
+          if (tieWinnerStr) {
+            const note = prompt('Catatan tie-break (opsional):');
+            const winnerId = parseInt(tieWinnerStr, 10);
+            if (!isNaN(winnerId)) {
+              const retryRes = await lockRegionalFinalResultsAction(sessionId, winnerId, note || undefined);
+              if (retryRes?.error) {
+                setError(retryRes.error);
+              } else {
+                router.refresh();
+              }
             } else {
-              router.refresh();
+              setError('ID tidak valid.');
             }
-          } else {
-            setError('ID tidak valid.');
           }
+        } else {
+          setError(res.error);
         }
       } else {
-        setError(res.error);
+        router.refresh();
       }
-    } else {
-      router.refresh();
+    } catch (err: any) {
+      setError(err?.message || 'Terjadi kesalahan koneksi server saat mengunci hasil.');
+    } finally {
+      setLoading(null);
     }
-    setLoading(null);
   };
   
   return (
@@ -66,7 +76,8 @@ export default function CuratorRegionalFinalClient({ sessions }: { sessions: any
       {sessions.map(s => {
         const expectedAssessments = s.proposals.length * s.juriCountSetting;
         const progressPercentage = expectedAssessments > 0 ? Math.round((s.totalAssessments / expectedAssessments) * 100) : 0;
-        
+        const isAssessmentComplete = expectedAssessments > 0 && s.totalAssessments >= expectedAssessments;
+
         return (
           <div key={s.id} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
             <div className="bg-gray-50 border-b border-gray-200 p-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -100,32 +111,61 @@ export default function CuratorRegionalFinalClient({ sessions }: { sessions: any
                   </button>
                 )}
                 {s.status === 'penilaian_dibuka' && (
-                  <button 
-                    onClick={() => handleStatusChange(s.id, 'sidang_penetapan')}
-                    disabled={loading === s.id}
-                    className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white font-medium rounded-lg text-sm"
-                  >
-                    Lanjut ke Sidang Penetapan
-                  </button>
-                )}
-                {s.status === 'sidang_penetapan' && (
-                  <div className="flex flex-col items-end gap-1">
+                  isAssessmentComplete ? (
                     <button 
-                      onClick={() => handleLock(s.id)}
-                      disabled={loading === s.id || (s.judges.length > 0 && !s.judges.every((j: any) => j.isFinalized))}
-                      className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white font-medium rounded-lg text-sm"
+                      onClick={() => handleStatusChange(s.id, 'sidang_penetapan')}
+                      disabled={loading === s.id}
+                      className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-lg text-sm transition-all shadow-sm flex items-center gap-1"
                     >
-                      Kunci Hasil & Ranking
+                      <span>Lanjut ke Sidang Penetapan →</span>
                     </button>
-                    {s.judges.length > 0 && !s.judges.every((j: any) => j.isFinalized) && (
-                      <span className="text-[10px] text-orange-600 font-semibold max-w-[150px] text-right leading-tight">
-                        Menunggu semua Juri klik Finalisasi
-                      </span>
+                  ) : (
+                    <button 
+                      disabled
+                      title={`Semua Juri harus menyelesaikan penilaian dulu sebelum lanjut ke Sidang Penetapan. (Progress: ${s.totalAssessments} dari ${expectedAssessments} penilaian)`}
+                      className="px-4 py-2 bg-gray-200 text-gray-400 border border-gray-300 font-medium rounded-lg text-sm cursor-not-allowed opacity-75"
+                    >
+                      Lanjut ke Sidang Penetapan
+                    </button>
+                  )
+                )}
+                {['penilaian_dibuka', 'penilaian_selesai', 'sidang_penetapan'].includes(s.status) && (
+                  <div className="flex items-center gap-2">
+                    {s.status === 'sidang_penetapan' || s.status === 'penilaian_selesai' || isAssessmentComplete ? (
+                      <a 
+                        href={`/regional-judge/sidang/${s.id}`}
+                        className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-lg text-sm inline-flex items-center gap-1.5 shadow-sm"
+                      >
+                        <span>📋 Masuk Sidang Penetapan</span>
+                      </a>
+                    ) : (
+                      <button 
+                        disabled
+                        title={`Semua Juri harus menyelesaikan penilaian dulu sebelum masuk Sidang Penetapan. (Progress: ${s.totalAssessments} dari ${expectedAssessments} penilaian)`}
+                        className="px-4 py-2 bg-gray-200 text-gray-400 border border-gray-300 font-medium rounded-lg text-sm cursor-not-allowed opacity-75 inline-flex items-center gap-1.5"
+                      >
+                        <span>📋 Masuk Sidang Penetapan</span>
+                      </button>
+                    )}
+                    {s.status === 'sidang_penetapan' && (
+                      <button 
+                        onClick={() => handleLock(s.id)}
+                        disabled={loading === s.id || (s.judges.length > 0 && !s.judges.every((j: any) => j.isFinalized))}
+                        className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white font-bold rounded-lg text-sm shadow-sm"
+                      >
+                        Kunci Hasil & Ranking
+                      </button>
                     )}
                   </div>
                 )}
                 {s.status === 'hasil_terkunci' && (
                   <div className="flex items-center gap-2">
+                    <a 
+                      href={`/regional-judge/sidang/${s.id}`}
+                      className="px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-lg text-sm inline-flex items-center gap-1 border"
+                    >
+                      🔍 Lihat Hasil Sidang
+                    </a>
                     <span className="px-4 py-2 bg-green-100 text-green-800 font-bold rounded-lg text-sm">
                       ✓ Selesai
                     </span>
@@ -133,7 +173,7 @@ export default function CuratorRegionalFinalClient({ sessions }: { sessions: any
                       href={`/api/pdf/regional-final?sessionId=${s.id}`} 
                       target="_blank" 
                       rel="noopener noreferrer"
-                      className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-medium rounded-lg text-sm inline-flex items-center gap-1"
+                      className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-medium rounded-lg text-sm inline-flex items-center gap-1 shadow-sm"
                     >
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
                       Berita Acara

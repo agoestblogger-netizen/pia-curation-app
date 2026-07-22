@@ -175,15 +175,30 @@ export async function updateRegionalSessionStatusAction(sessionId: number, statu
   const [targetSession] = await db.select().from(regionalFinalSessions).where(eq(regionalFinalSessions.id, sessionId));
   if (!targetSession) return { error: 'Sesi tidak ditemukan' };
 
+  if (status === 'sidang_penetapan') {
+    const allProposals = await getRegionalFinalProposals(sessionId);
+    const assessments = await db.select().from(regionalFinalAssessments).where(eq(regionalFinalAssessments.sessionId, sessionId));
+    const expectedAssessments = allProposals.length * targetSession.juriCountSetting;
+
+    if (assessments.length < expectedAssessments) {
+      return { 
+        error: `Belum bisa masuk Sidang Penetapan. Semua Juri harus menyelesaikan penilaian terlebih dahulu. (Penilaian selesai: ${assessments.length} dari ${expectedAssessments})` 
+      };
+    }
+  }
+
   if (session.roles.includes('regional') && !session.roles.includes('coordinator')) {
     // Check if PIC from regionalFinalPics
     const [picAssignment] = await db
       .select({ userId: regionalFinalPics.userId })
       .from(regionalFinalPics)
-      .where(eq(regionalFinalPics.sessionId, sessionId))
+      .where(and(
+        eq(regionalFinalPics.sessionId, sessionId),
+        eq(regionalFinalPics.userId, session.userId)
+      ))
       .limit(1);
       
-    if (!picAssignment || picAssignment.userId !== session.userId) {
+    if (!picAssignment) {
       return { error: 'Akses ditolak: Anda bukan PIC Regional untuk grup ini.' };
     }
   }
@@ -382,10 +397,13 @@ export async function lockRegionalFinalResultsAction(sessionId: number, tieBreak
     const [picAssignment] = await db
       .select({ userId: regionalFinalPics.userId })
       .from(regionalFinalPics)
-      .where(eq(regionalFinalPics.sessionId, sessionId))
+      .where(and(
+        eq(regionalFinalPics.sessionId, sessionId),
+        eq(regionalFinalPics.userId, userSession.userId)
+      ))
       .limit(1);
       
-    if (!picAssignment || picAssignment.userId !== userSession.userId) {
+    if (!picAssignment) {
       return { error: 'Akses ditolak: Anda bukan PIC Regional untuk grup ini.' };
     }
   }
@@ -488,5 +506,165 @@ export async function lockRegionalFinalResultsAction(sessionId: number, tieBreak
   revalidatePath('/regional-judge', 'layout');
   revalidatePath('/regional-dashboard');
   revalidatePath('/coordinator/finalization');
+  return { success: true };
+}
+
+export async function checkSidangOperatorPermission(sessionId: number, userId: number, userRoles: string[]) {
+  if (userRoles.includes('admin') || userRoles.includes('coordinator')) {
+    return { allowed: true, isPic: true, isJudge: true };
+  }
+
+  const [pic] = await db
+    .select()
+    .from(regionalFinalPics)
+    .where(and(eq(regionalFinalPics.sessionId, sessionId), eq(regionalFinalPics.userId, userId)))
+    .limit(1);
+
+  if (pic) return { allowed: true, isPic: true, isJudge: false };
+
+  const [judge] = await db
+    .select()
+    .from(regionalFinalJudges)
+    .where(and(eq(regionalFinalJudges.sessionId, sessionId), eq(regionalFinalJudges.userId, userId)))
+    .limit(1);
+
+  if (judge) return { allowed: true, isPic: false, isJudge: true };
+
+  return { allowed: false, isPic: false, isJudge: false };
+}
+
+export async function calibrateSidangScoreAction(
+  sessionId: number,
+  proposalId: number,
+  targetJudgeUserId: number,
+  scores: { problemFit: number; dampak: number; kelayakan: number; professional: number }
+) {
+  const userSession = await requireRole(['regional', 'coordinator', 'admin']);
+
+  const perm = await checkSidangOperatorPermission(sessionId, userSession.userId, userSession.roles);
+  if (!perm.allowed) {
+    return { error: 'Akses ditolak: Anda bukan PIC atau Juri yang ditugaskan untuk grup ini.' };
+  }
+
+  const [session] = await db.select().from(regionalFinalSessions).where(eq(regionalFinalSessions.id, sessionId));
+  if (!session) return { error: 'Sesi tidak ditemukan' };
+  if (session.status === 'hasil_terkunci') {
+    return { error: 'Hasil sidang sudah dikunci secara permanen.' };
+  }
+
+  // Validate values (0 - 100)
+  for (const [key, val] of Object.entries(scores)) {
+    if (typeof val !== 'number' || isNaN(val) || val < 0 || val > 100) {
+      return { error: `Skor ${key} harus berada di antara 0 dan 100.` };
+    }
+  }
+
+  // Check old assessment for audit logging
+  const [oldAssessment] = await db
+    .select()
+    .from(regionalFinalAssessments)
+    .where(
+      and(
+        eq(regionalFinalAssessments.sessionId, sessionId),
+        eq(regionalFinalAssessments.proposalId, proposalId),
+        eq(regionalFinalAssessments.judgeUserId, targetJudgeUserId)
+      )
+    )
+    .limit(1);
+
+  const [targetProposal] = await db.select({ title: proposals.title }).from(proposals).where(eq(proposals.id, proposalId)).limit(1);
+  const [targetJudgeUser] = await db.select({ name: users.name }).from(users).where(eq(users.id, targetJudgeUserId)).limit(1);
+
+  await db.insert(regionalFinalAssessments).values({
+    sessionId,
+    proposalId,
+    judgeUserId: targetJudgeUserId,
+    paramProblemFit: scores.problemFit,
+    paramDampak: scores.dampak,
+    paramKelayakan: scores.kelayakan,
+    paramProfessional: scores.professional,
+  }).onConflictDoUpdate({
+    target: [regionalFinalAssessments.sessionId, regionalFinalAssessments.proposalId, regionalFinalAssessments.judgeUserId],
+    set: {
+      paramProblemFit: scores.problemFit,
+      paramDampak: scores.dampak,
+      paramKelayakan: scores.kelayakan,
+      paramProfessional: scores.professional,
+      submittedAt: new Date(),
+    }
+  });
+
+  await createAuditLog({
+    action: 'sidang_calibrate_score',
+    entity: 'regional_final_assessments',
+    entityId: `${sessionId}-${proposalId}-${targetJudgeUserId}`,
+    after: {
+      sessionId,
+      proposalId,
+      proposalTitle: targetProposal?.title || `#${proposalId}`,
+      targetJudgeUserId,
+      targetJudgeName: targetJudgeUser?.name || `#${targetJudgeUserId}`,
+      operatorUserId: userSession.userId,
+      operatorName: userSession.name,
+      operatorRole: perm.isPic ? 'PIC Regional' : 'Juri Regional',
+      oldScores: oldAssessment ? {
+        problemFit: oldAssessment.paramProblemFit,
+        dampak: oldAssessment.paramDampak,
+        kelayakan: oldAssessment.paramKelayakan,
+        professional: oldAssessment.paramProfessional
+      } : null,
+      newScores: scores
+    }
+  });
+
+  revalidatePath(`/regional-judge/sidang/${sessionId}`);
+  revalidatePath(`/regional-judge/assess/${sessionId}`);
+  revalidatePath('/curator/regional-final');
+  revalidatePath('/regional-dashboard');
+  return { success: true };
+}
+
+export async function finalizeSidangSessionAction(sessionId: number) {
+  const userSession = await requireRole(['regional', 'coordinator', 'admin']);
+
+  const perm = await checkSidangOperatorPermission(sessionId, userSession.userId, userSession.roles);
+  if (!perm.allowed) {
+    return { error: 'Akses ditolak: Anda bukan PIC atau Juri yang ditugaskan untuk grup ini.' };
+  }
+
+  const [session] = await db.select().from(regionalFinalSessions).where(eq(regionalFinalSessions.id, sessionId));
+  if (!session) return { error: 'Sesi tidak ditemukan' };
+  if (session.status === 'hasil_terkunci') {
+    return { error: 'Hasil sidang sudah dikunci secara permanen.' };
+  }
+
+  // Set isFinalized = true for all judges in this session
+  await db.update(regionalFinalJudges)
+    .set({ isFinalized: true })
+    .where(eq(regionalFinalJudges.sessionId, sessionId));
+
+  // Update session status to sidang_penetapan
+  await db.update(regionalFinalSessions)
+    .set({ status: 'sidang_penetapan', updatedAt: new Date() })
+    .where(eq(regionalFinalSessions.id, sessionId));
+
+  await createAuditLog({
+    action: 'finalize_sidang_session',
+    entity: 'regional_final_sessions',
+    entityId: sessionId.toString(),
+    after: {
+      sessionId,
+      region: session.region,
+      operatorUserId: userSession.userId,
+      operatorName: userSession.name,
+      operatorRole: perm.isPic ? 'PIC Regional' : 'Juri Regional'
+    }
+  });
+
+  revalidatePath(`/regional-judge/sidang/${sessionId}`);
+  revalidatePath(`/regional-judge/assess/${sessionId}`);
+  revalidatePath('/curator/regional-final');
+  revalidatePath('/regional-dashboard');
+  revalidatePath('/regional-judge', 'layout');
   return { success: true };
 }

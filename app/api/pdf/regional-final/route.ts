@@ -11,7 +11,7 @@ import { regionalFinalSessions, regionalFinalJudges, regionalFinalAssessments, r
 export async function GET(req: NextRequest) {
   try {
     const session = await getSession();
-    if (!session || !session.roles.some(r => ['coordinator', 'admin', 'curator'].includes(r))) {
+    if (!session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
