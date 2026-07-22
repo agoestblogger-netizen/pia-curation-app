@@ -11,12 +11,18 @@ type Session = {
   roles: string[];
 } | null;
 
-export default function ClientSidebar({ session }: { session: Session }) {
+export default function ClientSidebar({ 
+  session, 
+  regionalAssignments = { isPic: false, isJudge: false } 
+}: { 
+  session: Session;
+  regionalAssignments?: { isPic: boolean; isJudge: boolean };
+}) {
   const [isOpen, setIsOpen] = useState(false);
   const pathname = usePathname();
 
   // Hide sidebar on specific full-width pages
-  if (pathname.includes('/sponsor/assess/')) {
+  if (pathname.includes('/sponsor/assess/') || pathname.includes('/regional-judge/assess/')) {
     return null;
   }
 
@@ -84,13 +90,21 @@ export default function ClientSidebar({ session }: { session: Session }) {
 
             const MENU_ITEMS = [
               { label: 'Dashboard', path: '/overview', roles: ['coordinator', 'curator', 'promoter', 'sponsor', 'admin'] },
+              { label: 'Dashboard', path: '/regional-dashboard', roles: ['regional'] },
               { label: 'Assign Proposal', path: '/coordinator/batches', roles: ['coordinator'] },
               { label: 'Daftar Proposal (Kurator)', path: '/curator', roles: ['curator'], iconRight: '→' },
               { label: 'Papan Penilaian (Promotor)', path: '/promoter', roles: ['promoter'], iconRight: '→' },
               { label: 'Ruang FGD', path: '/coordinator/fgd', roles: ['coordinator', 'curator', 'promoter'] },
               { isDivider: true, roles: ['coordinator'] },
-              { label: 'Semua Proposal', path: '/coordinator/proposals', roles: ['coordinator'] },
+              { label: 'Semua Proposal', path: '/coordinator/proposals', roles: ['coordinator', 'viewer'] },
               { label: 'Finalisasi & Ranking', path: '/coordinator/finalization', roles: ['coordinator'] },
+              { isDivider: true, roles: ['coordinator', 'regional'] },
+              { isHeader: true, headerText: 'Final Regional', roles: ['coordinator', 'regional'] },
+              { label: 'Kunci Finalis Regional', path: '/coordinator/regional-final', roles: ['coordinator'] },
+              { label: 'Kelola Final Regional', path: '/admin/regional-final', roles: ['coordinator', 'admin'] },
+              ...(regionalAssignments.isPic ? [{ label: 'Setup Final Regional', path: '/curator/regional-final', roles: ['regional'] }] : []),
+              ...(regionalAssignments.isJudge ? [{ label: 'Penilaian Final Regional', path: '/regional-judge', roles: ['regional'], iconRight: '→' }] : []),
+              { isDivider: true, roles: ['coordinator'] },
               { label: 'Manajemen User', path: '/coordinator/users', roles: ['coordinator'] },
               { isDivider: true, roles: ['admin'] },
               { isHeader: true, headerText: 'Admin Zone', roles: ['admin'] },

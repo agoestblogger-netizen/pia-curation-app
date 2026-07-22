@@ -7,7 +7,8 @@ import CoordinatorBoard from './CoordinatorBoard';
 import { getCoordinatorPotentialDuplicates } from '@/app/actions/duplicates';
 
 export default async function ProposalsPage() {
-  await requireRole(['coordinator', 'viewer']);
+  const session = await requireRole(['coordinator', 'viewer']);
+  const isViewer = session.roles.includes('viewer') && !session.roles.includes('coordinator');
 
   const activeComp = await getActiveCompetition();
 
@@ -82,7 +83,7 @@ export default async function ProposalsPage() {
         </p>
       </div>
 
-      <CoordinatorBoard proposals={mappedProposals} duplicates={duplicates} />
+      <CoordinatorBoard proposals={mappedProposals} duplicates={duplicates} isViewer={isViewer} />
     </div>
   );
 }

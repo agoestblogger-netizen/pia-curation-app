@@ -3,14 +3,18 @@ import { getActiveCompetition } from '@/app/actions/competitions';
 import { getRegionalGroups } from '@/app/actions/regional-final';
 import RegionalFinalClient from './RegionalFinalClient';
 
-export default async function RegionalTab({ readOnly }: { readOnly?: boolean }) {
-  await requireRole(['coordinator', 'viewer']);
+export const metadata = {
+  title: 'Kunci Finalis Regional - PIA Curation',
+};
+
+export default async function RegionalFinalPage() {
+  const session = await requireRole(['coordinator', 'viewer']);
   const activeComp = await getActiveCompetition();
 
   if (!activeComp) {
     return (
       <div className="p-8">
-        <h1 className="text-2xl font-bold mb-4">Babak Final Regional</h1>
+        <h1 className="text-2xl font-bold mb-4 text-gray-900">Kunci Finalis Regional</h1>
         <div className="bg-yellow-50 text-yellow-800 p-4 rounded-lg">
           Belum ada kompetisi aktif.
         </div>
@@ -21,11 +25,12 @@ export default async function RegionalTab({ readOnly }: { readOnly?: boolean }) 
   const groups = await getRegionalGroups(activeComp.id);
   const totalFinalists = groups.reduce((acc, g) => acc + g.finalistCount, 0);
   const lockedGroups = groups.filter(g => g.isLocked).length;
+  const readOnly = session.roles.includes('viewer') && !session.roles.includes('coordinator');
 
   return (
     <div className="p-8 max-w-5xl">
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900 mb-1">Babak Final Regional</h1>
+        <h1 className="text-2xl font-bold text-gray-900 mb-1">Kunci Finalis Regional</h1>
         <p className="text-gray-500 text-sm">
           Pilih maksimal 10 finalis per grup (Kanwil 1–12 dan Kantor Pusat). 
           Setelah mengunci, proposal yang tidak terpilih akan otomatis di-takeout.

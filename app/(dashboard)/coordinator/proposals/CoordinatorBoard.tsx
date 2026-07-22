@@ -25,7 +25,7 @@ const CATEGORY_MAP: Record<string, { label: string, short: string, bg: string }>
   'BC': { label: 'Business Case', short: 'BC', bg: 'bg-[#B45309]' },
 };
 
-export default function CoordinatorBoard({ proposals, duplicates: initialDuplicates = [] }: { proposals: ProposalCard[], duplicates?: any[] }) {
+export default function CoordinatorBoard({ proposals, duplicates: initialDuplicates = [], isViewer = false }: { proposals: ProposalCard[], duplicates?: any[], isViewer?: boolean }) {
   const [activeTab, setActiveTab] = useState<'assigned' | 'review' | 'duplicates'>('assigned');
   const [duplicates, setDuplicates] = useState(initialDuplicates);
   const [isPending, startTransition] = useTransition();
@@ -216,8 +216,9 @@ export default function CoordinatorBoard({ proposals, duplicates: initialDuplica
                     </div>
                     
                     {/* Actions */}
-                    <div className="flex-shrink-0 flex flex-col md:flex-row gap-2">
-                      {d.status !== 'confirmed' && (
+                    {!isViewer && (
+                      <div className="flex-shrink-0 flex flex-col md:flex-row gap-2">
+                        {d.status !== 'confirmed' && (
                         <button
                           disabled={isPending}
                           onClick={() => {
@@ -250,6 +251,7 @@ export default function CoordinatorBoard({ proposals, duplicates: initialDuplica
                         </button>
                       )}
                     </div>
+                    )}
                   </div>
                 ))}
               </div>

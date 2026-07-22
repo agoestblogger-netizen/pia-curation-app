@@ -486,6 +486,68 @@ export const potentialDuplicates = pgTable('potential_duplicates', {
   status: text('status').notNull().default('pending'),
 });
 
+// ─── REGIONAL FINAL (MODUL 3) ─────────────────────────────────────────────────
+export const regionalFinalSessions = pgTable('regional_final_sessions', {
+  id: serial('id').primaryKey(),
+  competitionId: integer('competition_id').notNull().references(() => competitions.id),
+  region: text('region').notNull(), // Kanwil Name or 'Pusat'
+  status: text('status').notNull().default('finalis_terkunci'), // finalis_terkunci | juri_ditugaskan | penilaian_dibuka | penilaian_selesai | sidang_penetapan | hasil_terkunci
+  juriCountSetting: integer('juri_count_setting').notNull().default(3),
+  lockedBy: integer('locked_by').references(() => users.id),
+  lockedAt: timestamp('locked_at', { withTimezone: true }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [
+  uniqueIndex('regional_final_session_unique').on(table.competitionId, table.region),
+]);
+
+export const regionalFinalJudges = pgTable('regional_final_judges', {
+  id: serial('id').primaryKey(),
+  sessionId: integer('session_id').notNull().references(() => regionalFinalSessions.id),
+  userId: integer('user_id').notNull().references(() => users.id),
+  isFinalized: boolean('is_finalized').notNull().default(false),
+  assignedBy: integer('assigned_by').references(() => users.id),
+  assignedAt: timestamp('assigned_at', { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [
+]);
+
+export const regionalFinalPics = pgTable('regional_final_pics', {
+  id: serial('id').primaryKey(),
+  sessionId: integer('session_id').notNull().references(() => regionalFinalSessions.id),
+  userId: integer('user_id').notNull().references(() => users.id),
+  assignedBy: integer('assigned_by').references(() => users.id),
+  assignedAt: timestamp('assigned_at', { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [
+  uniqueIndex('regional_final_pic_unique').on(table.sessionId, table.userId),
+]);
+
+export const regionalFinalAssessments = pgTable('regional_final_assessments', {
+  id: serial('id').primaryKey(),
+  sessionId: integer('session_id').notNull().references(() => regionalFinalSessions.id),
+  proposalId: integer('proposal_id').notNull().references(() => proposals.id),
+  judgeUserId: integer('judge_user_id').notNull().references(() => users.id),
+  paramProblemFit: doublePrecision('param_problem_fit').notNull(),
+  paramDampak: doublePrecision('param_dampak').notNull(),
+  paramKelayakan: doublePrecision('param_kelayakan').notNull(),
+  paramProfessional: doublePrecision('param_professional').notNull(),
+  submittedAt: timestamp('submitted_at', { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [
+  uniqueIndex('regional_final_assessment_unique').on(table.sessionId, table.proposalId, table.judgeUserId),
+]);
+
+export const regionalFinalResults = pgTable('regional_final_results', {
+  id: serial('id').primaryKey(),
+  sessionId: integer('session_id').notNull().references(() => regionalFinalSessions.id),
+  proposalId: integer('proposal_id').notNull().references(() => proposals.id),
+  finalScore: doublePrecision('final_score').notNull(),
+  rank: integer('rank'), // 1, 2, 3, or null
+  tieBreakNote: text('tie_break_note'),
+  lockedBy: integer('locked_by').references(() => users.id),
+  lockedAt: timestamp('locked_at', { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [
+  uniqueIndex('regional_final_result_unique').on(table.sessionId, table.proposalId),
+]);
+
 // ─── TYPE EXPORTS ─────────────────────────────────────────────────────────────
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
@@ -514,3 +576,9 @@ export type FgdComment = typeof fgdComments.$inferSelect;
 export type PromoterAssignment = typeof promoterAssignments.$inferSelect;
 export type ProposalAiAnalysis = typeof proposalAiAnalyses.$inferSelect;
 export type FgdAdditionalDocument = typeof fgdAdditionalDocuments.$inferSelect;
+
+export type RegionalFinalSession = typeof regionalFinalSessions.$inferSelect;
+export type RegionalFinalJudge = typeof regionalFinalJudges.$inferSelect;
+export type RegionalFinalPic = typeof regionalFinalPics.$inferSelect;
+export type RegionalFinalAssessment = typeof regionalFinalAssessments.$inferSelect;
+export type RegionalFinalResult = typeof regionalFinalResults.$inferSelect;

@@ -225,7 +225,7 @@ export async function setRegionalFinalistsAction(
     after: { finalistIds, competitionId },
   });
 
-  revalidatePath('/coordinator/regional-final');
+  revalidatePath('/coordinator/finalization');
   return { success: true };
 }
 
@@ -300,7 +300,7 @@ export async function lockRegionalGroupAction(
     after: { regionKey, finalistCount: finalistIds.length, takeoutCount: nonFinalistIds.length },
   });
 
-  revalidatePath('/coordinator/regional-final');
+  revalidatePath('/coordinator/finalization');
   return { success: true, finalistCount: finalistIds.length, takeoutCount: nonFinalistIds.length };
 }
 
@@ -374,6 +374,6 @@ export async function reopenRegionalGroupAction(
     after: { regionKey },
   });
 
-  revalidatePath('/coordinator/regional-final');
+  revalidatePath('/coordinator/finalization');
   return { success: true };
 }

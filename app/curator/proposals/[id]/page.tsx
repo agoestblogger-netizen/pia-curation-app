@@ -29,14 +29,15 @@ export default async function ProposalDetailPage({
 
   const isCurator = session.roles.includes('curator');
   const isCoordinator = session.roles.includes('coordinator');
+  const isViewer = session.roles.includes('viewer');
   
-  if (!isCurator && !isCoordinator) {
+  if (!isCurator && !isCoordinator && !isViewer) {
     redirect('/login');
   }
 
   const resolvedSearchParams = searchParams ? await searchParams : {};
-  const isCoordinatorContext = session.roles.includes('coordinator') && resolvedSearchParams.from === 'coordinator';
-  const shouldMask = (session.roles.includes('curator') || session.roles.includes('promoter')) && !isCoordinatorContext && !session.roles.includes('admin');
+  const isCoordinatorContext = (session.roles.includes('coordinator') || session.roles.includes('viewer')) && resolvedSearchParams.from === 'coordinator';
+  const shouldMask = (session.roles.includes('curator') || session.roles.includes('promoter')) && !isCoordinatorContext && !session.roles.includes('admin') && !session.roles.includes('viewer');
 
   const { id } = await params;
   const proposalId = parseInt(id, 10);
@@ -70,7 +71,7 @@ export default async function ProposalDetailPage({
   const warnings = await getProposalDuplicateWarnings(proposalId);
     
   let isLinkedToDuplicate = false;
-  if (!assignment && !isCoordinator && warnings.length > 0) {
+  if (!assignment && !isCoordinator && !isViewer && warnings.length > 0) {
     const otherIds = warnings.map(w => w.otherProposalId);
     const linkedAssignments = await db.select().from(curatorAssignments).where(
       and(
@@ -81,7 +82,7 @@ export default async function ProposalDetailPage({
     isLinkedToDuplicate = linkedAssignments.length > 0;
   }
 
-  if (!assignment && !isCoordinator && !isLinkedToDuplicate) {
+  if (!assignment && !isCoordinator && !isViewer && !isLinkedToDuplicate) {
     return (
       <div className="p-8 text-center text-red-600">
         <h2 className="text-xl font-bold mb-2">Akses Ditolak</h2>
@@ -132,7 +133,7 @@ export default async function ProposalDetailPage({
     const currentIndex = allAssignments.findIndex(a => a.proposalId === proposalId);
     if (currentIndex > 0) prevId = allAssignments[currentIndex - 1].proposalId;
     if (currentIndex < allAssignments.length - 1) nextId = allAssignments[currentIndex + 1].proposalId;
-  } else if (isCoordinator) {
+  } else if (isCoordinator || isViewer) {
     const allProps = await db
       .select({ id: proposals.id, category: proposals.category, regionCenter: proposals.regionCenter, nomorUrut: proposals.nomorUrut })
       .from(proposals)
@@ -281,7 +282,7 @@ export default async function ProposalDetailPage({
                 fieldName="summary"
                 originalText={proposal.summary}
                 formattedText={(proposal.formattedTexts as any)?.summary}
-                canFormat={isCoordinator || isCurator || session.roles.includes('promoter')}
+                canFormat={isCoordinator || isCurator || session.roles.includes('promoter') || isViewer}
               />
             </div>
 
@@ -315,13 +316,13 @@ export default async function ProposalDetailPage({
             )}
 
             {/* Bandingkan dengan Proposal Lain */}
-            {(isCurator || isCoordinator) && (
+            {(isCurator || isCoordinator || isViewer) && (
               <CompareProposalsPanel
                 proposalId={proposal.id}
                 proposalTitle={proposal.title}
                 category={proposal.category}
                 competitionId={proposal.competitionId}
-                isReadOnly={!assignment && !isCoordinator && isLinkedToDuplicate}
+                isReadOnly={!assignment && !isCoordinator && !isViewer && isLinkedToDuplicate}
               />
             )}
 

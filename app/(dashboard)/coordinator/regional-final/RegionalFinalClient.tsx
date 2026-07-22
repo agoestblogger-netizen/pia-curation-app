@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useTransition } from 'react';
+import { useRouter } from 'next/navigation';
 import { setRegionalFinalistsAction, lockRegionalGroupAction, reopenRegionalGroupAction } from '@/app/actions/regional-final';
 import type { RegionalGroup } from '@/app/actions/regional-final';
 
@@ -26,7 +27,10 @@ export default function RegionalFinalClient({ competitionId, groups, readOnly }:
   });
   const [error, setError] = useState<Record<string, string>>({});
   const [success, setSuccess] = useState<Record<string, string>>({});
+  const [confirmLock, setConfirmLock] = useState<string | null>(null);
+  const [confirmReopen, setConfirmReopen] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const router = useRouter();
 
   const toggleSelection = (group: RegionalGroup, proposalId: number, isLocked: boolean) => {
     if (readOnly || isLocked) return;
@@ -58,11 +62,15 @@ export default function RegionalFinalClient({ competitionId, groups, readOnly }:
     });
   };
 
-  const handleLock = (group: RegionalGroup) => {
+  const handleLock = (group: RegionalGroup, confirmed: boolean = false) => {
+    if (!confirmed) {
+      setConfirmLock(group.region);
+      return;
+    }
+    setConfirmLock(null);
+
     const regionKey = group.category === 'PUSAT' ? 'PUSAT' : group.region;
     const ids = Array.from(selections[group.region] ?? []);
-    
-    if (!confirm(`Kunci grup ${group.region}? Proposal yang tidak terpilih akan di-takeout dan tidak bisa dikembalikan kecuali buka kembali secara manual.`)) return;
 
     // Bersihkan pesan sebelumnya
     setError(e => ({ ...e, [group.region]: '' }));
@@ -82,13 +90,19 @@ export default function RegionalFinalClient({ competitionId, groups, readOnly }:
         setError(e => ({ ...e, [group.region]: lockResult.error! }));
       } else {
         setSuccess(s => ({ ...s, [group.region]: `Grup dikunci. ${lockResult.finalistCount} finalis, ${lockResult.takeoutCount} takeout.` }));
+        router.refresh();
       }
     });
   };
 
-  const handleReopen = (group: RegionalGroup) => {
+  const handleReopen = (group: RegionalGroup, confirmed: boolean = false) => {
+    if (!confirmed) {
+      setConfirmReopen(group.region);
+      return;
+    }
+    setConfirmReopen(null);
+
     const regionKey = group.category === 'PUSAT' ? 'PUSAT' : group.region;
-    if (!confirm(`Buka kembali grup ${group.region}? Ini akan mengembalikan proposal takeout ke status curation_passed.`)) return;
 
     // Bersihkan pesan sebelumnya
     setError(e => ({ ...e, [group.region]: '' }));
@@ -98,6 +112,7 @@ export default function RegionalFinalClient({ competitionId, groups, readOnly }:
       const result = await reopenRegionalGroupAction(competitionId, regionKey);
       if (result?.success) {
         setSuccess(s => ({ ...s, [group.region]: 'Grup dibuka kembali.' }));
+        router.refresh();
       }
     });
   };
@@ -238,25 +253,65 @@ export default function RegionalFinalClient({ competitionId, groups, readOnly }:
                           </a>
                         )}
                         {!readOnly && (
-                          <button
-                            onClick={() => handleReopen(group)}
-                            disabled={isPending}
-                            className="px-4 py-2 text-sm font-medium text-orange-600 border border-orange-300 rounded-lg hover:bg-orange-50 transition-colors disabled:opacity-50"
-                          >
-                            Buka Kembali
-                          </button>
+                          confirmReopen === group.region ? (
+                            <div className="flex space-x-2 items-center bg-orange-50 px-3 py-1.5 rounded-lg border border-orange-200">
+                              <span className="text-sm font-medium text-orange-800">Yakin buka kembali?</span>
+                              <button
+                                onClick={() => handleReopen(group, true)}
+                                disabled={isPending}
+                                className="px-3 py-1.5 text-xs font-bold text-white bg-orange-600 rounded-md hover:bg-orange-700 disabled:opacity-50"
+                              >
+                                Ya
+                              </button>
+                              <button
+                                onClick={() => setConfirmReopen(null)}
+                                disabled={isPending}
+                                className="px-3 py-1.5 text-xs font-bold text-gray-600 bg-gray-200 rounded-md hover:bg-gray-300"
+                              >
+                                Batal
+                              </button>
+                            </div>
+                          ) : (
+                            <button
+                              onClick={() => handleReopen(group)}
+                              disabled={isPending}
+                              className="px-4 py-2 text-sm font-medium text-orange-600 border border-orange-300 rounded-lg hover:bg-orange-50 transition-colors disabled:opacity-50"
+                            >
+                              Buka Kembali
+                            </button>
+                          )
                         )}
                       </>
                     ) : (
                       <>
                         {!readOnly && (
-                          <button
-                            onClick={() => handleLock(group)}
-                            disabled={isPending || selected.size === 0}
-                            className="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50"
-                          >
-                            🔒 Kunci Grup
-                          </button>
+                          confirmLock === group.region ? (
+                            <div className="flex space-x-2 items-center bg-green-50 px-3 py-1.5 rounded-lg border border-green-200">
+                              <span className="text-sm font-medium text-green-800">Kunci & takeout sisanya?</span>
+                              <button
+                                onClick={() => handleLock(group, true)}
+                                disabled={isPending || selected.size === 0}
+                                className="px-3 py-1.5 text-xs font-bold text-white bg-green-600 rounded-md hover:bg-green-700 disabled:opacity-50"
+                              >
+                                Ya, Kunci
+                              </button>
+                              <button
+                                onClick={() => setConfirmLock(null)}
+                                disabled={isPending}
+                                className="px-3 py-1.5 text-xs font-bold text-gray-600 bg-gray-200 rounded-md hover:bg-gray-300"
+                              >
+                                Batal
+                              </button>
+                            </div>
+                          ) : (
+                            <button
+                              onClick={() => handleLock(group)}
+                              disabled={isPending || selected.size === 0}
+                              className="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50"
+                            >
+                              🔒 Kunci Grup
+                            </button>
+                          )
                         )}
                       </>
                     )}

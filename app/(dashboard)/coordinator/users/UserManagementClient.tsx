@@ -17,6 +17,7 @@ const ROLE_LABELS: Record<string, string> = {
   coordinator: 'Koordinator',
   curator: 'Kurator',
   promoter: 'Promotor',
+  regional: 'Regional (PIC/Juri)',
   sponsor: 'Sponsor',
   viewer: 'Viewer',
 };
@@ -26,6 +27,7 @@ const AVAILABLE_ROLES = [
   { id: 'coordinator', label: 'Koordinator' },
   { id: 'curator', label: 'Tim Kurator' },
   { id: 'promoter', label: 'Tim Promotor' },
+  { id: 'regional', label: 'Regional (PIC/Juri)' },
   { id: 'sponsor', label: 'Tim Sponsor (BOD)' },
   { id: 'viewer', label: 'Viewer (Read-only)' },
 ];
@@ -35,6 +37,7 @@ const ROLE_COLORS: Record<string, string> = {
   coordinator: 'bg-purple-100 text-purple-700',
   curator: 'bg-blue-100 text-blue-700',
   promoter: 'bg-yellow-100 text-yellow-700',
+  regional: 'bg-orange-100 text-orange-800',
   sponsor: 'bg-green-100 text-green-700',
   viewer: 'bg-gray-100 text-gray-700',
 };

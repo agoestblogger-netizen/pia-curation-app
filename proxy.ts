@@ -53,6 +53,11 @@ export async function proxy(request: NextRequest) {
           continue;
         }
         
+        // Exception: Allow regional to access Sidang Final Regional
+        if (pathname.startsWith('/curator/regional-final') && session.roles.includes('regional')) {
+          continue;
+        }
+        
         if (!session.roles.includes(role) && !session.roles.includes('coordinator')) {
           // Coordinator can access everything
           return NextResponse.redirect(new URL('/forbidden', request.url));

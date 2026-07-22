@@ -60,6 +60,8 @@ export async function loginAction(
     redirect('/promoter');
   } else if (user.roles.includes('sponsor')) {
     redirect('/sponsor');
+  } else if (user.roles.includes('regional')) {
+    redirect('/regional-dashboard');
   } else {
     redirect('/');
   }

@@ -16,6 +16,8 @@ export default async function DashboardRedirect() {
     redirect('/promoter');
   } else if (session.roles.includes('sponsor')) {
     redirect('/sponsor');
+  } else if (session.roles.includes('regional')) {
+    redirect('/regional-dashboard');
   } else {
     redirect('/login');
   }

@@ -1,5 +1,4 @@
 import { getSession } from '@/lib/auth/session';
-import RegionalTab from './RegionalTab';
 import RankingTab from './RankingTab';
 import GrandFinalTab from './GrandFinalTab';
 import Link from 'next/link';
@@ -18,12 +17,11 @@ export default async function FinalizationPage({
   const isViewerOnly = session.roles.includes('viewer') && !session.roles.some(r => ['coordinator', 'admin'].includes(r));
 
   const resolvedParams = await searchParams;
-  const currentTab = resolvedParams.tab || 'regional';
+  const currentTab = resolvedParams.tab || 'ranking';
 
   const tabs = [
-    { id: 'regional', label: '1. Regional' },
-    { id: 'ranking', label: '2. Ranking' },
-    { id: 'grand-final', label: '3. Grand Final' },
+    { id: 'ranking', label: '1. Ranking' },
+    { id: 'grand-final', label: '2. Grand Final' },
   ];
 
   return (
@@ -52,7 +50,6 @@ export default async function FinalizationPage({
       </div>
 
       <div className="flex-1 overflow-auto">
-        {currentTab === 'regional' && <RegionalTab readOnly={isViewerOnly} />}
         {currentTab === 'ranking' && <RankingTab readOnly={isViewerOnly} />}
         {currentTab === 'grand-final' && <GrandFinalTab readOnly={isViewerOnly} />}
       </div>

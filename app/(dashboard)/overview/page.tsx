@@ -4,9 +4,23 @@ import { db } from '@/lib/db';
 import { proposals, curatorAssignments, users } from '@/lib/db/schema';
 import { eq, sql, and } from 'drizzle-orm';
 import Link from 'next/link';
+import { redirect } from 'next/navigation';
 
 export default async function OverviewDashboard() {
   const session = await getSession();
+
+  // Kalau user HANYA memiliki role regional (tanpa admin/coordinator),
+  // arahkan ke dashboard khusus regional. Ini juga mencegah akses langsung via /overview.
+  const isPureRegional =
+    session &&
+    session.roles.includes('regional') &&
+    !session.roles.includes('admin') &&
+    !session.roles.includes('coordinator');
+
+  if (isPureRegional) {
+    redirect('/regional-dashboard');
+  }
+
   const activeComp = await getActiveCompetition();
 
   if (!activeComp) {

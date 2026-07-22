@@ -11,12 +11,10 @@ export default function ResetDataClient({ stats }: { stats: any }) {
   const [success, setSuccess] = useState<string | null>(null);
   
   const [options, setOptions] = useState<ResetOptions>({
-    resetScreening: false,
-    resetAssignments: false,
-    resetFgd: false,
-    resetPromotor: false,
-    resetRegionalFinal: false,
-    resetSponsor: false,
+    resetKurasiNasional: false,
+    resetRegionalLock: false,
+    resetFinalRegional: false,
+    resetGrandFinal: false,
     resetAuditLog: false,
     resetAiCache: false,
     resetPdfs: false,
@@ -35,19 +33,15 @@ export default function ResetDataClient({ stats }: { stats: any }) {
       return;
     }
 
-    // Tampilkan indikator proses tanpa startTransition untuk mencegah router block
     setError(null);
     setSuccess('Sedang melakukan reset data...');
     
-    // Eksekusi tanpa startTransition agar router tidak terjebak di background cache invalidation
     resetDataAction(options).then((res) => {
       if (res?.error) {
         setError(res.error);
         setSuccess(null);
         setShowConfirm(false);
       } else {
-        // Hard reload browser untuk membersihkan 100% cache layout/router Next.js
-        // Ini mencegah "hang" atau lambat saat pindah menu setelah reset data yang masif
         window.location.reload();
       }
     });
@@ -74,136 +68,134 @@ export default function ResetDataClient({ stats }: { stats: any }) {
           </div>
         )}
 
-        <div className="space-y-4">
-          <label className="flex items-start space-x-3 p-4 border rounded-lg hover:bg-gray-50 cursor-pointer">
-            <input 
-              type="checkbox" 
-              className="mt-1 w-5 h-5 text-red-600 rounded border-gray-300 focus:ring-red-500"
-              checked={options.resetScreening}
-              onChange={(e) => setOptions(prev => ({ ...prev, resetScreening: e.target.checked }))}
-            />
-            <div>
-              <div className="font-semibold text-gray-900">Hasil Screening</div>
-              <div className="text-sm text-gray-500">Hapus {stats.screening} hasil screening. Proposal akan kembali ke status 'belum discreening' (assigned/imported).</div>
-            </div>
-          </label>
+        <div className="space-y-6">
+          <div className="space-y-4">
+            <h3 className="font-bold text-gray-900 border-b pb-2">Kelompok Utama (Jalur Penilaian)</h3>
+            
+            <label className="flex items-start space-x-3 p-4 border rounded-lg hover:bg-gray-50 cursor-pointer">
+              <input 
+                type="checkbox" 
+                className="mt-1 w-5 h-5 text-red-600 rounded border-gray-300 focus:ring-red-500"
+                checked={options.resetKurasiNasional}
+                onChange={(e) => setOptions(prev => ({ ...prev, resetKurasiNasional: e.target.checked }))}
+              />
+              <div>
+                <div className="font-semibold text-gray-900">1. Reset Kurasi Nasional</div>
+                <div className="text-sm text-gray-500">
+                  Hapus data screening, assignment kurator, FGD Nasional, dan pemilihan Promotor. 
+                  Proposal Pusat (Nasional) akan kembali ke status 'imported'. 
+                  <span className="block mt-1 font-medium text-indigo-600">Terdeteksi: {stats.kurasiNasional} entri data terpengaruh.</span>
+                </div>
+              </div>
+            </label>
 
-          <label className="flex items-start space-x-3 p-4 border rounded-lg hover:bg-gray-50 cursor-pointer">
-            <input 
-              type="checkbox" 
-              className="mt-1 w-5 h-5 text-red-600 rounded border-gray-300 focus:ring-red-500"
-              checked={options.resetAssignments}
-              onChange={(e) => setOptions(prev => ({ ...prev, resetAssignments: e.target.checked }))}
-            />
-            <div>
-              <div className="font-semibold text-gray-900">Assignment Kurator</div>
-              <div className="text-sm text-gray-500">Hapus {stats.assignment} assignment kurator dan batch. Daftar proposal kurator akan kosong.</div>
-            </div>
-          </label>
+            <label className="flex items-start space-x-3 p-4 border rounded-lg hover:bg-gray-50 cursor-pointer">
+              <input 
+                type="checkbox" 
+                className="mt-1 w-5 h-5 text-red-600 rounded border-gray-300 focus:ring-red-500"
+                checked={options.resetRegionalLock}
+                onChange={(e) => setOptions(prev => ({ ...prev, resetRegionalLock: e.target.checked }))}
+              />
+              <div>
+                <div className="font-semibold text-gray-900">2. Reset Regional (Kunci Finalis)</div>
+                <div className="text-sm text-gray-500">
+                  Kembalikan proposal yang berstatus 'regional_finalist' (10 besar Kanwil) ke 'imported'. 
+                  TIDAK menghapus tabel sesi/PIC/skor di Final Regional.
+                  <span className="block mt-1 font-medium text-indigo-600">Terdeteksi: {stats.regionalLock} proposal terkunci.</span>
+                </div>
+              </div>
+            </label>
 
-          <label className="flex items-start space-x-3 p-4 border rounded-lg hover:bg-gray-50 cursor-pointer">
-            <input 
-              type="checkbox" 
-              className="mt-1 w-5 h-5 text-red-600 rounded border-gray-300 focus:ring-red-500"
-              checked={options.resetFgd}
-              onChange={(e) => setOptions(prev => ({ ...prev, resetFgd: e.target.checked }))}
-            />
-            <div>
-              <div className="font-semibold text-gray-900">Sesi FGD</div>
-              <div className="text-sm text-gray-500">Hapus {stats.fgdSession} sesi FGD beserta seluruh vote dan komentar di dalamnya.</div>
-            </div>
-          </label>
+            <label className="flex items-start space-x-3 p-4 border rounded-lg hover:bg-gray-50 cursor-pointer">
+              <input 
+                type="checkbox" 
+                className="mt-1 w-5 h-5 text-red-600 rounded border-gray-300 focus:ring-red-500"
+                checked={options.resetFinalRegional}
+                onChange={(e) => setOptions(prev => ({ ...prev, resetFinalRegional: e.target.checked }))}
+              />
+              <div>
+                <div className="font-semibold text-gray-900">3. Reset Final Regional</div>
+                <div className="text-sm text-gray-500">
+                  Hapus SEMUA data PIC, Juri, Skor, dan Hasil Ranking di Final Regional. 
+                  Status sesi kembali kosong. Proposal yang lolos ke Nasional akan diturunkan kembali ke 'regional_finalist'.
+                  <span className="block mt-1 font-medium text-indigo-600">Terdeteksi: {stats.finalRegional} entri (sesi + proposal lolos).</span>
+                </div>
+              </div>
+            </label>
 
-          <label className="flex items-start space-x-3 p-4 border rounded-lg hover:bg-gray-50 cursor-pointer">
-            <input 
-              type="checkbox" 
-              className="mt-1 w-5 h-5 text-red-600 rounded border-gray-300 focus:ring-red-500"
-              checked={options.resetPromotor}
-              onChange={(e) => setOptions(prev => ({ ...prev, resetPromotor: e.target.checked }))}
-            />
-            <div>
-              <div className="font-semibold text-gray-900">Pemilihan Promotor</div>
-              <div className="text-sm text-gray-500">Hapus {stats.promotor} proposal terpilih oleh promotor dan set status proposal kembali ke Regional Finalist.</div>
-            </div>
-          </label>
+            <label className="flex items-start space-x-3 p-4 border rounded-lg hover:bg-gray-50 cursor-pointer">
+              <input 
+                type="checkbox" 
+                className="mt-1 w-5 h-5 text-red-600 rounded border-gray-300 focus:ring-red-500"
+                checked={options.resetGrandFinal}
+                onChange={(e) => setOptions(prev => ({ ...prev, resetGrandFinal: e.target.checked }))}
+              />
+              <div>
+                <div className="font-semibold text-gray-900">4. Reset Grand Final (Sponsor/Nasional)</div>
+                <div className="text-sm text-gray-500">
+                  Hapus penilaian Grand Final, skor Sponsor, dan penetapan Pemenang Akhir. 
+                  Proposal pemenang kembali menjadi 'grand_finalist'.
+                  <span className="block mt-1 font-medium text-indigo-600">Terdeteksi: {stats.grandFinal} skor/penilaian.</span>
+                </div>
+              </div>
+            </label>
+          </div>
 
-          <label className="flex items-start space-x-3 p-4 border rounded-lg hover:bg-gray-50 cursor-pointer">
-            <input 
-              type="checkbox" 
-              className="mt-1 w-5 h-5 text-red-600 rounded border-gray-300 focus:ring-red-500"
-              checked={options.resetRegionalFinal}
-              onChange={(e) => setOptions(prev => ({ ...prev, resetRegionalFinal: e.target.checked }))}
-            />
-            <div>
-              <div className="font-semibold text-gray-900">Finalisasi Regional & Grand Final</div>
-              <div className="text-sm text-gray-500">Mereset {stats.regionalFinal} status proposal dari Finalis Regional ke atas, menjadi curation_passed. Hapus data ranking.</div>
-            </div>
-          </label>
+          <div className="space-y-4 pt-4">
+            <h3 className="font-bold text-gray-900 border-b pb-2">Utilitas & Sistem (Opsional)</h3>
 
-          <label className="flex items-start space-x-3 p-4 border rounded-lg hover:bg-gray-50 cursor-pointer">
-            <input 
-              type="checkbox" 
-              className="mt-1 w-5 h-5 text-red-600 rounded border-gray-300 focus:ring-red-500"
-              checked={options.resetSponsor}
-              onChange={(e) => setOptions(prev => ({ ...prev, resetSponsor: e.target.checked }))}
-            />
-            <div>
-              <div className="font-semibold text-gray-900">Penilaian Sponsor & Final Result</div>
-              <div className="text-sm text-gray-500">Hapus {stats.sponsor} skor sponsor, {stats.gfAssessments} penilaian grand final, snapshots, dan final results. Proposal akan kembali ke status grand_finalist.</div>
-            </div>
-          </label>
+            <label className="flex items-start space-x-3 p-4 border rounded-lg hover:bg-gray-50 cursor-pointer">
+              <input 
+                type="checkbox" 
+                className="mt-1 w-5 h-5 text-red-600 rounded border-gray-300 focus:ring-red-500"
+                checked={options.resetAiCache}
+                onChange={(e) => setOptions(prev => ({ ...prev, resetAiCache: e.target.checked }))}
+              />
+              <div>
+                <div className="font-semibold text-gray-900">Cache Analisis AI</div>
+                <div className="text-sm text-gray-500">Hapus {stats.aiCache} data Rangkuman AI, Klaim & Angka Kunci. Proposal kembali ke kondisi belum dianalisis.</div>
+              </div>
+            </label>
 
-          <label className="flex items-start space-x-3 p-4 border rounded-lg hover:bg-gray-50 cursor-pointer">
-            <input 
-              type="checkbox" 
-              className="mt-1 w-5 h-5 text-red-600 rounded border-gray-300 focus:ring-red-500"
-              checked={options.resetAiCache}
-              onChange={(e) => setOptions(prev => ({ ...prev, resetAiCache: e.target.checked }))}
-            />
-            <div>
-              <div className="font-semibold text-gray-900">Cache Analisis AI</div>
-              <div className="text-sm text-gray-500">Hapus {stats.aiCache} data Rangkuman AI, Klaim & Angka Kunci, Poin Klarifikasi, Format AI. Proposal kembali ke kondisi belum dianalisis.</div>
-            </div>
-          </label>
+            <label className="flex items-start space-x-3 p-4 border rounded-lg hover:bg-gray-50 cursor-pointer">
+              <input 
+                type="checkbox" 
+                className="mt-1 w-5 h-5 text-red-600 rounded border-gray-300 focus:ring-red-500"
+                checked={options.resetPdfs}
+                onChange={(e) => setOptions(prev => ({ ...prev, resetPdfs: e.target.checked }))}
+              />
+              <div>
+                <div className="font-semibold text-gray-900">Dokumen Tambahan PDF</div>
+                <div className="text-sm text-gray-500">Hapus {stats.pdfs} dokumen tambahan FGD (database & cloud storage).</div>
+              </div>
+            </label>
 
-          <label className="flex items-start space-x-3 p-4 border rounded-lg hover:bg-gray-50 cursor-pointer">
-            <input 
-              type="checkbox" 
-              className="mt-1 w-5 h-5 text-red-600 rounded border-gray-300 focus:ring-red-500"
-              checked={options.resetPdfs}
-              onChange={(e) => setOptions(prev => ({ ...prev, resetPdfs: e.target.checked }))}
-            />
-            <div>
-              <div className="font-semibold text-gray-900">Dokumen Tambahan PDF</div>
-              <div className="text-sm text-gray-500">Hapus {stats.pdfs} dokumen dari database dan hapus file fisik secara permanen dari Vercel Blob Storage.</div>
-            </div>
-          </label>
+            <label className="flex items-start space-x-3 p-4 border rounded-lg hover:bg-gray-50 cursor-pointer">
+              <input 
+                type="checkbox" 
+                className="mt-1 w-5 h-5 text-red-600 rounded border-gray-300 focus:ring-red-500"
+                checked={options.resetDuplicates}
+                onChange={(e) => setOptions(prev => ({ ...prev, resetDuplicates: e.target.checked }))}
+              />
+              <div>
+                <div className="font-semibold text-gray-900">Potensi Duplikat</div>
+                <div className="text-sm text-gray-500">Hapus {stats.duplicates} entri pendeteksian duplikat proposal.</div>
+              </div>
+            </label>
 
-          <label className="flex items-start space-x-3 p-4 border rounded-lg hover:bg-gray-50 cursor-pointer">
-            <input 
-              type="checkbox" 
-              className="mt-1 w-5 h-5 text-red-600 rounded border-gray-300 focus:ring-red-500"
-              checked={options.resetDuplicates}
-              onChange={(e) => setOptions(prev => ({ ...prev, resetDuplicates: e.target.checked }))}
-            />
-            <div>
-              <div className="font-semibold text-gray-900">Potensi Duplikat</div>
-              <div className="text-sm text-gray-500">Hapus {stats.duplicates} entri penandaan potensi duplikat (semua status: pending/dikonfirmasi/ditolak).</div>
-            </div>
-          </label>
-
-          <label className="flex items-start space-x-3 p-4 border border-dashed border-gray-300 rounded-lg hover:bg-gray-50 cursor-pointer bg-gray-50/50">
-            <input 
-              type="checkbox" 
-              className="mt-1 w-5 h-5 text-gray-600 rounded border-gray-300 focus:ring-gray-500"
-              checked={options.resetAuditLog}
-              onChange={(e) => setOptions(prev => ({ ...prev, resetAuditLog: e.target.checked }))}
-            />
-            <div>
-              <div className="font-semibold text-gray-700">Audit Log (Opsional)</div>
-              <div className="text-sm text-gray-500">Hapus seluruh {stats.auditLog} entri audit log untuk menghilangkan jejak aktivitas testing. Entri untuk reset ini akan tetap dicatat setelah pembersihan.</div>
-            </div>
-          </label>
+            <label className="flex items-start space-x-3 p-4 border border-dashed border-gray-300 rounded-lg hover:bg-gray-50 cursor-pointer bg-gray-50/50">
+              <input 
+                type="checkbox" 
+                className="mt-1 w-5 h-5 text-gray-600 rounded border-gray-300 focus:ring-gray-500"
+                checked={options.resetAuditLog}
+                onChange={(e) => setOptions(prev => ({ ...prev, resetAuditLog: e.target.checked }))}
+              />
+              <div>
+                <div className="font-semibold text-gray-700">Audit Log</div>
+                <div className="text-sm text-gray-500">Hapus seluruh {stats.auditLog} entri audit log untuk menghilangkan jejak aktivitas testing.</div>
+              </div>
+            </label>
+          </div>
         </div>
 
         <div className="mt-8 pt-6 border-t border-gray-100">

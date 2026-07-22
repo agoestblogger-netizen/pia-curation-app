@@ -12,7 +12,7 @@ import { z } from 'zod';
 const createUserSchema = z.object({
   name: z.string().min(2, 'Nama minimal 2 karakter'),
   email: z.string().email('Format email tidak valid'),
-  roles: z.array(z.enum(['admin', 'coordinator', 'curator', 'promoter', 'sponsor', 'viewer'])).min(1, 'Pilih minimal satu role'),
+  roles: z.array(z.enum(['admin', 'coordinator', 'curator', 'promoter', 'sponsor', 'viewer', 'regional'])).min(1, 'Pilih minimal satu role'),
   password: z.string().min(8, 'Password minimal 8 karakter'),
 });
 
@@ -123,7 +123,7 @@ const editUserSchema = z.object({
   userId: z.coerce.number(),
   name: z.string().min(2, 'Nama minimal 2 karakter'),
   email: z.string().email('Format email tidak valid'),
-  roles: z.array(z.enum(['admin', 'coordinator', 'curator', 'promoter', 'sponsor', 'viewer'])).min(1, 'Pilih minimal satu role'),
+  roles: z.array(z.enum(['admin', 'coordinator', 'curator', 'promoter', 'sponsor', 'viewer', 'regional'])).min(1, 'Pilih minimal satu role'),
   isActive: z.boolean(),
   password: z.string().optional(),
 });
