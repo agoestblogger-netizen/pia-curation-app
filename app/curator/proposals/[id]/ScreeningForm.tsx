@@ -14,21 +14,26 @@ type ScreeningFormProps = {
 
 export default function ScreeningForm({ assignmentId, isCompleted, hardLock, existingResult }: ScreeningFormProps) {
   const router = useRouter();
-  const [isPending, startTransition] = useTransition();
+  const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState(false);
 
-  const handleReset = () => {
+  const handleReset = async () => {
     if (!confirm('Anda yakin ingin membatalkan/reset screening ini? Proposal akan kembali ke status awal (belum discreening).')) return;
+    setSubmitting(true);
     setError(null);
-    startTransition(async () => {
+    try {
       const res = await resetScreeningAction(assignmentId);
-      if (res.error) {
+      if (res?.error) {
         setError(res.error);
+        setSubmitting(false);
       } else {
         router.refresh();
       }
-    });
+    } catch (err: any) {
+      setError(err?.message || 'Terjadi kesalahan');
+      setSubmitting(false);
+    }
   };
 
   if (isCompleted && !isEditing) {
@@ -60,10 +65,10 @@ export default function ScreeningForm({ assignmentId, isCompleted, hardLock, exi
             <button 
               type="button" 
               onClick={handleReset}
-              disabled={isPending}
+              disabled={submitting}
               className="text-sm px-3 py-1.5 bg-red-50 border border-red-200 rounded text-red-600 hover:bg-red-100 shadow-sm transition disabled:opacity-50"
             >
-              {isPending ? 'Memproses...' : 'Reset Screening'}
+              {submitting ? 'Memproses...' : 'Reset Screening'}
             </button>
           </div>
         )}
@@ -72,28 +77,29 @@ export default function ScreeningForm({ assignmentId, isCompleted, hardLock, exi
     );
   }
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (isPending) return;
+    if (submitting) return;
+    setSubmitting(true);
     setError(null);
     const formData = new FormData(e.currentTarget);
 
-    startTransition(async () => {
-      try {
-        const res = isEditing 
-          ? await editScreeningAction({}, formData)
-          : await submitScreeningAction({}, formData);
-          
-        if (res?.error) {
-          setError(res.error);
-        } else {
-          if (isEditing) setIsEditing(false);
-          router.refresh();
-        }
-      } catch (err: any) {
-        setError(err?.message || 'Terjadi kesalahan saat menyimpan');
+    try {
+      const res = isEditing 
+        ? await editScreeningAction({}, formData)
+        : await submitScreeningAction({}, formData);
+        
+      if (res?.error) {
+        setError(res.error);
+        setSubmitting(false);
+      } else {
+        if (isEditing) setIsEditing(false);
+        router.refresh();
       }
-    });
+    } catch (err: any) {
+      setError(err?.message || 'Terjadi kesalahan saat menyimpan');
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -146,10 +152,10 @@ export default function ScreeningForm({ assignmentId, isCompleted, hardLock, exi
       <div className="flex flex-col sm:flex-row gap-3 mt-4">
         <button
           type="submit"
-          disabled={isPending}
+          disabled={submitting}
           className="w-full sm:w-auto bg-[#0A4736] text-white py-3 px-6 rounded-xl font-bold hover:bg-[#073629] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#0A4736] transition-colors disabled:opacity-50 flex items-center justify-center space-x-2"
         >
-          {isPending ? (
+          {submitting ? (
             <>
               <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white inline-block" fill="none" viewBox="0 0 24 24">
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
@@ -165,7 +171,7 @@ export default function ScreeningForm({ assignmentId, isCompleted, hardLock, exi
           <button
             type="button"
             onClick={() => setIsEditing(false)}
-            disabled={isPending}
+            disabled={submitting}
             className="w-full sm:w-auto bg-white border border-gray-300 text-gray-700 py-3 px-6 rounded-xl font-bold hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-300 transition-colors disabled:opacity-50"
           >
             Batal Edit
