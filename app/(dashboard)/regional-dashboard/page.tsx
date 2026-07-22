@@ -170,10 +170,18 @@ export default async function RegionalDashboardPage() {
                       const proposal = hasResults ? item.proposal : item;
                       if (!proposal) return null; // safety
                       
-                      const isChampion = hasResults && item.rank && item.rank <= 3;
-                      
+                      const rank = hasResults ? item.rank : null;
+                      const isJuara1 = hasResults && rank === 1;
+                      const isJuara2 = hasResults && rank === 2;
+                      const isJuara3 = hasResults && rank === 3;
+
+                      let rowBg = 'hover:bg-gray-50';
+                      if (isJuara1) rowBg = 'bg-gradient-to-r from-amber-100/90 via-amber-50/40 to-white border-l-4 border-amber-500 shadow-sm';
+                      else if (isJuara2) rowBg = 'bg-gradient-to-r from-slate-100 via-slate-50/50 to-white border-l-4 border-slate-400';
+                      else if (isJuara3) rowBg = 'bg-gradient-to-r from-orange-100/70 via-amber-50/30 to-white border-l-4 border-amber-600';
+
                       return (
-                        <tr key={proposal.id} className={isChampion ? 'bg-amber-50/30' : 'hover:bg-gray-50'}>
+                        <tr key={proposal.id} className={`${rowBg} transition-colors`}>
                           <td className="px-6 py-4 text-sm text-gray-500 font-medium">
                             {idx + 1}
                           </td>
@@ -186,19 +194,40 @@ export default async function RegionalDashboardPage() {
                           </td>
                           {hasResults && (
                             <>
-                              <td className="px-6 py-4 text-center">
-                                <span className="inline-block px-2 py-1 bg-gray-100 rounded text-sm font-semibold text-gray-700">
+                              <td className="px-6 py-4 text-center whitespace-nowrap">
+                                <span className={`inline-block px-2.5 py-1 rounded text-sm font-extrabold ${
+                                  isJuara1 ? 'bg-amber-200/80 text-amber-950 border border-amber-300' :
+                                  isJuara2 ? 'bg-slate-200 text-slate-900 border border-slate-300' :
+                                  isJuara3 ? 'bg-orange-200/80 text-orange-950 border border-orange-300' :
+                                  'bg-gray-100 text-gray-700'
+                                }`}>
                                   {Number(item.finalScore).toFixed(1)}
                                 </span>
                               </td>
-                              <td className="px-6 py-4 text-center">
-                                {item.rank === 1 && <span className="text-2xl" title="Juara 1">🥇</span>}
-                                {item.rank === 2 && <span className="text-2xl" title="Juara 2">🥈</span>}
-                                {item.rank === 3 && <span className="text-2xl" title="Juara 3">🥉</span>}
-                                {(!item.rank || item.rank > 3) && <span className="text-sm font-medium text-gray-400">-</span>}
+                              <td className="px-6 py-4 text-center whitespace-nowrap">
+                                {isJuara1 && (
+                                  <span className="inline-flex items-center gap-1 px-3 py-1 bg-amber-500 text-white font-extrabold rounded-full text-xs shadow-sm border border-amber-400">
+                                    🥇 Juara 1
+                                  </span>
+                                )}
+                                {isJuara2 && (
+                                  <span className="inline-flex items-center gap-1 px-3 py-1 bg-slate-500 text-white font-extrabold rounded-full text-xs shadow-sm border border-slate-400">
+                                    🥈 Juara 2
+                                  </span>
+                                )}
+                                {isJuara3 && (
+                                  <span className="inline-flex items-center gap-1 px-3 py-1 bg-amber-700 text-white font-extrabold rounded-full text-xs shadow-sm border border-amber-600">
+                                    🥉 Juara 3
+                                  </span>
+                                )}
+                                {(!rank || rank > 3) && (
+                                  <span className="inline-flex items-center px-2.5 py-0.5 bg-gray-100 text-gray-600 font-medium rounded-full text-xs border border-gray-200">
+                                    Finalis #{rank || idx + 1}
+                                  </span>
+                                )}
                                 {item.tieBreakNote && (
-                                  <div className="text-[10px] text-amber-600 font-medium mt-1 leading-tight border border-amber-200 bg-amber-50 rounded px-1">
-                                    Tie-break menang
+                                  <div className="text-[10px] text-amber-900 font-bold mt-1.5 leading-tight border border-amber-300 bg-amber-100/90 rounded px-1.5 py-0.5 block w-fit mx-auto">
+                                    ★ Menang Tie-Break
                                   </div>
                                 )}
                               </td>

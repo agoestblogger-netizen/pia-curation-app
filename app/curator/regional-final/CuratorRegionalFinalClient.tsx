@@ -166,41 +166,64 @@ export default function CuratorRegionalFinalClient({ sessions }: { sessions: any
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
-                    {s.proposals.map((p: any) => (
-                      <tr key={p.id} className="hover:bg-gray-50/50">
-                        <td className="py-3 px-4 text-gray-500">#{p.id}</td>
-                        <td className="py-3 px-4">
-                          <div className="font-semibold text-gray-900">{p.title}</div>
-                          <div className="text-xs text-gray-500">{p.proposerName}</div>
-                        </td>
-                        <td className="py-3 px-4 text-center">
-                          <span className={`px-2 py-1 text-xs rounded-full font-medium ${
-                            p.assessmentCount === s.judges.length && s.judges.length > 0 
-                              ? 'bg-green-100 text-green-800' 
-                              : p.assessmentCount > 0 
-                                ? 'bg-yellow-100 text-yellow-800' 
-                                : 'bg-gray-100 text-gray-600'
-                          }`}>
-                            {p.assessmentCount} / {s.judges.length || s.juriCountSetting}
-                          </span>
-                        </td>
-                        <td className="py-3 px-4 text-center font-bold">
-                          {p.finalScore > 0 ? p.finalScore.toFixed(2) : '-'}
-                        </td>
-                        <td className="py-3 px-4 text-center">
-                          {p.rank ? (
-                            <span className={`inline-flex items-center justify-center w-6 h-6 rounded-full font-bold text-xs ${
-                              p.rank === 1 ? 'bg-yellow-400 text-yellow-900' :
-                              p.rank === 2 ? 'bg-gray-300 text-gray-800' :
-                              p.rank === 3 ? 'bg-amber-600 text-white' : 'text-gray-500'
+                    {s.proposals.map((p: any) => {
+                      const isLocked = s.status === 'hasil_terkunci';
+                      const isJuara1 = isLocked && p.rank === 1;
+                      const isJuara2 = isLocked && p.rank === 2;
+                      const isJuara3 = isLocked && p.rank === 3;
+
+                      let rowBg = 'hover:bg-gray-50/50';
+                      if (isJuara1) rowBg = 'bg-gradient-to-r from-amber-100/90 via-amber-50/40 to-white border-l-4 border-amber-500';
+                      else if (isJuara2) rowBg = 'bg-gradient-to-r from-slate-100 via-slate-50/50 to-white border-l-4 border-slate-400';
+                      else if (isJuara3) rowBg = 'bg-gradient-to-r from-orange-100/70 via-amber-50/30 to-white border-l-4 border-amber-600';
+
+                      return (
+                        <tr key={p.id} className={`${rowBg} transition-colors`}>
+                          <td className="py-3 px-4 text-gray-500 font-medium">#{p.id}</td>
+                          <td className="py-3 px-4">
+                            <div className="font-semibold text-gray-900">{p.title}</div>
+                            <div className="text-xs text-gray-500">{p.proposerName}</div>
+                          </td>
+                          <td className="py-3 px-4 text-center">
+                            <span className={`px-2 py-1 text-xs rounded-full font-medium ${
+                              p.assessmentCount === s.judges.length && s.judges.length > 0 
+                                ? 'bg-green-100 text-green-800' 
+                                : p.assessmentCount > 0 
+                                  ? 'bg-yellow-100 text-yellow-800' 
+                                  : 'bg-gray-100 text-gray-600'
                             }`}>
-                              {p.rank}
+                              {p.assessmentCount} / {s.judges.length || s.juriCountSetting}
                             </span>
-                          ) : '-'}
-                          {p.isTieBreak && <span className="ml-1 text-[10px] text-red-500 font-bold" title="Menang Tie-Break">*TB</span>}
-                        </td>
-                      </tr>
-                    ))}
+                          </td>
+                          <td className="py-3 px-4 text-center font-bold">
+                            {p.finalScore > 0 ? p.finalScore.toFixed(2) : '-'}
+                          </td>
+                          <td className="py-3 px-4 text-center whitespace-nowrap">
+                            {isJuara1 && (
+                              <span className="inline-flex items-center gap-1 px-3 py-1 bg-amber-500 text-white font-extrabold rounded-full text-xs shadow-sm border border-amber-400">
+                                🥇 Juara 1
+                              </span>
+                            )}
+                            {isJuara2 && (
+                              <span className="inline-flex items-center gap-1 px-3 py-1 bg-slate-500 text-white font-extrabold rounded-full text-xs shadow-sm border border-slate-400">
+                                🥈 Juara 2
+                              </span>
+                            )}
+                            {isJuara3 && (
+                              <span className="inline-flex items-center gap-1 px-3 py-1 bg-amber-700 text-white font-extrabold rounded-full text-xs shadow-sm border border-amber-600">
+                                🥉 Juara 3
+                              </span>
+                            )}
+                            {(!isLocked || !p.rank || p.rank > 3) && (
+                              <span className="text-sm font-medium text-gray-500">
+                                {p.rank ? `#${p.rank}` : '-'}
+                              </span>
+                            )}
+                            {p.isTieBreak && <span className="ml-1 text-[10px] text-amber-900 font-bold bg-amber-100 px-1 py-0.5 rounded border border-amber-300" title="Menang Tie-Break">★ TB</span>}
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
