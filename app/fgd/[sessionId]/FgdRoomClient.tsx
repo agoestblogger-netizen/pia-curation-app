@@ -91,6 +91,7 @@ export default function FgdRoomClient({
   const [isUploadingDoc, setIsUploadingDoc] = useState<Record<number, boolean>>({});
   const [isDeletingDoc, setIsDeletingDoc] = useState<Record<number, boolean>>({});
   const [uploadError, setUploadError] = useState<Record<number, string | null>>({});
+  const [isVoting, setIsVoting] = useState(false);
 
   const handleUploadDocument = async (proposalId: number, e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -218,7 +219,8 @@ export default function FgdRoomClient({
 
   // ─── Actions ──────────────────────────────────────────────────────────────
   async function handleVote(proposalId: number, voteType: string) {
-    if (fgd.status === 'locked') return;
+    if (fgd.status === 'locked' || isVoting) return;
+    setIsVoting(true);
     
     // Tembakkan confetti jika user berhasil memberikan vote "nominate"
     if (voteType === 'nominate' && myVote(proposalId) !== 'nominate') {
@@ -231,6 +233,7 @@ export default function FgdRoomClient({
     }
 
     await submitFgdVoteAction(fgd.id, proposalId, voteType as any);
+    setIsVoting(false);
     refresh();
   }
 
@@ -675,25 +678,25 @@ export default function FgdRoomClient({
                       <div className="flex justify-center space-x-4">
                         <button
                           onClick={() => handleVote(activeProposal.id, 'nominate')}
-                          disabled={fgd.status === 'locked'}
+                          disabled={fgd.status === 'locked' || isVoting}
                           className={`px-6 py-2.5 rounded-full font-bold transition shadow-sm border text-sm ${
                             myVote(activeProposal.id) === 'nominate'
                               ? 'bg-blue-600 text-white border-blue-700 ring-2 ring-blue-300'
                               : 'bg-white text-blue-700 border-blue-200 hover:bg-blue-100 disabled:opacity-50'
                           }`}
                         >
-                          👍 Nominasikan
+                          {isVoting ? '⏳' : '👍'} Nominasikan
                         </button>
                         <button
                           onClick={() => handleVote(activeProposal.id, 'not_nominate')}
-                          disabled={fgd.status === 'locked'}
+                          disabled={fgd.status === 'locked' || isVoting}
                           className={`px-6 py-2.5 rounded-full font-bold transition shadow-sm border text-sm ${
                             myVote(activeProposal.id) === 'not_nominate'
                               ? 'bg-red-600 text-white border-red-700 ring-2 ring-red-300'
                               : 'bg-white text-red-700 border-red-200 hover:bg-red-50 disabled:opacity-50'
                           }`}
                         >
-                          👎 Tidak Nominasikan
+                          {isVoting ? '⏳' : '👎'} Tidak Nominasikan
                         </button>
                       </div>
 
@@ -701,8 +704,8 @@ export default function FgdRoomClient({
                         <div className="mt-3 text-center">
                           <button
                             onClick={() => handleVote(activeProposal.id, 'cancel')}
-                            disabled={fgd.status === 'locked'}
-                            className="text-xs font-semibold text-gray-500 hover:text-gray-700 underline"
+                            disabled={fgd.status === 'locked' || isVoting}
+                            className="text-xs font-semibold text-gray-500 hover:text-gray-700 underline disabled:opacity-50"
                           >
                             Batalkan Pilihan
                           </button>

@@ -5,16 +5,22 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { deleteFgdSessionAction } from '@/app/actions/fgd';
 
-import { useState } from 'react';
+import { useState, useTransition } from 'react';
 
 export default function FgdListClient({ sessions, isCoordinator }: { sessions: FgdSession[], isCoordinator?: boolean }) {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<'curator' | 'promoter'>('curator');
+  const [isPending, startTransition] = useTransition();
+  const [deletingId, setDeletingId] = useState<number | null>(null);
 
   async function handleDelete(id: number) {
     if (!confirm('Yakin ingin menghapus sesi FGD ini? Data komentar dan vote di dalamnya akan hilang.')) return;
-    const res = await deleteFgdSessionAction(id);
-    if (res.error) alert(res.error);
+    setDeletingId(id);
+    startTransition(async () => {
+      const res = await deleteFgdSessionAction(id);
+      if (res.error) alert(res.error);
+      setDeletingId(null);
+    });
   }
 
   const filteredSessions = sessions.filter(s => s.fgdType === activeTab);
@@ -111,9 +117,10 @@ export default function FgdListClient({ sessions, isCoordinator }: { sessions: F
                 {isCoordinator && s.status !== 'locked' && (
                   <button 
                     onClick={() => handleDelete(s.id)}
-                    className="text-red-600 font-medium hover:text-red-800 text-sm"
+                    disabled={deletingId === s.id}
+                    className="text-red-600 font-medium hover:text-red-800 text-sm disabled:opacity-50"
                   >
-                    Hapus
+                    {deletingId === s.id ? 'Menghapus...' : 'Hapus'}
                   </button>
                 )}
               </td>
