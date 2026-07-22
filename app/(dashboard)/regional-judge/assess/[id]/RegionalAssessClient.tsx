@@ -152,6 +152,7 @@ export default function RegionalAssessClient({
       );
       if (res.success) {
         setSaveStatus('Tersimpan ✓');
+        router.refresh();
         setTimeout(() => setSaveStatus(''), 3000);
       } else {
         setSaveStatus('Gagal menyimpan');

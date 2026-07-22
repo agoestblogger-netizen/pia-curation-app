@@ -163,6 +163,9 @@ export async function assignRegionalJudgesAction(sessionId: number, userIds: num
   });
 
   revalidatePath('/admin/regional-final');
+  revalidatePath('/curator/regional-final');
+  revalidatePath('/regional-judge', 'layout');
+  revalidatePath('/regional-dashboard');
   return { success: true };
 }
 
@@ -191,6 +194,8 @@ export async function updateRegionalSessionStatusAction(sessionId: number, statu
   }).where(eq(regionalFinalSessions.id, sessionId));
 
   revalidatePath('/curator/regional-final');
+  revalidatePath('/regional-judge', 'layout');
+  revalidatePath('/regional-dashboard');
   return { success: true };
 }
 
@@ -312,6 +317,8 @@ export async function submitRegionalAssessmentAction(
   // To avoid complex DB queries in this transaction, we can just let PIC manually check, or we can check here to trigger 'penilaian_selesai'
   
   revalidatePath(`/regional-judge/assess/${sessionId}`);
+  revalidatePath(`/regional-judge/sidang/${sessionId}`);
+  revalidatePath('/regional-judge', 'layout');
   return { success: true };
 }
 
@@ -360,6 +367,7 @@ export async function finalizeRegionalJudgeScoreAction(sessionId: number) {
     
   revalidatePath(`/regional-judge/assess/${sessionId}`);
   revalidatePath(`/regional-judge/sidang/${sessionId}`);
+  revalidatePath('/regional-judge', 'layout');
   return { success: true };
 }
 
@@ -477,5 +485,8 @@ export async function lockRegionalFinalResultsAction(sessionId: number, tieBreak
   });
 
   revalidatePath('/curator/regional-final');
+  revalidatePath('/regional-judge', 'layout');
+  revalidatePath('/regional-dashboard');
+  revalidatePath('/coordinator/finalization');
   return { success: true };
 }

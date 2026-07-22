@@ -103,6 +103,7 @@ export default function AssessClient({
         );
         if (res.success) {
           setSaveStatus('Tersimpan otomatis ✓');
+          router.refresh();
           setTimeout(() => setSaveStatus(''), 2000);
         } else {
           setSaveStatus('Gagal menyimpan');

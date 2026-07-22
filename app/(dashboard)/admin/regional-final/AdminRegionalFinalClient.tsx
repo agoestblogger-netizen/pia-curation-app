@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { assignRegionalJudgesAction } from '@/app/actions/regional-final-judging';
 
 type Session = {
@@ -19,6 +20,7 @@ export default function AdminRegionalFinalClient({
   sessions: Session[];
   availableUsers: { id: number; name: string; email: string }[];
 }) {
+  const router = useRouter();
   const [editingSessionId, setEditingSessionId] = useState<number | null>(null);
   const [selectedPicId, setSelectedPicId] = useState<number | null>(null);
   const [selectedJudges, setSelectedJudges] = useState<number[]>([]);
@@ -49,6 +51,7 @@ export default function AdminRegionalFinalClient({
         setError(res.error);
       } else {
         setEditingSessionId(null);
+        router.refresh();
       }
     } catch (e: any) {
       setError(e.message || 'Terjadi kesalahan');

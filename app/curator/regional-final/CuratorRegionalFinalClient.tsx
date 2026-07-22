@@ -1,9 +1,11 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { updateRegionalSessionStatusAction, lockRegionalFinalResultsAction } from '@/app/actions/regional-final-judging';
 
 export default function CuratorRegionalFinalClient({ sessions }: { sessions: any[] }) {
+  const router = useRouter();
   const [loading, setLoading] = useState<number | null>(null);
   const [error, setError] = useState<string>('');
   
@@ -13,7 +15,11 @@ export default function CuratorRegionalFinalClient({ sessions }: { sessions: any
     setLoading(sessionId);
     setError('');
     const res = await updateRegionalSessionStatusAction(sessionId, newStatus);
-    if (res?.error) setError(res.error);
+    if (res?.error) {
+      setError(res.error);
+    } else {
+      router.refresh();
+    }
     setLoading(null);
   };
   
@@ -31,7 +37,11 @@ export default function CuratorRegionalFinalClient({ sessions }: { sessions: any
           const winnerId = parseInt(tieWinnerStr, 10);
           if (!isNaN(winnerId)) {
             const retryRes = await lockRegionalFinalResultsAction(sessionId, winnerId, note || undefined);
-            if (retryRes?.error) setError(retryRes.error);
+            if (retryRes?.error) {
+              setError(retryRes.error);
+            } else {
+              router.refresh();
+            }
           } else {
             setError('ID tidak valid.');
           }
@@ -39,6 +49,8 @@ export default function CuratorRegionalFinalClient({ sessions }: { sessions: any
       } else {
         setError(res.error);
       }
+    } else {
+      router.refresh();
     }
     setLoading(null);
   };
