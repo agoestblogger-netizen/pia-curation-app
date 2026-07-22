@@ -35,7 +35,10 @@ import { del } from '@vercel/blob';
 export type ResetOptions = {
   resetKurasiNasional: boolean;
   resetRegionalLock: boolean;
-  resetFinalRegional: boolean;
+  // 3A: Hapus assignment PIC & Juri, sesi kembali ke finalis_terkunci
+  resetKelolaPicJuri: boolean;
+  // 3B: Hapus assessment & hasil, sesi kembali ke juri_ditugaskan
+  resetPenilaianHasil: boolean;
   resetGrandFinal: boolean;
   resetAuditLog: boolean;
   resetAiCache?: boolean;
@@ -60,7 +63,7 @@ export async function resetDataAction(options: ResetOptions) {
       const compProposals = await db.select({ id: proposals.id }).from(proposals)
         .where(and(eq(proposals.competitionId, compId), eq(proposals.category, 'PUSAT')));
       const compNasionalIds = compProposals.map(p => p.id);
-      
+
       if (compNasionalIds.length > 0) {
         await db.delete(screeningResults).where(inArray(screeningResults.proposalId, compNasionalIds));
         await db.delete(promoterSelections).where(inArray(promoterSelections.proposalId, compNasionalIds));
@@ -112,21 +115,55 @@ export async function resetDataAction(options: ResetOptions) {
       executedActions.push('Kunci Finalis Regional');
     }
 
-    // 3. Reset Final Regional
-    if (options.resetFinalRegional) {
-      const regSessions = await db.select({ id: regionalFinalSessions.id }).from(regionalFinalSessions).where(eq(regionalFinalSessions.competitionId, compId));
+    // 3A. Reset Kelola Regional — Hapus assignment PIC & Juri
+    //     Status sesi dikembalikan ke 'finalis_terkunci'
+    if (options.resetKelolaPicJuri) {
+      const regSessions = await db
+        .select({ id: regionalFinalSessions.id })
+        .from(regionalFinalSessions)
+        .where(eq(regionalFinalSessions.competitionId, compId));
       const regSessionIds = regSessions.map(s => s.id);
-      
+
+      if (regSessionIds.length > 0) {
+        await db.delete(regionalFinalPics).where(inArray(regionalFinalPics.sessionId, regSessionIds));
+        await db.delete(regionalFinalJudges).where(inArray(regionalFinalJudges.sessionId, regSessionIds));
+
+        // Kembalikan status sesi ke finalis_terkunci (seolah belum ada PIC/Juri)
+        await db.update(regionalFinalSessions)
+          .set({ status: 'finalis_terkunci' })
+          .where(inArray(regionalFinalSessions.id, regSessionIds));
+      }
+      executedActions.push('Kelola Final Regional (PIC & Juri)');
+    }
+
+    // 3B. Reset Penilaian & Hasil — Hapus assessment & hasil ranking
+    //     Status sesi dikembalikan ke 'juri_ditugaskan' (assignment tetap)
+    if (options.resetPenilaianHasil) {
+      const regSessions = await db
+        .select({ id: regionalFinalSessions.id })
+        .from(regionalFinalSessions)
+        .where(eq(regionalFinalSessions.competitionId, compId));
+      const regSessionIds = regSessions.map(s => s.id);
+
       if (regSessionIds.length > 0) {
         await db.delete(regionalFinalResults).where(inArray(regionalFinalResults.sessionId, regSessionIds));
         await db.delete(regionalFinalAssessments).where(inArray(regionalFinalAssessments.sessionId, regSessionIds));
-        await db.delete(regionalFinalJudges).where(inArray(regionalFinalJudges.sessionId, regSessionIds));
-        await db.delete(regionalFinalPics).where(inArray(regionalFinalPics.sessionId, regSessionIds));
-        await db.delete(regionalFinalSessions).where(inArray(regionalFinalSessions.id, regSessionIds));
+
+        // Kembalikan status sesi ke juri_ditugaskan (PIC/Juri tetap ada)
+        await db.update(regionalFinalSessions)
+          .set({ status: 'juri_ditugaskan' })
+          .where(
+            and(
+              inArray(regionalFinalSessions.id, regSessionIds),
+              // Hanya turunkan status yang di atas juri_ditugaskan
+              inArray(regionalFinalSessions.status, ['penilaian_dibuka', 'penilaian_selesai', 'sidang_penetapan', 'hasil_terkunci'])
+            )
+          );
       }
 
+      // Kembalikan proposal yang lolos (curation_passed) ke regional_finalist
       await db.update(proposals)
-        .set({ 
+        .set({
           regionalFinalistRank: null,
           regionalFinalizedAt: null,
           regionalFinalizedBy: null,
@@ -138,7 +175,7 @@ export async function resetDataAction(options: ResetOptions) {
             eq(proposals.status, 'curation_passed')
           )
         );
-      executedActions.push('Final Regional');
+      executedActions.push('Penilaian & Hasil Final Regional');
     }
 
     // 4. Reset Grand Final (Sponsor/Nasional)
@@ -148,7 +185,7 @@ export async function resetDataAction(options: ResetOptions) {
       await db.delete(sponsorScores).where(eq(sponsorScores.competitionId, compId));
       await db.delete(scoringSnapshots).where(eq(scoringSnapshots.competitionId, compId));
       await db.delete(finalResults).where(eq(finalResults.competitionId, compId));
-      
+
       await db.update(proposals)
         .set({ status: 'grand_finalist' })
         .where(
@@ -170,7 +207,7 @@ export async function resetDataAction(options: ResetOptions) {
     if (options.resetAiCache) {
       const compProposals = await db.select({ id: proposals.id }).from(proposals).where(eq(proposals.competitionId, compId));
       const compProposalIds = compProposals.map(p => p.id);
-      
+
       if (compProposalIds.length > 0) {
         await db.delete(proposalAiAnalyses).where(inArray(proposalAiAnalyses.proposalId, compProposalIds));
         await db.update(proposals)
@@ -184,12 +221,12 @@ export async function resetDataAction(options: ResetOptions) {
     if (options.resetPdfs) {
       const compProposals = await db.select({ id: proposals.id }).from(proposals).where(eq(proposals.competitionId, compId));
       const compProposalIds = compProposals.map(p => p.id);
-      
+
       if (compProposalIds.length > 0) {
         const docs = await db.select({ url: fgdAdditionalDocuments.fileUrl })
           .from(fgdAdditionalDocuments)
           .where(inArray(fgdAdditionalDocuments.proposalId, compProposalIds));
-          
+
         if (docs.length > 0) {
           const urls = docs.map(d => d.url);
           try {
@@ -207,7 +244,7 @@ export async function resetDataAction(options: ResetOptions) {
     if (options.resetDuplicates) {
       const compProposals = await db.select({ id: proposals.id }).from(proposals).where(eq(proposals.competitionId, compId));
       const compProposalIds = compProposals.map(p => p.id);
-      
+
       if (compProposalIds.length > 0) {
         await db.delete(potentialDuplicates).where(
           inArray(potentialDuplicates.proposalAId, compProposalIds)
@@ -247,7 +284,7 @@ export async function getResetStatsAction() {
     JOIN proposals p ON p.id = sr.proposal_id
     WHERE p.competition_id = ${compId} AND p.category = 'PUSAT'
   `);
-  
+
   const [assignmentCount] = await db.execute(sql`
     SELECT count(*) FROM curator_assignments ca
     JOIN curation_batches cb ON cb.id = ca.batch_id
@@ -263,10 +300,32 @@ export async function getResetStatsAction() {
     WHERE competition_id = ${compId} AND status = 'regional_finalist'
   `);
 
-  const [finalRegionalSessionsCount] = await db.execute(sql`
-    SELECT count(*) FROM regional_final_sessions WHERE competition_id = ${compId}
+  // 3A: PIC + Juri yang sudah di-assign
+  const [picCount] = await db.execute(sql`
+    SELECT count(*) FROM regional_final_pics rfp
+    JOIN regional_final_sessions rfs ON rfs.id = rfp.session_id
+    WHERE rfs.competition_id = ${compId}
   `);
-  
+
+  const [judgeCount] = await db.execute(sql`
+    SELECT count(*) FROM regional_final_judges rfj
+    JOIN regional_final_sessions rfs ON rfs.id = rfj.session_id
+    WHERE rfs.competition_id = ${compId}
+  `);
+
+  // 3B: Assessments + Results
+  const [assessmentCount] = await db.execute(sql`
+    SELECT count(*) FROM regional_final_assessments rfa
+    JOIN regional_final_sessions rfs ON rfs.id = rfa.session_id
+    WHERE rfs.competition_id = ${compId}
+  `);
+
+  const [finalRegionalResultsCount] = await db.execute(sql`
+    SELECT count(*) FROM regional_final_results rfr
+    JOIN regional_final_sessions rfs ON rfs.id = rfr.session_id
+    WHERE rfs.competition_id = ${compId}
+  `);
+
   const [finalRegionalPassedCount] = await db.execute(sql`
     SELECT count(*) FROM proposals WHERE competition_id = ${compId} AND status = 'curation_passed'
   `);
@@ -274,30 +333,30 @@ export async function getResetStatsAction() {
   const [gfAssessmentCount] = await db.execute(sql`
     SELECT count(*) FROM grand_final_assessments WHERE competition_id = ${compId}
   `);
-  
+
   const [sponsorCount] = await db.execute(sql`
     SELECT count(*) FROM sponsor_scores WHERE competition_id = ${compId}
   `);
 
   const [auditLogCount] = await db.execute(sql`SELECT count(*) FROM audit_logs`);
-  
+
   const [aiCacheCount] = await db.execute(sql`
     SELECT count(*) FROM proposal_ai_analyses paa
     JOIN proposals p ON p.id = paa.proposal_id
     WHERE p.competition_id = ${compId}
   `);
-  
+
   const [formattedTextsCount] = await db.execute(sql`
     SELECT count(*) FROM proposals p
     WHERE p.competition_id = ${compId} AND p.formatted_texts IS NOT NULL
   `);
-  
+
   const [pdfCount] = await db.execute(sql`
     SELECT count(*) FROM fgd_additional_documents fad
     JOIN proposals p ON p.id = fad.proposal_id
     WHERE p.competition_id = ${compId}
   `);
-  
+
   const [duplicatesCount] = await db.execute(sql`
     SELECT count(*) FROM potential_duplicates pd
     JOIN proposals p ON p.id = pd.proposal_a_id
@@ -307,7 +366,10 @@ export async function getResetStatsAction() {
   return {
     kurasiNasional: Number((screeningCount as any)?.count || 0) + Number((assignmentCount as any)?.count || 0) + Number((nasionalFgdCount as any)?.count || 0),
     regionalLock: Number((regionalLockCount as any)?.count || 0),
-    finalRegional: Number((finalRegionalSessionsCount as any)?.count || 0) + Number((finalRegionalPassedCount as any)?.count || 0),
+    // 3A
+    kelolaPicJuri: Number((picCount as any)?.count || 0) + Number((judgeCount as any)?.count || 0),
+    // 3B
+    penilaianHasil: Number((assessmentCount as any)?.count || 0) + Number((finalRegionalResultsCount as any)?.count || 0) + Number((finalRegionalPassedCount as any)?.count || 0),
     grandFinal: Number((gfAssessmentCount as any)?.count || 0) + Number((sponsorCount as any)?.count || 0),
     auditLog: Number((auditLogCount as any)?.count || 0),
     aiCache: Number((aiCacheCount as any)?.count || 0) + Number((formattedTextsCount as any)?.count || 0),
