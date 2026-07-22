@@ -138,7 +138,7 @@ export default function ScreeningForm({ assignmentId, isCompleted, hardLock, exi
           disabled={loading}
           className="w-full sm:w-auto bg-[#0A4736] text-white py-3 px-6 rounded-xl font-bold hover:bg-[#073629] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#0A4736] transition-colors disabled:opacity-50"
         >
-          {loading ? 'Menyimpan...' : (isEditing ? 'Simpan Perubahan' : 'Submit Keputusan')}
+          {loading ? 'Proses simpan.......' : (isEditing ? 'Simpan Perubahan' : 'Submit Keputusan')}
         </button>
         {isEditing && (
           <button
