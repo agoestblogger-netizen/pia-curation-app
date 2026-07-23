@@ -40,8 +40,11 @@ export default function ClientSidebar({
   useEffect(() => {
     if (showToggle && session?.userId) {
       const saved = localStorage.getItem(`pia_active_role_${session.userId}`);
-      if (saved && functionalRoles.includes(saved) && saved !== activeRole) {
-        setActiveRole(saved);
+      if (saved && functionalRoles.includes(saved)) {
+        if (saved !== activeRole) {
+          setActiveRole(saved);
+        }
+        document.cookie = `pia_active_role_${session.userId}=${saved}; path=/; max-age=31536000`;
       }
     }
   }, [showToggle, functionalRoles, session?.userId]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -51,6 +54,7 @@ export default function ClientSidebar({
     setActiveRole(role);
     if (session?.userId) {
       localStorage.setItem(`pia_active_role_${session.userId}`, role);
+      document.cookie = `pia_active_role_${session.userId}=${role}; path=/; max-age=31536000`;
     }
     
     // Lakukan refresh ulang & default ke dashboard sesuai role
@@ -154,9 +158,7 @@ export default function ClientSidebar({
             const MENU_ITEMS = [
               { 
                 label: 'Dashboard', 
-                path: (checkRoles.includes('coordinator') || checkRoles.includes('admin') || checkRoles.includes('curator') || checkRoles.includes('promoter') || checkRoles.includes('sponsor') || checkRoles.includes('viewer')) 
-                        ? '/overview' 
-                        : '/regional-dashboard', 
+                path: activeRole === 'regional' ? '/regional-dashboard' : '/overview', 
                 roles: ['coordinator', 'curator', 'promoter', 'sponsor', 'admin', 'regional', 'viewer'] 
               },
               

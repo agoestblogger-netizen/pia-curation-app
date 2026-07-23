@@ -1,3 +1,4 @@
+import { cookies } from 'next/headers';
 import { getActiveCompetition } from '@/app/actions/competitions';
 import { getSession } from '@/lib/auth/session';
 import { db } from '@/lib/db';
@@ -9,15 +10,20 @@ import { redirect } from 'next/navigation';
 export default async function OverviewDashboard() {
   const session = await getSession();
 
-  // Kalau user HANYA memiliki role regional (tanpa admin/coordinator),
-  // arahkan ke dashboard khusus regional. Ini juga mencegah akses langsung via /overview.
-  const isPureRegional =
+  const cookieStore = await cookies();
+  const activeRoleCookie = session ? cookieStore.get(`pia_active_role_${session.userId}`)?.value : null;
+
+  // Jika activeRoleCookie bernilai 'regional' ATAU user HANYA memiliki role regional,
+  // arahkan ke /regional-dashboard.
+  const isRegionalActive = activeRoleCookie ? activeRoleCookie === 'regional' : (
     session &&
     session.roles.includes('regional') &&
     !session.roles.includes('admin') &&
-    !session.roles.includes('coordinator');
+    !session.roles.includes('coordinator') &&
+    !session.roles.includes('curator')
+  );
 
-  if (isPureRegional) {
+  if (isRegionalActive) {
     redirect('/regional-dashboard');
   }
 

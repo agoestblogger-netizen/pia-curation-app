@@ -1,3 +1,4 @@
+import { cookies } from 'next/headers';
 import { getSession } from '@/lib/auth/session';
 import { redirect } from 'next/navigation';
 
@@ -6,6 +7,21 @@ export default async function DashboardRedirect() {
   
   if (!session) {
     redirect('/login');
+  }
+
+  const cookieStore = await cookies();
+  const activeRoleCookie = cookieStore.get(`pia_active_role_${session.userId}`)?.value;
+
+  if (activeRoleCookie && session.roles.includes(activeRoleCookie)) {
+    if (activeRoleCookie === 'regional') {
+      redirect('/regional-dashboard');
+    } else if (activeRoleCookie === 'curator' || activeRoleCookie === 'coordinator' || activeRoleCookie === 'viewer') {
+      redirect('/overview');
+    } else if (activeRoleCookie === 'promoter') {
+      redirect('/promoter');
+    } else if (activeRoleCookie === 'sponsor') {
+      redirect('/sponsor');
+    }
   }
 
   if (session.roles.includes('coordinator')) {
