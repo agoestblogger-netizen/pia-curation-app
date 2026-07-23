@@ -14,6 +14,21 @@ import CompareProposalsPanel from './CompareProposalsPanel';
 import DuplicateWarningBanner from './DuplicateWarningBanner';
 import { getProposalDuplicateWarnings } from '@/app/actions/duplicates';
 
+function cleanMetadataHeaders(text: string | null | undefined): string {
+  if (!text) return '';
+  let cleaned = text;
+
+  cleaned = cleaned
+    .replace(/#*\s*Proposal Resubmission\s*-\s*PIA Season \d+/gi, '')
+    .replace(/#*\s*Kategori (Business Case|Breakthrough Innovation)/gi, '')
+    .replace(/#*\s*Nama Inovator\s*:?\s*[^:\n#]+?\s*(?=\s*(#*\s*Departemen|#*\s*Kantor|#*\s*Anggota|#*\s*Nama Inovasi|#*\s*Sasaran))/gi, '')
+    .replace(/#*\s*Departemen\s*\/\s*Divisi\s*:?\s*[^:\n#]+?\s*(?=\s*(#*\s*Kantor|#*\s*Anggota|#*\s*Nama Inovasi|#*\s*Sasaran))/gi, '')
+    .replace(/#*\s*Kantor Wilayah\s*:?\s*[^:\n#]+?\s*(?=\s*(#*\s*Anggota|#*\s*Nama Inovasi|#*\s*Sasaran))/gi, '')
+    .replace(/#*\s*Anggota Tim Inovasi Anda[^\n:#]*:?\s*[^:\n#]+?(?=\s*(#*\s*Nama Inovasi|#*\s*Sasaran))/gi, '');
+
+  return cleaned.trim();
+}
+
 export default async function ProposalDetailPage({ 
   params, 
   searchParams 
@@ -310,44 +325,110 @@ export default async function ProposalDetailPage({
               )}
             </div>
 
-            {/* Description / Summary */}
-            <div className="mb-8">
-              <h3 className="font-bold text-gray-900 mb-3 border-b border-gray-100 pb-2">Deskripsi / Summary</h3>
-              <FormattedTextDisplay 
-                proposalId={proposal.id}
-                fieldName="summary"
-                originalText={proposal.summary}
-                formattedText={(proposal.formattedTexts as any)?.summary}
-                canFormat={isCoordinator || isCurator || session.roles.includes('promoter') || isViewer}
-              />
-            </div>
-
-            {/* Kategori Spesifik */}
-            {proposal.category !== 'BI' && (
-              <div className="space-y-6">
-                <h3 className="font-bold text-gray-900 border-b border-gray-100 pb-2">Detail Business Case (BC/Pusat/Wilayah)</h3>
+            {/* Detail Content (BI or BC/Wilayah/Pusat) */}
+            {proposal.category === 'BI' && (
+              <div className="space-y-6 mb-8">
+                <h3 className="font-bold text-gray-900 border-b border-gray-100 pb-2 text-lg">Detail Breakthrough Innovation (BI)</h3>
                 
-                {proposal.bcKelompokDibantu && (
+                {proposal.biMasalahDiselesaikan ? (
                   <div>
-                    <div className="text-xs font-semibold text-gray-500 mb-1">Kelompok yang Dibantu</div>
-                    <div className="text-sm text-gray-800">{proposal.bcKelompokDibantu}</div>
+                    <div className="text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wide">Masalah yang Diselesaikan</div>
+                    <FormattedTextDisplay 
+                      proposalId={proposal.id}
+                      fieldName="biMasalahDiselesaikan"
+                      originalText={proposal.biMasalahDiselesaikan}
+                      formattedText={(proposal.formattedTexts as any)?.biMasalahDiselesaikan}
+                      canFormat={isCoordinator || isCurator || session.roles.includes('promoter') || isViewer}
+                    />
                   </div>
-                )}
-                {proposal.bcAlasanMemilihMereka && (
+                ) : null}
+
+                {proposal.biInovasiDiusulkan ? (
                   <div>
-                    <div className="text-xs font-semibold text-gray-500 mb-1">Alasan Memilih Mereka</div>
-                    <div className="text-sm text-gray-800">{proposal.bcAlasanMemilihMereka}</div>
+                    <div className="text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wide">Inovasi yang Diusulkan</div>
+                    <FormattedTextDisplay 
+                      proposalId={proposal.id}
+                      fieldName="biInovasiDiusulkan"
+                      originalText={proposal.biInovasiDiusulkan}
+                      formattedText={(proposal.formattedTexts as any)?.biInovasiDiusulkan}
+                      canFormat={isCoordinator || isCurator || session.roles.includes('promoter') || isViewer}
+                    />
                   </div>
-                )}
-                {/* Additional BC fields can be added here as needed */}
+                ) : null}
+
+                {!proposal.biMasalahDiselesaikan && !proposal.biInovasiDiusulkan && proposal.summary ? (
+                  <div>
+                    <div className="text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wide">Ringkasan Inovasi</div>
+                    <FormattedTextDisplay 
+                      proposalId={proposal.id}
+                      fieldName="summary"
+                      originalText={proposal.summary}
+                      formattedText={(proposal.formattedTexts as any)?.summary}
+                      canFormat={isCoordinator || isCurator || session.roles.includes('promoter') || isViewer}
+                    />
+                  </div>
+                ) : null}
               </div>
             )}
 
-            {proposal.category === 'BI' && (
-              <div className="space-y-6">
-                <h3 className="font-bold text-gray-900 border-b border-gray-100 pb-2">Detail Breakthrough Innovation (BI)</h3>
+            {proposal.category !== 'BI' && (
+              <div className="space-y-6 mb-8">
+                <h3 className="font-bold text-gray-900 border-b border-gray-100 pb-2 text-lg">Detail Business Case (BC/Pusat/Wilayah)</h3>
                 
-                <div className="text-sm text-gray-500 italic">Data spesifik BI ditampilkan di dokumen sumber.</div>
+                {proposal.bcKelompokDibantu && (
+                  <div>
+                    <div className="text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wide">Kelompok yang Dibantu</div>
+                    <FormattedTextDisplay 
+                      proposalId={proposal.id}
+                      fieldName="bcKelompokDibantu"
+                      originalText={proposal.bcKelompokDibantu}
+                      formattedText={(proposal.formattedTexts as any)?.bcKelompokDibantu}
+                      canFormat={isCoordinator || isCurator || session.roles.includes('promoter') || isViewer}
+                      hideFormatButton={true}
+                    />
+                  </div>
+                )}
+
+                {proposal.bcAlasanMemilihMereka && (
+                  <div>
+                    <div className="text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wide">Alasan Memilih Mereka</div>
+                    <FormattedTextDisplay 
+                      proposalId={proposal.id}
+                      fieldName="bcAlasanMemilihMereka"
+                      originalText={proposal.bcAlasanMemilihMereka}
+                      formattedText={(proposal.formattedTexts as any)?.bcAlasanMemilihMereka}
+                      canFormat={isCoordinator || isCurator || session.roles.includes('promoter') || isViewer}
+                      hideFormatButton={true}
+                    />
+                  </div>
+                )}
+
+                {proposal.summary && (
+                  <div>
+                    <div className="text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wide">Ringkasan Proposal</div>
+                    <FormattedTextDisplay 
+                      proposalId={proposal.id}
+                      fieldName="summary"
+                      originalText={proposal.summary}
+                      formattedText={(proposal.formattedTexts as any)?.summary}
+                      canFormat={isCoordinator || isCurator || session.roles.includes('promoter') || isViewer}
+                    />
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Dokumen Resubmission (Teks Extracted) */}
+            {proposal.resubmitDocumentText && (
+              <div className="mb-8">
+                <h3 className="font-bold text-gray-900 mb-3 border-b border-gray-100 pb-2 text-lg">Dokumen Resubmission (Teks)</h3>
+                <FormattedTextDisplay 
+                  proposalId={proposal.id}
+                  fieldName="resubmitDocumentText"
+                  originalText={cleanMetadataHeaders(proposal.resubmitDocumentText)}
+                  formattedText={(proposal.formattedTexts as any)?.resubmitDocumentText}
+                  canFormat={isCoordinator || isCurator || session.roles.includes('promoter') || isViewer}
+                />
               </div>
             )}
 

@@ -146,3 +146,104 @@ Berikan analisis JSON untuk PROPOSAL UTAMA.`;
     return { error: 'Terjadi kesalahan internal server.' };
   }
 }
+
+export async function generateResubmissionAiAnalysis(proposalId: number) {
+  try {
+    const session = await getSession();
+    if (!session) {
+      return { error: 'Unauthorized' };
+    }
+
+    // Check if we already have the cache in proposals
+    const [proposal] = await db
+      .select({
+        id: proposals.id,
+        resubmitDocumentText: proposals.resubmitDocumentText,
+        resubmitAiAnalysis: proposals.resubmitAiAnalysis
+      })
+      .from(proposals)
+      .where(eq(proposals.id, proposalId))
+      .limit(1);
+
+    if (!proposal) {
+      return { error: 'Proposal not found' };
+    }
+
+    // If analysis already exists, just return it
+    if (proposal.resubmitAiAnalysis) {
+      return { data: proposal.resubmitAiAnalysis };
+    }
+
+    // If there is no text to analyze
+    if (!proposal.resubmitDocumentText) {
+      return { error: 'Tidak ada teks resubmission untuk dianalisis.' };
+    }
+
+    if (proposal.resubmitDocumentText.includes('ERROR: DOKUMEN HASIL SCAN')) {
+      return { error: 'Dokumen resubmission merupakan hasil scan, AI tidak dapat membaca teksnya.' };
+    }
+
+    const systemPrompt = `Anda adalah asisten AI ahli untuk kurasi inovasi.
+Tugas Anda adalah membaca isi DOKUMEN RESUBMISSION dari sebuah proposal dan merangkum informasi pentingnya.
+Format JSON HARUS spesifik seperti ini:
+{
+  "summary": "Rangkuman isi utama dokumen (2-3 kalimat)",
+  "keyFindings": ["Temuan/informasi penting 1", "Temuan 2", "Temuan 3"],
+  "methodology": "Bagaimana cara kerja/metodologi yang dijelaskan di dokumen (singkat)",
+  "dataValidity": "Analisis singkat apakah ada data/bukti pendukung yang kuat di dalam dokumen ini"
+}`;
+
+    const userPrompt = `DOKUMEN RESUBMISSION:
+${proposal.resubmitDocumentText}
+
+Berikan analisis JSON berdasarkan dokumen di atas.`;
+
+    const apiKey = process.env.OPENAI_API_KEY;
+    if (!apiKey) {
+      return { error: 'OPENAI_API_KEY belum dikonfigurasi.' };
+    }
+
+    const res = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userPrompt },
+        ],
+        response_format: { type: 'json_object' },
+        temperature: 0.1,
+      }),
+    });
+
+    if (!res.ok) {
+      const err = await res.text();
+      console.error('OpenAI Error:', err);
+      return { error: 'Gagal memproses AI (Error API Eksternal).' };
+    }
+
+    const data = await res.json();
+    let aiResult;
+    try {
+      aiResult = JSON.parse(data.choices[0].message.content);
+    } catch (e) {
+      return { error: 'Format balasan AI tidak valid (Bukan JSON).' };
+    }
+
+    // Save to DB
+    await db
+      .update(proposals)
+      .set({ resubmitAiAnalysis: aiResult })
+      .where(eq(proposals.id, proposalId));
+
+    return { data: aiResult };
+  } catch (error: any) {
+    console.error('Resubmission AI Analysis Error:', error);
+    return { error: 'Terjadi kesalahan internal server.' };
+  }
+}
+

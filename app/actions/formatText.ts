@@ -18,22 +18,45 @@ export async function formatProposalFieldAction(
     return { error: 'Teks asli kosong.' };
   }
 
+  // Filter out redundant metadata headers if present in resubmission document
+  let cleanedText = originalText
+    .replace(/#*\s*Proposal Resubmission\s*-\s*PIA Season \d+/gi, '')
+    .replace(/#*\s*Kategori (Business Case|Breakthrough Innovation)/gi, '')
+    .replace(/#*\s*Nama Inovator\s*:?\s*[^:\n#]+?\s*(?=\s*(#*\s*Departemen|#*\s*Kantor|#*\s*Anggota|#*\s*Nama Inovasi|#*\s*Sasaran))/gi, '')
+    .replace(/#*\s*Departemen\s*\/\s*Divisi\s*:?\s*[^:\n#]+?\s*(?=\s*(#*\s*Kantor|#*\s*Anggota|#*\s*Nama Inovasi|#*\s*Sasaran))/gi, '')
+    .replace(/#*\s*Kantor Wilayah\s*:?\s*[^:\n#]+?\s*(?=\s*(#*\s*Anggota|#*\s*Nama Inovasi|#*\s*Sasaran))/gi, '')
+    .replace(/#*\s*Anggota Tim Inovasi Anda[^\n:#]*:?\s*[^:\n#]+?(?=\s*(#*\s*Nama Inovasi|#*\s*Sasaran))/gi, '')
+    .trim();
+
+  // Preprocess inline bullet characters (•, ●, ▪, ∘, ○) to newlines so AI and parser format them cleanly
+  cleanedText = cleanedText
+    .replace(/\s*([•●▪])\s*/g, '\n- ')
+    .replace(/\s*([∘○])\s*/g, '\n  - ');
+
+  if (!cleanedText) {
+    cleanedText = originalText;
+  }
+
   try {
     const prompt = `Anda HANYA bertugas merapikan format teks ini berdasarkan struktur yang SUDAH ADA di teks asli. 
 
 ATURAN KETAT YANG WAJIB DIPATUHI:
 1. DILARANG KERAS mengurangi kalimat, meringkas isi, menghilangkan detail, atau mengondensasi informasi apa pun.
 2. DILARANG KERAS menambah informasi atau interpretasi baru.
-3. DILARANG KERAS mengubah kata-kata/kalimat asli (parafrase). Pertahankan seluruh teks asli secara persis 100%.
-4. HANYA ubah strukturnya (line breaks & markdown): 
-   - Pecah paragraf yang terlalu panjang (wall-of-text) ke dalam paragraf-paragraf yang lebih logis.
-   - Tambahkan heading/subheading (## atau ###) JIKA teks asli sudah punya penanda topik yang jelas (misalnya "1. Sistem...", "2. Strategi..."). Jangan mengarang heading baru.
-   - Ubah list yang tertanam dalam paragraf (misalnya "A: ..., B: ...") menjadi bullet point yang jelas tanpa mengubah isi kalimat.
-   - Bold/highlight istilah teknis utama jika relevan (opsional).
+3. DILARANG KERAS mengesampingkan atau mengurai ulang kalimat (parafrase). Pertahankan seluruh isi secara persis.
+4. PENOMORAN & BULLET LIST (SANGAT WAJIB & KONSISTEN):
+   - Jika terdapat simbol bullet (seperti "•", "●", "▪", "∘", "○") atau penomoran ("1,", "1)", "1.", "a.", "a)") yang menyatu di dalam kalimat/paragraf, WAJIB DIPISAHKAN KE BARIS BARU TERSENDIRI.
+   - Ubah simbol "•", "●", "▪" menjadi bullet utama Markdown: "- Poin".
+   - Ubah simbol "∘", "○" atau sub-poin menjadi sub-bullet dengan indentasi 3 spasi: "   - Sub poin".
+   - Setiap poin penomoran atau bullet WAJIB berada di BARIS BARU tersendiri.
+   - DILARANG KERAS menggabungkan penomoran dan bullet sekaligus (misalnya DILARANG "- 1. " atau "* 1. "). Gunakan murni "1. " untuk urutan angka atau "- " untuk bullet.
+5. TATA LETAK & PARAGRAF:
+   - Gunakan Heading Markdown (## Judul Utama atau ### Sub Judul) untuk setiap bagian/topik utama.
+   - Berikan baris kosong (\n\n) di antara setiap paragraf atau section agar tampilan sangat bersih dan rapi.
 
 Teks yang harus Anda rapikan formatnya:
 
-${originalText}`;
+${cleanedText}`;
 
     const res = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
