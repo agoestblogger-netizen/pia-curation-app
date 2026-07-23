@@ -219,9 +219,13 @@ export async function releaseSingleFgdProposalAction(sessionId: number, proposal
   const [proposal] = await db.select().from(proposals).where(eq(proposals.id, proposalId)).limit(1);
   if (!proposal) return { error: 'Proposal tidak ditemukan' };
 
-  if (fgd.scope === 'nasional') {
+  if (fgd.fgdType === 'promoter') {
+    if (proposal.status !== 'grand_final' && proposal.status !== 'takeout') {
+      return { error: 'Status proposal saat ini tidak valid untuk di-release dari sesi Promotor.' };
+    }
+  } else if (fgd.scope === 'nasional') {
     if (proposal.status !== 'promotor_selection' && proposal.status !== 'takeout') {
-      return { error: 'Status proposal saat ini tidak valid untuk di-release.' };
+      return { error: 'Status proposal saat ini tidak valid untuk di-release dari Kurasi Nasional.' };
     }
   } else {
     if (proposal.status !== 'regional_finalist') {
@@ -229,8 +233,13 @@ export async function releaseSingleFgdProposalAction(sessionId: number, proposal
     }
   }
 
+  let targetStatus = 'fgd';
+  if (fgd.fgdType === 'promoter') {
+    targetStatus = 'promotor_selection';
+  }
+
   await db.update(proposals).set({
-    status: 'fgd',
+    status: targetStatus,
     takeoutReason: null,
     regionalFinalistRank: null,
     regionalFinalizedBy: null,

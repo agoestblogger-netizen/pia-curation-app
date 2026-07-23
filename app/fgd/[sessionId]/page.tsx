@@ -61,7 +61,14 @@ export default async function FgdRoomPage({ params }: { params: Promise<{ sessio
 
   let queryCondition: ReturnType<typeof sql>;
   if (fgd.fgdType === 'promoter') {
-    queryCondition = sql`p.status = 'promotor_selection'`;
+    if (fgd.status === 'locked') {
+      // Jika sesi Promotor sudah dikunci, tampilkan proposal yang terpilih (grand_final) 
+      // dan yang tidak terpilih/takeout di fase ini (not_selected_in_final_filter),
+      // serta proposal yang baru saja di-release kembali ke promotor_selection
+      queryCondition = sql`(p.status = 'grand_final' OR (p.status = 'takeout' AND p.takeout_reason = 'not_selected_in_final_filter') OR p.status = 'promotor_selection')`;
+    } else {
+      queryCondition = sql`p.status = 'promotor_selection'`;
+    }
   } else {
     queryCondition = sql`sr.verdict IN (${sql.raw(rawStatuses.map(s => `'${s}'`).join(', '))}) AND ${scopeSql}`;
   }
