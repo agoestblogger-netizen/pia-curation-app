@@ -48,8 +48,12 @@ export async function createCompetitionAction(
     return { error: (parsed.error as any).errors[0]?.message ?? 'Data tidak valid' };
   }
 
+  // Set all existing competitions to inactive
+  await db.update(competitions).set({ isActive: false });
+
   await db.insert(competitions).values({
     ...parsed.data,
+    isActive: true, // ensure the new one is active
     createdBy: session.userId,
   });
 
@@ -65,6 +69,7 @@ export const getActiveCompetition = cache(async () => {
     .select()
     .from(competitions)
     .where(eq(competitions.isActive, true))
+    .orderBy(desc(competitions.id))
     .limit(1);
   return comp ?? null;
 });
