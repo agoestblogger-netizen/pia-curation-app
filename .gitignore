@@ -48,3 +48,5 @@ backups/
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+data/resubmission/

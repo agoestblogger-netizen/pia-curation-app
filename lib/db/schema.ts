@@ -80,6 +80,8 @@ export const proposals = pgTable('proposals', {
   groupName: text('group_name'),
   teamMembers: jsonb('team_members'), // string[]
   linkProposal: text('link_proposal'),
+  linkResubmitProposal: text('link_resubmit_proposal'),
+  linkSuratOrisinalitas: text('link_surat_orisinalitas'),
   submissionDate: timestamp('submission_date', { withTimezone: true }),
   tagging: text('tagging'),
   tagging2: text('tagging2'),
