@@ -14,6 +14,8 @@ export default function KelolaGrandFinalClient({
   competitionId,
   candidates,
   initialAssigned,
+  proposals,
+  assessments,
 }: {
   competitionId: number;
   candidates: SponsorCandidate[];
