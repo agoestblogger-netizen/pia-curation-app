@@ -34,6 +34,7 @@ import { del } from '@vercel/blob';
 
 export type ResetOptions = {
   resetKurasiNasional: boolean;
+  resetFgdKuratorLock: boolean;
   resetHardLockPromotor: boolean;
   resetRegionalLock: boolean;
   // 3A: Hapus assignment PIC & Juri, sesi kembali ke finalis_terkunci
@@ -108,6 +109,37 @@ export async function resetDataAction(options: ResetOptions) {
           );
       }
       executedActions.push('Kurasi Nasional');
+    }
+
+    // 1A. Buka Kunci FGD Kurator
+    if (options.resetFgdKuratorLock) {
+      const lockedFgd = await db.select({ id: fgdSessions.id }).from(fgdSessions).where(
+        and(
+          eq(fgdSessions.competitionId, compId),
+          eq(fgdSessions.fgdType, 'curator'),
+          eq(fgdSessions.status, 'locked')
+        )
+      );
+      const lockedFgdIds = lockedFgd.map(s => s.id);
+
+      if (lockedFgdIds.length > 0) {
+        await db.update(fgdSessions)
+          .set({ status: 'active', lockedAt: null, lockedBy: null })
+          .where(inArray(fgdSessions.id, lockedFgdIds));
+
+        // Revert promotor_selection proposals back to fgd
+        const targetStatuses = ['promotor_selection'];
+        await db.update(proposals)
+          .set({ status: 'fgd', takeoutReason: null })
+          .where(
+            and(
+              eq(proposals.competitionId, compId),
+              ne(proposals.category, 'WILAYAH'),
+              inArray(proposals.status, targetStatuses)
+            )
+          );
+      }
+      executedActions.push('Buka Kunci FGD Kurator');
     }
 
     // 1B. Reset Hard Lock Promotor (Kembalikan wewenang ke Kurator)
@@ -352,6 +384,10 @@ export async function getResetStatsAction() {
     SELECT count(*) FROM promoter_selections WHERE competition_id = ${compId}
   `);
 
+  const [fgdKuratorLockedCount] = await db.execute(sql`
+    SELECT count(*) FROM fgd_sessions WHERE competition_id = ${compId} AND fgd_type = 'curator' AND status = 'locked'
+  `);
+
   const [promoterFgdCount] = await db.execute(sql`
     SELECT count(*) FROM fgd_sessions WHERE competition_id = ${compId} AND fgd_type = 'promoter'
   `);
@@ -426,6 +462,7 @@ export async function getResetStatsAction() {
 
   return {
     kurasiNasional: Number((screeningCount as any)?.count || 0) + Number((assignmentCount as any)?.count || 0) + Number((nasionalFgdCount as any)?.count || 0),
+    fgdKuratorLocked: Number((fgdKuratorLockedCount as any)?.count || 0),
     hardLockPromotor: Number((promoterSelectionsCount as any)?.count || 0) + Number((promoterFgdCount as any)?.count || 0),
     regionalLock: Number((regionalLockCount as any)?.count || 0),
     // 3A

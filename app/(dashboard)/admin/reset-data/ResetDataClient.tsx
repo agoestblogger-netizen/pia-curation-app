@@ -10,6 +10,7 @@ export default function ResetDataClient({ stats }: { stats: any }) {
 
   const [options, setOptions] = useState<ResetOptions>({
     resetKurasiNasional: false,
+    resetFgdKuratorLock: false,
     resetHardLockPromotor: false,
     resetRegionalLock: false,
     resetKelolaPicJuri: false,
@@ -97,6 +98,27 @@ export default function ResetDataClient({ stats }: { stats: any }) {
                   (Aksi ini menghapus skor Kurator secara total).
                   <span className="block mt-1 font-medium text-indigo-600">
                     Terdeteksi: {stats.kurasiNasional} entri data terpengaruh.
+                  </span>
+                </div>
+              </div>
+            </label>
+
+            {/* 1A - Buka Kunci FGD Kurator */}
+            <label className="flex items-start space-x-3 p-4 border border-dashed border-orange-200 rounded-lg hover:bg-orange-50 cursor-pointer bg-orange-50/30">
+              <input
+                type="checkbox"
+                className="mt-1 w-5 h-5 text-orange-600 rounded border-gray-300 focus:ring-orange-500"
+                checked={options.resetFgdKuratorLock}
+                onChange={(e) => setOptions(prev => ({ ...prev, resetFgdKuratorLock: e.target.checked }))}
+              />
+              <div>
+                <div className="font-semibold text-orange-900">1A. Buka Kunci Hasil FGD Kurator</div>
+                <div className="text-sm text-orange-800">
+                  Hanya membuka gembok Sesi FGD Kurator yang sudah <strong>SELESAI</strong> agar bisa di-voting ulang. 
+                  Status proposal yang tadinya <code className="bg-white/50 px-1 rounded text-orange-900">promotor_selection</code> akan dikembalikan menjadi <code className="bg-white/50 px-1 rounded text-orange-900">fgd</code>.
+                  Tidak menghapus sesi FGD maupun nilai kurator.
+                  <span className="block mt-1 font-medium font-bold">
+                    Terdeteksi: {stats.fgdKuratorLocked} sesi FGD Kurator terkunci.
                   </span>
                 </div>
               </div>
