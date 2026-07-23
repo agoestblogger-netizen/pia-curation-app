@@ -20,6 +20,7 @@ import {
   potentialDuplicates,
   grandFinalSelections,
   grandFinalAssessments,
+  grandFinalSponsors,
   regionalFinalSessions,
   regionalFinalPics,
   regionalFinalJudges,
@@ -265,11 +266,12 @@ export async function resetDataAction(options: ResetOptions) {
 
     // 4. Reset Grand Final (Sponsor/Nasional)
     if (options.resetGrandFinal) {
-      await db.delete(grandFinalSelections).where(eq(grandFinalSelections.competitionId, compId));
       await db.delete(grandFinalAssessments).where(eq(grandFinalAssessments.competitionId, compId));
-      await db.delete(sponsorScores).where(eq(sponsorScores.competitionId, compId));
-      await db.delete(scoringSnapshots).where(eq(scoringSnapshots.competitionId, compId));
+      await db.delete(grandFinalSelections).where(eq(grandFinalSelections.competitionId, compId));
+      await db.delete(grandFinalSponsors).where(eq(grandFinalSponsors.competitionId, compId));
       await db.delete(finalResults).where(eq(finalResults.competitionId, compId));
+      await db.delete(scoringSnapshots).where(eq(scoringSnapshots.competitionId, compId));
+      await db.delete(sponsorScores).where(eq(sponsorScores.competitionId, compId));
 
       await db.update(proposals)
         .set({ status: 'grand_finalist' })
