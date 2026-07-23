@@ -6,6 +6,7 @@ import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import AssessClient from './AssessClient';
 import FormattedTextDisplay from '@/app/components/FormattedTextDisplay';
+import CollapsibleReview from './CollapsibleReview';
 
 export default async function AssessPage({
   params,
@@ -77,20 +78,17 @@ export default async function AssessPage({
         </div>
         
         {proposal.summary && (
-          <div className="mt-6 pt-6 border-t border-gray-200">
-            <h3 className="text-sm font-semibold text-gray-900 mb-2">Review Proposal</h3>
-            <div className="bg-gray-50 rounded-lg">
-              <FormattedTextDisplay 
-                proposalId={proposal.id}
-                fieldName="summary"
-                originalText={proposal.summary}
-                formattedText={(proposal.formattedTexts as any)?.summary}
-                canFormat={true}
-                autoFormatOnLoad={true}
-                hideFormatButton={true}
-              />
-            </div>
-          </div>
+          <CollapsibleReview>
+            <FormattedTextDisplay 
+              proposalId={proposal.id}
+              fieldName="summary"
+              originalText={proposal.summary}
+              formattedText={(proposal.formattedTexts as any)?.summary}
+              canFormat={true}
+              autoFormatOnLoad={true}
+              hideFormatButton={true}
+            />
+          </CollapsibleReview>
         )}
       </div>
 
