@@ -38,6 +38,7 @@ export default async function ProposalsPage() {
       aiScore: proposals.aiCidaTotal,
       curatorName: users.name,
       nomorUrut: proposals.nomorUrut,
+      linkResubmitProposal: proposals.linkResubmitProposal,
     })
     .from(proposals)
     .leftJoin(
@@ -58,6 +59,7 @@ export default async function ProposalsPage() {
     aiScore: r.aiScore !== null ? Number(r.aiScore).toFixed(2) : 'N/A',
     curatorName: r.curatorName,
     proposalRowNumber: r.nomorUrut || 0,
+    hasResubmission: !!r.linkResubmitProposal,
   }));
 
   mappedProposals.sort((a, b) => a.proposalRowNumber - b.proposalRowNumber);

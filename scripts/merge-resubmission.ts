@@ -171,7 +171,7 @@ async function run() {
     }
     
     // Map other narration fields if needed...
-    if (row['Kembangkan ide solusi']) updateData.bcEksplorasiSolusi = row['Kembangkan ide solusi'];
+    if (row['Kembangkan ide solusi']) updateData.bcEksploraSolusi = row['Kembangkan ide solusi'];
     if (row['bagaimana solusi inovatif']) updateData.bcInovasiHarusMemilikiKebaruan = row['bagaimana solusi inovatif'];
     
     // GROUP C - Scores (Overwrite)

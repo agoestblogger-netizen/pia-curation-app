@@ -42,6 +42,7 @@ export default async function CuratorDashboard() {
           aiCidaTotal: proposals.aiCidaTotal,
           assignmentStatus: curatorAssignments.status,
           nomorUrut: proposals.nomorUrut,
+          linkResubmitProposal: proposals.linkResubmitProposal,
         })
         .from(curatorAssignments)
         .innerJoin(proposals, eq(curatorAssignments.proposalId, proposals.id))
@@ -74,6 +75,7 @@ export default async function CuratorDashboard() {
         status: a.assignmentStatus,
         aiScore: a.aiCidaTotal ? a.aiCidaTotal.toFixed(1) : '-',
         proposalRowNumber: a.nomorUrut || 0,
+        hasResubmission: !!a.linkResubmitProposal,
       }),
       hasDuplicateWarning: warningProposalIds.has(a.id)
     }));

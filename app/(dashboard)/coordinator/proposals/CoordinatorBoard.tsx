@@ -15,6 +15,7 @@ interface ProposalCard {
   aiScore: string;
   curatorName?: string | null;
   proposalRowNumber: number;
+  hasResubmission?: boolean;
 }
 
 const CATEGORY_MAP: Record<string, { label: string, short: string, bg: string }> = {
@@ -29,6 +30,7 @@ export default function CoordinatorBoard({ proposals, duplicates: initialDuplica
   const [duplicates, setDuplicates] = useState(initialDuplicates);
   const [isPending, startTransition] = useTransition();
   const [searchQuery, setSearchQuery] = useState('');
+  const [resubmissionFilter, setResubmissionFilter] = useState<'semua' | 'ya' | 'tidak'>('semua');
   const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>({
     'PUSAT': true
   });
@@ -42,11 +44,13 @@ export default function CoordinatorBoard({ proposals, duplicates: initialDuplica
     setExpandedWilayah(prev => ({ ...prev, [region]: !prev[region] }));
   };
 
-  // Filter based on tab & search
   const displayedProposals = proposals.filter(p => {
     const matchesTab = activeTab === 'assigned' ? p.status !== 'completed' : p.status === 'completed';
     const matchesSearch = p.title.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesTab && matchesSearch;
+    const matchesResubmission = resubmissionFilter === 'semua' 
+      ? true 
+      : resubmissionFilter === 'ya' ? !!p.hasResubmission : !p.hasResubmission;
+    return matchesTab && matchesSearch && matchesResubmission;
   });
 
   // Group by category
@@ -96,6 +100,12 @@ export default function CoordinatorBoard({ proposals, duplicates: initialDuplica
                 <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-green-50 text-green-700 border border-green-200 whitespace-nowrap">
                   AI: {p.aiScore}
                 </span>
+                {p.hasResubmission && (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-bold bg-blue-50 text-blue-700 border border-blue-200 whitespace-nowrap" title="Peserta telah mengirim resubmission">
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    Resubmission
+                  </span>
+                )}
               </div>
               <div className="text-xs text-gray-600 font-semibold mb-2">
                 {p.division || p.regionCenter || 'Operasional'}
@@ -160,20 +170,36 @@ export default function CoordinatorBoard({ proposals, duplicates: initialDuplica
         </button>
       </div>
 
-      {/* Search Input */}
-      <div className="mb-6 relative w-full sm:max-w-md">
-        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-          <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-          </svg>
+      {/* Search & Filters */}
+      <div className="mb-6 flex flex-col sm:flex-row gap-4 items-center w-full">
+        <div className="relative w-full sm:max-w-md flex-1">
+          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+          </div>
+          <input
+            type="text"
+            placeholder="Cari Proposal..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-10 w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-3 border text-gray-900 bg-white"
+          />
         </div>
-        <input
-          type="text"
-          placeholder="Cari Proposal..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="pl-10 w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-3 border text-gray-900 bg-white"
-        />
+        
+        {/* Resubmission Filter */}
+        <div className="w-full sm:w-auto shrink-0 flex items-center bg-white rounded-lg border border-gray-300 p-1 shadow-sm h-full">
+          <span className="px-3 text-sm font-semibold text-gray-600 border-r border-gray-200 hidden sm:inline-block">Resubmission:</span>
+          <select 
+            className="bg-transparent border-0 text-sm font-medium focus:ring-0 text-gray-900 py-2 pl-3 pr-8 w-full cursor-pointer outline-none"
+            value={resubmissionFilter}
+            onChange={(e) => setResubmissionFilter(e.target.value as any)}
+          >
+            <option value="semua">Semua</option>
+            <option value="ya">Ya (Terisi)</option>
+            <option value="tidak">Tidak (Kosong)</option>
+          </select>
+        </div>
       </div>
 
       <div className="space-y-4">
