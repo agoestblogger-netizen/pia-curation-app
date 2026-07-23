@@ -40,7 +40,7 @@ if (!url.startsWith('postgresql://') && !url.startsWith('postgres://')) {
 const isProduction = process.env.NODE_ENV === 'production';
 
 const client = postgres(url, {
-  max: isProduction ? 1 : 10,     // Serverless: 1 | Dev: pool of 10
+  max: 10,                        // Serverless & Dev: pool of 10
   idle_timeout: 20,               // Close idle connections after 20s
   connect_timeout: 10,            // Fail fast if cannot connect in 10s
   ssl: url.includes('supabase.co') ? 'require' : undefined,

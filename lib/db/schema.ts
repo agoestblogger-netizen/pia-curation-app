@@ -239,6 +239,7 @@ export const curatorAssignments = pgTable('curator_assignments', {
   index('curator_assignment_curator_idx').on(table.curatorId),
   index('curator_assignment_batch_idx').on(table.batchId),
   index('curator_assignment_proposal_idx').on(table.proposalId),
+  index('curator_assignment_status_idx').on(table.status),
 ]);
 
 // ─── ASSIGNMENT HISTORY ───────────────────────────────────────────────────────
@@ -484,7 +485,10 @@ export const potentialDuplicates = pgTable('potential_duplicates', {
   note: text('note'),
   // status: pending, confirmed, rejected
   status: text('status').notNull().default('pending'),
-});
+}, (table) => [
+  index('potential_duplicates_prop_a_idx').on(table.proposalAId),
+  index('potential_duplicates_prop_b_idx').on(table.proposalBId),
+]);
 
 // ─── REGIONAL FINAL (MODUL 3) ─────────────────────────────────────────────────
 export const regionalFinalSessions = pgTable('regional_final_sessions', {

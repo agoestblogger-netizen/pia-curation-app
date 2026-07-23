@@ -13,37 +13,46 @@ export default async function CuratorDashboard() {
     return <div>Unauthorized</div>;
   }
 
-  // Get active competition
-  const [activeComp] = await db.select().from(competitions).where(eq(competitions.isActive, true)).limit(1);
+  // Get active competition and User details concurrently
+  const [compResult, userResult] = await Promise.all([
+    db.select().from(competitions).where(eq(competitions.isActive, true)).limit(1),
+    db.select().from(users).where(eq(users.id, session.userId)).limit(1)
+  ]);
+  const activeComp = compResult[0];
+  const user = userResult[0];
   
   let mappedProposals: any[] = [];
   let totalAssigned = 0;
   let totalCompleted = 0;
+  let duplicates: any[] = [];
   
   if (activeComp) {
 
+    // Get all assignments for this curator and their duplicates concurrently
+    const [assignments, curatorDuplicates] = await Promise.all([
+      db
+        .select({
+          id: proposals.id,
+          title: proposals.title,
+          category: proposals.category,
+          proposerName: proposals.proposerName,
+          division: proposals.division,
+          summary: proposals.summary,
+          regionCenter: proposals.regionCenter,
+          aiCidaTotal: proposals.aiCidaTotal,
+          assignmentStatus: curatorAssignments.status,
+          nomorUrut: proposals.nomorUrut,
+        })
+        .from(curatorAssignments)
+        .innerJoin(proposals, eq(curatorAssignments.proposalId, proposals.id))
+        .where(and(
+          eq(curatorAssignments.curatorId, session.userId),
+          eq(proposals.competitionId, activeComp.id)
+        )),
+      getCuratorPotentialDuplicates()
+    ]);
 
-    // Get all assignments for this curator
-    const assignments = await db
-      .select({
-        id: proposals.id,
-        title: proposals.title,
-        category: proposals.category,
-        proposerName: proposals.proposerName,
-        division: proposals.division,
-        summary: proposals.summary,
-        regionCenter: proposals.regionCenter,
-        aiCidaTotal: proposals.aiCidaTotal,
-        assignmentStatus: curatorAssignments.status,
-        nomorUrut: proposals.nomorUrut,
-      })
-      .from(curatorAssignments)
-      .innerJoin(proposals, eq(curatorAssignments.proposalId, proposals.id))
-      .where(and(
-        eq(curatorAssignments.curatorId, session.userId),
-        eq(proposals.competitionId, activeComp.id)
-      ));
-
+    duplicates = curatorDuplicates;
     totalAssigned = assignments.length;
     totalCompleted = assignments.filter(a => a.assignmentStatus === 'completed').length;
 
@@ -70,12 +79,10 @@ export default async function CuratorDashboard() {
     }));
 
     mappedProposals.sort((a, b) => a.proposalRowNumber - b.proposalRowNumber);
+  } else {
+    // If no active comp, we might still want to fetch duplicates for UI consistency
+    duplicates = await getCuratorPotentialDuplicates();
   }
-
-  const duplicates = await getCuratorPotentialDuplicates();
-
-  // User details for Identity block
-  const [user] = await db.select().from(users).where(eq(users.id, session.userId)).limit(1);
 
   return (
     <div className="w-full">
