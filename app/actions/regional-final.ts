@@ -1,7 +1,7 @@
 'use server';
 
 import { db } from '@/lib/db';
-import { proposals, competitions, users, curatorAssignments } from '@/lib/db/schema';
+import { proposals, competitions, users, curatorAssignments, screeningResults } from '@/lib/db/schema';
 import { requireRole } from '@/lib/auth/helpers';
 import { eq, and, inArray, count } from 'drizzle-orm';
 import { KANWIL_CITIES } from '@/lib/constants';
@@ -23,6 +23,7 @@ export type RegionalGroup = {
     aiCidaTotal: number | null;
     aiCidaAverageSkor: number | null;
     status: string;
+    verdict: string | null;
     regionalFinalistRank: number | null;
     regionalFinalizedAt: Date | null;
   }[];
@@ -35,8 +36,8 @@ export type RegionalGroup = {
 export async function getRegionalGroups(competitionId: number): Promise<RegionalGroup[]> {
   await requireRole('coordinator');
 
-  // Get all WILAYAH and PUSAT proposals that passed screening
-  const eligibleStatuses = ['curation_passed', 'regional_finalist', 'takeout'];
+  // Get all WILAYAH and PUSAT proposals that passed screening or rejected (so we have verdicts)
+  const eligibleStatuses = ['curation_passed', 'regional_finalist', 'takeout', 'rejected'];
   const regionalProposals = await db
     .select({
       id: proposals.id,
@@ -49,8 +50,10 @@ export async function getRegionalGroups(competitionId: number): Promise<Regional
       aiCidaAverageSkor: proposals.aiCidaAverageSkor,
       regionalFinalistRank: proposals.regionalFinalistRank,
       regionalFinalizedAt: proposals.regionalFinalizedAt,
+      verdict: screeningResults.verdict,
     })
     .from(proposals)
+    .leftJoin(screeningResults, eq(proposals.id, screeningResults.proposalId))
     .where(
       and(
         eq(proposals.competitionId, competitionId),
@@ -92,11 +95,16 @@ export async function getRegionalGroups(competitionId: number): Promise<Regional
       aiCidaTotal: p.aiCidaTotal,
       aiCidaAverageSkor: p.aiCidaAverageSkor,
       status: p.status,
+      verdict: p.verdict,
       regionalFinalistRank: p.regionalFinalistRank,
       regionalFinalizedAt: p.regionalFinalizedAt,
     });
-    group.totalProposals++;
-    if (p.status === 'regional_finalist') group.finalistCount++;
+    
+    // Hanya hitung totalProposals untuk yang berstatus lolos/finalist/takeout awal
+    if (p.verdict === 'lolos') {
+      group.totalProposals++;
+      if (p.status === 'regional_finalist') group.finalistCount++;
+    }
   }
 
   // Determine if a group is "locked"

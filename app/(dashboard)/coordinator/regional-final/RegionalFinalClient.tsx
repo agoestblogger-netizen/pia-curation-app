@@ -25,6 +25,7 @@ export default function RegionalFinalClient({ competitionId, groups, readOnly }:
     }
     return init;
   });
+  const [filterVerdict, setFilterVerdict] = useState<Record<string, string>>({});
   const [error, setError] = useState<Record<string, string>>({});
   const [success, setSuccess] = useState<Record<string, string>>({});
   const [confirmLock, setConfirmLock] = useState<string | null>(null);
@@ -32,8 +33,8 @@ export default function RegionalFinalClient({ competitionId, groups, readOnly }:
   const [isPending, startTransition] = useTransition();
   const router = useRouter();
 
-  const toggleSelection = (group: RegionalGroup, proposalId: number, isLocked: boolean) => {
-    if (readOnly || isLocked) return;
+  const toggleSelection = (group: RegionalGroup, proposalId: number, isLocked: boolean, verdict: string | null) => {
+    if (readOnly || isLocked || verdict !== 'lolos') return;
 
     const currentSet = selections[group.region] ?? new Set();
     
@@ -142,12 +143,28 @@ export default function RegionalFinalClient({ competitionId, groups, readOnly }:
                 <div>
                   <h3 className="font-bold text-gray-900">{group.region}</h3>
                   <p className="text-xs text-gray-500">
-                    {group.totalProposals} proposal · {group.finalistCount} finalis dipilih
+                    {group.totalProposals} proposal lolos · {group.finalistCount} finalis dipilih
                     {group.isLocked && <span className="ml-2 text-green-600 font-semibold">🔒 Terkunci</span>}
                   </p>
                 </div>
               </div>
-              <div className="flex items-center space-x-2">
+              <div className="flex items-center space-x-3">
+                <select
+                  className="text-xs border-gray-300 rounded-md py-1 px-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  value={filterVerdict[group.region] || 'lolos'}
+                  onClick={(e) => e.stopPropagation()}
+                  onChange={(e) => {
+                    e.stopPropagation();
+                    setFilterVerdict(prev => ({ ...prev, [group.region]: e.target.value }));
+                    if (!isExpanded) setExpandedGroup(group.region);
+                  }}
+                >
+                  <option value="lolos">Status: Lolos</option>
+                  <option value="duplication">Status: Duplication</option>
+                  <option value="mapped">Status: Mapped</option>
+                  <option value="non_compliance">Status: Non Compliance</option>
+                  <option value="low_impact">Status: Low Impact</option>
+                </select>
                 <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
                   group.finalistCount === 0 ? 'bg-gray-100 text-gray-500' :
                   group.finalistCount < 10 ? 'bg-yellow-100 text-yellow-700' :
@@ -179,21 +196,24 @@ export default function RegionalFinalClient({ competitionId, groups, readOnly }:
                 {/* Proposal list */}
                 <div className="divide-y divide-gray-100">
                   {group.proposals
-                    .filter(p => p.status !== 'takeout' || selected.has(p.id))
+                    .filter(p => p.verdict === (filterVerdict[group.region] || 'lolos'))
+                    .filter(p => (filterVerdict[group.region] || 'lolos') !== 'lolos' || p.status !== 'takeout' || selected.has(p.id))
                     .sort((a, b) => (b.aiCidaTotal ?? 0) - (a.aiCidaTotal ?? 0))
                     .map((p, idx) => {
                     const isSelected = selected.has(p.id);
                     const isLocked = group.isLocked;
+                    const canSelect = p.verdict === 'lolos';
 
                     return (
                       <div
                         key={p.id}
-                        onClick={() => toggleSelection(group, p.id, isLocked)}
-                        className={`px-6 py-4 flex items-center space-x-4 cursor-pointer transition-colors ${
+                        onClick={() => toggleSelection(group, p.id, isLocked, p.verdict)}
+                        className={`px-6 py-4 flex items-center space-x-4 transition-colors ${
                           isSelected ? 'bg-indigo-50' : 'hover:bg-gray-50'
-                        } ${isLocked ? 'cursor-not-allowed' : ''}`}
+                        } ${(!canSelect || isLocked) ? 'cursor-not-allowed opacity-75' : 'cursor-pointer'}`}
                       >
                         <div className={`w-5 h-5 rounded border flex-shrink-0 flex items-center justify-center ${
+                          !canSelect ? 'bg-gray-100 border-gray-200' :
                           isSelected ? 'bg-indigo-600 border-indigo-600' : 'border-gray-300'
                         }`}>
                           {isSelected && (
