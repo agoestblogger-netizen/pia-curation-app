@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth/session';
 import { db } from '@/lib/db';
-import { competitions, proposals, grandFinalAssessments, users } from '@/lib/db/schema';
-import { eq, and, sql } from 'drizzle-orm';
+import { competitions, proposals, grandFinalAssessments, users, grandFinalSponsors } from '@/lib/db/schema';
+import { eq, and, sql, asc } from 'drizzle-orm';
 import { renderToStream } from '@react-pdf/renderer';
 import { GrandFinalBeritaAcara } from '@/lib/pdf/templates/grand-final-berita-acara';
 import React from 'react';
@@ -34,18 +34,12 @@ export async function GET(req: NextRequest) {
     const assessments = await db.select().from(grandFinalAssessments)
       .where(eq(grandFinalAssessments.competitionId, activeComp.id));
 
-    // Get sponsor users who actually assessed
-    const sponsorIds = Array.from(new Set(assessments.map(a => a.sponsorId)));
-    
-    let sponsorsList: any[] = [];
-    if (sponsorIds.length > 0) {
-      sponsorsList = await db.select({ id: users.id, name: users.name })
-        .from(users).where(sql`${users.id} IN (${sql.join(sponsorIds, sql`, `)})`);
-    } else {
-      // Fallback: all sponsors
-      sponsorsList = await db.select({ id: users.id, name: users.name })
-        .from(users).where(sql`'sponsor' = ANY(${users.roles})`);
-    }
+    // Get assigned sponsor users who are ordered correctly
+    const sponsorsList = await db.select({ id: users.id, name: users.name })
+      .from(users)
+      .innerJoin(grandFinalSponsors, eq(users.id, grandFinalSponsors.userId))
+      .where(eq(grandFinalSponsors.competitionId, activeComp.id))
+      .orderBy(asc(grandFinalSponsors.sortOrder));
 
     // Calculate averages and classifications
     const data = gfProposals.map(p => {

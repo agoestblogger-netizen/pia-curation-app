@@ -1,7 +1,7 @@
 import { requireRole } from '@/lib/auth/helpers';
 import { db } from '@/lib/db';
 import { proposals, grandFinalAssessments, users, competitions, finalResults, proposalAiAnalyses, grandFinalSponsors } from '@/lib/db/schema';
-import { eq, and, sql } from 'drizzle-orm';
+import { eq, and, sql, asc } from 'drizzle-orm';
 import GrandFinalSidangClient from './GrandFinalSidangClient';
 import { getActiveCompetition } from '@/app/actions/competitions';
 
@@ -54,7 +54,8 @@ export default async function GrandFinalSidangPage() {
   const sponsorUsersPromise = db.select({ id: users.id, name: users.name })
     .from(users)
     .innerJoin(grandFinalSponsors, eq(users.id, grandFinalSponsors.userId))
-    .where(eq(grandFinalSponsors.competitionId, activeComp.id));
+    .where(eq(grandFinalSponsors.competitionId, activeComp.id))
+    .orderBy(asc(grandFinalSponsors.sortOrder));
 
   const [
     lockedResults,
