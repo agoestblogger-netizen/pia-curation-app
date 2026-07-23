@@ -76,17 +76,40 @@ export async function GET(req: NextRequest) {
     // Assemble data
     const data = regionalProposals.map(p => {
       const pResult = results.find(r => r.proposalId === p.id);
+      let finalScore = 0;
+      let rank = pResult?.rank || null;
+      let isTieBreak = !!pResult?.tieBreakNote;
+
+      if (pResult) {
+        finalScore = pResult.finalScore;
+      } else {
+        // Fallback to computing from assessments if regionalFinalResults is not yet populated
+        const pAssessments = assessments.filter(a => a.proposalId === p.id);
+        if (pAssessments.length > 0) {
+          let sumAvg = 0;
+          pAssessments.forEach(a => {
+            sumAvg += (a.paramProblemFit + a.paramDampak + a.paramKelayakan + a.paramProfessional) / 4;
+          });
+          finalScore = sumAvg / pAssessments.length;
+        }
+      }
+
       return {
         ...p,
-        totalScore: pResult ? pResult.finalScore.toFixed(2) : '0.00',
-        rank: pResult?.rank || null,
-        isTieBreak: !!pResult?.tieBreakNote,
-        avgNum: pResult ? pResult.finalScore : 0
+        totalScore: finalScore > 0 ? finalScore.toFixed(2) : '0.00',
+        rank,
+        isTieBreak,
+        avgNum: finalScore
       };
     });
 
-    // Sort by finalScore, then rank if available
+    // Sort by finalScore descending
     data.sort((a, b) => b.avgNum - a.avgNum);
+
+    // Assign fallback ranks based on sort order if missing
+    data.forEach((d, idx) => {
+      if (!d.rank) d.rank = idx + 1;
+    });
 
     // Current Date Formatted (Indonesian)
     const now = new Date();
