@@ -44,7 +44,6 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col" suppressHydrationWarning>
         <NavigationOverlay />
-        <Toaster position="top-center" />
         {children}
         <Script
           id="service-worker"
