@@ -34,6 +34,7 @@ import { del } from '@vercel/blob';
 
 export type ResetOptions = {
   resetKurasiNasional: boolean;
+  resetHardLockPromotor: boolean;
   resetRegionalLock: boolean;
   // 3A: Hapus assignment PIC & Juri, sesi kembali ke finalis_terkunci
   resetKelolaPicJuri: boolean;
@@ -95,9 +96,9 @@ export async function resetDataAction(options: ResetOptions) {
       }
 
       if (compNasionalIds.length > 0) {
-        const kurasiStatuses = ['assigned', 'screened', 'fgd', 'promotor_selection', 'promotor_passed', 'promotor_rejected'];
+        const kurasiStatuses = ['assigned', 'screened', 'fgd', 'promotor_selection', 'promotor_passed', 'promotor_rejected', 'grand_final', 'takeout'];
         await db.update(proposals)
-          .set({ status: 'imported' })
+          .set({ status: 'imported', takeoutReason: null })
           .where(
             and(
               eq(proposals.competitionId, compId),
@@ -107,6 +108,51 @@ export async function resetDataAction(options: ResetOptions) {
           );
       }
       executedActions.push('Kurasi Nasional');
+    }
+
+    // 1B. Reset Hard Lock Promotor (Kembalikan wewenang ke Kurator)
+    if (options.resetHardLockPromotor) {
+      const compProposals = await db.select({ id: proposals.id }).from(proposals)
+        .where(and(eq(proposals.competitionId, compId), eq(proposals.category, 'PUSAT')));
+      const compNasionalIds = compProposals.map(p => p.id);
+
+      if (compNasionalIds.length > 0) {
+        await db.delete(promoterSelections).where(inArray(promoterSelections.proposalId, compNasionalIds));
+        await db.delete(promoterAssignments).where(inArray(promoterAssignments.proposalId, compNasionalIds));
+      }
+
+      const promoterFgd = await db.select({ id: fgdSessions.id }).from(fgdSessions).where(
+        and(eq(fgdSessions.competitionId, compId), eq(fgdSessions.fgdType, 'promoter'))
+      );
+      const promoterFgdIds = promoterFgd.map(s => s.id);
+      if (promoterFgdIds.length > 0) {
+        await db.delete(fgdVotes).where(inArray(fgdVotes.sessionId, promoterFgdIds));
+        await db.delete(fgdComments).where(inArray(fgdComments.sessionId, promoterFgdIds));
+        await db.delete(fgdSessions).where(inArray(fgdSessions.id, promoterFgdIds));
+      }
+
+      if (compNasionalIds.length > 0) {
+        // Hanya yang statusnya maju dari Kurator FGD
+        const targetStatuses = ['promotor_selection', 'promotor_passed', 'promotor_rejected', 'grand_final', 'takeout'];
+        await db.update(proposals)
+          .set({ status: 'fgd', takeoutReason: null })
+          .where(
+            and(
+              eq(proposals.competitionId, compId),
+              eq(proposals.category, 'PUSAT'),
+              inArray(proposals.status, targetStatuses)
+            )
+          );
+      }
+
+      // Revert phase if it was advanced by Promoter FGD
+      if (comp.phase !== 'imported' && comp.phase !== 'curation') {
+        const { competitions } = await import('@/lib/db/schema');
+        await db.update(competitions)
+          .set({ phase: 'curation' })
+          .where(eq(competitions.id, compId));
+      }
+      executedActions.push('Reset Fase Promotor (Kembalikan ke Kurator)');
     }
 
     // 2. Reset Regional (Kunci Finalis)
@@ -302,6 +348,14 @@ export async function getResetStatsAction() {
     SELECT count(*) FROM fgd_sessions WHERE competition_id = ${compId} AND scope = 'nasional'
   `);
 
+  const [promoterSelectionsCount] = await db.execute(sql`
+    SELECT count(*) FROM promoter_selections WHERE competition_id = ${compId}
+  `);
+
+  const [promoterFgdCount] = await db.execute(sql`
+    SELECT count(*) FROM fgd_sessions WHERE competition_id = ${compId} AND fgd_type = 'promoter'
+  `);
+
   const [regionalLockCount] = await db.execute(sql`
     SELECT count(*) FROM proposals 
     WHERE competition_id = ${compId} AND status = 'regional_finalist'
@@ -372,6 +426,7 @@ export async function getResetStatsAction() {
 
   return {
     kurasiNasional: Number((screeningCount as any)?.count || 0) + Number((assignmentCount as any)?.count || 0) + Number((nasionalFgdCount as any)?.count || 0),
+    hardLockPromotor: Number((promoterSelectionsCount as any)?.count || 0) + Number((promoterFgdCount as any)?.count || 0),
     regionalLock: Number((regionalLockCount as any)?.count || 0),
     // 3A
     kelolaPicJuri: Number((picCount as any)?.count || 0) + Number((judgeCount as any)?.count || 0),

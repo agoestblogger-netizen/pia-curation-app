@@ -10,6 +10,7 @@ export default function ResetDataClient({ stats }: { stats: any }) {
 
   const [options, setOptions] = useState<ResetOptions>({
     resetKurasiNasional: false,
+    resetHardLockPromotor: false,
     resetRegionalLock: false,
     resetKelolaPicJuri: false,
     resetPenilaianHasil: false,
@@ -89,12 +90,33 @@ export default function ResetDataClient({ stats }: { stats: any }) {
                 onChange={(e) => setOptions(prev => ({ ...prev, resetKurasiNasional: e.target.checked }))}
               />
               <div>
-                <div className="font-semibold text-gray-900">1. Reset Kurasi Nasional</div>
+                <div className="font-semibold text-gray-900">1. Reset Total Kurasi Nasional</div>
                 <div className="text-sm text-gray-500">
                   Hapus data screening, assignment kurator, FGD Nasional, dan pemilihan Promotor.
                   Proposal Pusat akan kembali ke status <code className="bg-gray-100 px-1 rounded">imported</code>.
+                  (Aksi ini menghapus skor Kurator secara total).
                   <span className="block mt-1 font-medium text-indigo-600">
                     Terdeteksi: {stats.kurasiNasional} entri data terpengaruh.
+                  </span>
+                </div>
+              </div>
+            </label>
+
+            {/* 1B - Reset Hard Lock Promotor */}
+            <label className="flex items-start space-x-3 p-4 border border-dashed border-indigo-200 rounded-lg hover:bg-indigo-50 cursor-pointer bg-indigo-50/30">
+              <input
+                type="checkbox"
+                className="mt-1 w-5 h-5 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500"
+                checked={options.resetHardLockPromotor}
+                onChange={(e) => setOptions(prev => ({ ...prev, resetHardLockPromotor: e.target.checked }))}
+              />
+              <div>
+                <div className="font-semibold text-indigo-900">1B. Kembalikan Wewenang ke Kurator (Batal Promotor)</div>
+                <div className="text-sm text-indigo-800">
+                  Hapus hanya data Promotor (Pemilihan & Sesi FGD Promotor). Status proposal dikembalikan ke <code className="bg-gray-100 px-1 rounded text-gray-600">fgd</code>.
+                  Skor & Assignment Kurator <strong>tetap ada</strong> sehingga Kurator dapat mengubah/reset nilainya kembali.
+                  <span className="block mt-1 font-medium font-bold">
+                    Terdeteksi: {stats.hardLockPromotor} entri data promotor.
                   </span>
                 </div>
               </div>
