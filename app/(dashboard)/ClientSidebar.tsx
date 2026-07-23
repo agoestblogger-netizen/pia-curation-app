@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { logoutAction } from '@/app/actions/auth';
@@ -20,6 +20,43 @@ export default function ClientSidebar({
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const pathname = usePathname();
+
+  const userRoles = session?.roles || [];
+  const isAdmin = userRoles.includes('admin');
+  const allFunctionalRoles = ['coordinator', 'curator', 'promoter', 'sponsor', 'regional'];
+  const functionalRoles = userRoles.filter(r => allFunctionalRoles.includes(r));
+  const hasMultipleFunctional = functionalRoles.length > 1;
+  const showToggle = !isAdmin && hasMultipleFunctional;
+
+  const [activeRole, setActiveRole] = useState<string>(() => {
+    if (functionalRoles.includes('coordinator')) return 'coordinator';
+    if (functionalRoles.includes('curator')) return 'curator';
+    if (functionalRoles.includes('promoter')) return 'promoter';
+    if (functionalRoles.includes('sponsor')) return 'sponsor';
+    if (functionalRoles.includes('regional')) return 'regional';
+    return functionalRoles[0] || '';
+  });
+
+  useEffect(() => {
+    if (showToggle && session?.userId) {
+      const saved = localStorage.getItem(`pia_active_role_${session.userId}`);
+      if (saved && functionalRoles.includes(saved) && saved !== activeRole) {
+        setActiveRole(saved);
+      }
+    }
+  }, [showToggle, functionalRoles, session?.userId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleRoleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const role = e.target.value;
+    setActiveRole(role);
+    if (session?.userId) {
+      localStorage.setItem(`pia_active_role_${session.userId}`, role);
+    }
+    
+    // Lakukan refresh ulang & default ke dashboard sesuai role
+    const targetDashboard = role === 'regional' ? '/regional-dashboard' : '/overview';
+    window.location.href = targetDashboard;
+  };
 
   // Hide sidebar on specific full-width pages
   if (pathname.includes('/sponsor/assess/') || pathname.includes('/regional-judge/assess/')) {
@@ -65,6 +102,21 @@ export default function ClientSidebar({
                 </span>
               ))}
             </div>
+            
+            {showToggle && (
+              <div className="mt-4 p-2 bg-indigo-800/40 rounded-lg border border-indigo-700/50">
+                <label className="text-[10px] uppercase text-indigo-300 font-bold mb-1 block tracking-wider">Tampil sebagai:</label>
+                <select 
+                  value={activeRole} 
+                  onChange={handleRoleChange}
+                  className="w-full bg-indigo-900 text-sm font-semibold text-white rounded border border-indigo-600 p-1.5 focus:outline-none focus:border-indigo-400 capitalize cursor-pointer"
+                >
+                  {functionalRoles.map(r => (
+                    <option key={r} value={r} className="capitalize">{r}</option>
+                  ))}
+                </select>
+              </div>
+            )}
           </div>
           
           {session && (
@@ -73,7 +125,14 @@ export default function ClientSidebar({
                 Ganti Password
               </Link>
               <span className="text-indigo-700">|</span>
-              <form action={logoutAction}>
+              <form 
+                action={logoutAction} 
+                onSubmit={() => {
+                  if (session?.userId) {
+                    localStorage.removeItem(`pia_active_role_${session.userId}`);
+                  }
+                }}
+              >
                 <button type="submit" className="text-red-400 hover:text-red-300 transition-colors font-bold">
                   Logout
                 </button>
@@ -85,27 +144,50 @@ export default function ClientSidebar({
         <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
           {(() => {
             if (!session) return null;
-            const userRoles = session.roles || [];
-            const hasRole = (roles: string[]) => roles.some(r => userRoles.includes(r));
+            
+            const checkRoles = showToggle 
+              ? (userRoles.includes('viewer') ? [activeRole, 'viewer'] : [activeRole]) 
+              : userRoles;
+
+            const hasRole = (roles: string[]) => roles.some(r => checkRoles.includes(r));
 
             const MENU_ITEMS = [
-              { label: 'Dashboard', path: '/overview', roles: ['coordinator', 'curator', 'promoter', 'sponsor', 'admin'] },
-              { label: 'Dashboard', path: '/regional-dashboard', roles: ['regional'] },
+              { 
+                label: 'Dashboard', 
+                path: (checkRoles.includes('coordinator') || checkRoles.includes('admin') || checkRoles.includes('curator') || checkRoles.includes('promoter') || checkRoles.includes('sponsor') || checkRoles.includes('viewer')) 
+                        ? '/overview' 
+                        : '/regional-dashboard', 
+                roles: ['coordinator', 'curator', 'promoter', 'sponsor', 'admin', 'regional', 'viewer'] 
+              },
+              
+              { isDivider: true, roles: ['coordinator', 'curator', 'promoter', 'viewer'] },
+              { isHeader: true, headerText: 'Kurasi Proposal', roles: ['coordinator', 'curator', 'promoter', 'viewer'] },
               { label: 'Assign Proposal', path: '/coordinator/batches', roles: ['coordinator'] },
               { label: 'Daftar Proposal (Kurator)', path: '/curator', roles: ['curator'], iconRight: '→' },
+              { label: 'Semua Proposal', path: '/coordinator/proposals', roles: ['coordinator', 'viewer'] },
+              
+              { isDivider: true, roles: ['coordinator', 'curator', 'promoter'] },
+              { isHeader: true, headerText: 'Finalisasi Proposal', roles: ['coordinator', 'curator', 'promoter'] },
               { label: 'Papan Penilaian (Promotor)', path: '/promoter', roles: ['promoter'], iconRight: '→' },
               { label: 'Ruang FGD', path: '/coordinator/fgd', roles: ['coordinator', 'curator', 'promoter'] },
+              
+              { isDivider: true, roles: ['coordinator', 'regional', 'admin'] },
+              { isHeader: true, headerText: 'Penetapan Finalis', roles: ['coordinator', 'regional', 'admin'] },
+              { isSubHeader: true, headerText: 'Regional', roles: ['coordinator', 'regional', 'admin'] },
+              { label: 'Kunci Finalis Regional', path: '/coordinator/regional-final', roles: ['coordinator'], indent: true },
+              { label: 'Kelola Final Regional', path: '/admin/regional-final', roles: ['coordinator', 'admin'], indent: true },
+              { label: 'Hasil Final Regional', path: '/coordinator/hasil-regional', roles: ['coordinator'], indent: true },
+              ...(regionalAssignments.isPic ? [{ label: 'Setup Final Regional', path: '/curator/regional-final', roles: ['regional'], indent: true }] : []),
+              ...(regionalAssignments.isJudge ? [{ label: 'Penilaian Final Regional', path: '/regional-judge', roles: ['regional'], iconRight: '→', indent: true }] : []),
+              
+              { isSubHeader: true, headerText: 'Grand Final', roles: ['coordinator'] },
+              { label: 'Sidang Penetapan', path: '/coordinator/grand-final/sidang', roles: ['coordinator'], indent: true },
+              { label: 'Hasil Grand Final', path: '/coordinator/grand-final/hasil', roles: ['coordinator'], indent: true },
+              
               { isDivider: true, roles: ['coordinator'] },
-              { label: 'Semua Proposal', path: '/coordinator/proposals', roles: ['coordinator', 'viewer'] },
-              { label: 'Finalisasi & Ranking', path: '/coordinator/finalization', roles: ['coordinator'] },
-              { isDivider: true, roles: ['coordinator', 'regional'] },
-              { isHeader: true, headerText: 'Final Regional', roles: ['coordinator', 'regional'] },
-              { label: 'Kunci Finalis Regional', path: '/coordinator/regional-final', roles: ['coordinator'] },
-              { label: 'Kelola Final Regional', path: '/admin/regional-final', roles: ['coordinator', 'admin'] },
-              ...(regionalAssignments.isPic ? [{ label: 'Setup Final Regional', path: '/curator/regional-final', roles: ['regional'] }] : []),
-              ...(regionalAssignments.isJudge ? [{ label: 'Penilaian Final Regional', path: '/regional-judge', roles: ['regional'], iconRight: '→' }] : []),
-              { isDivider: true, roles: ['coordinator'] },
-              { label: 'Manajemen User', path: '/coordinator/users', roles: ['coordinator'] },
+              { isHeader: true, headerText: 'Setting', roles: ['coordinator'] },
+              { label: 'Manajemen User', path: '/coordinator/settings', roles: ['coordinator'] },
+              
               { isDivider: true, roles: ['admin'] },
               { isHeader: true, headerText: 'Admin Zone', roles: ['admin'] },
               { label: 'Audit Log', path: '/coordinator/audit-log', roles: ['admin'], customClass: 'hover:bg-red-900/50 text-red-300' },
@@ -114,11 +196,18 @@ export default function ClientSidebar({
 
             return MENU_ITEMS.filter(item => hasRole(item.roles)).map((item, idx) => {
               if (item.isDivider) {
-                return <div key={`divider-${idx}`} className="border-t border-indigo-800 my-2" />;
+                return <div key={`divider-${idx}`} className="border-t-2 border-indigo-700/60 my-4" />;
               }
               if (item.isHeader) {
                 return (
-                  <div key={`header-${idx}`} className="px-4 py-1 text-xs font-bold text-red-400 uppercase tracking-wider">
+                  <div key={`header-${idx}`} className="px-4 py-1 mt-2 mb-1 text-[11px] font-bold text-orange-400 uppercase tracking-wider bg-indigo-900/50">
+                    {item.headerText}
+                  </div>
+                );
+              }
+              if (item.isSubHeader) {
+                return (
+                  <div key={`subheader-${idx}`} className="px-4 py-1.5 mt-1 text-xs font-bold text-indigo-300">
                     {item.headerText}
                   </div>
                 );
@@ -127,8 +216,8 @@ export default function ClientSidebar({
                 <Link 
                   key={item.path}
                   href={item.path!} 
-                  className={`block px-4 py-2 rounded text-sm transition-colors ${
-                    item.customClass ? item.customClass : 'hover:bg-indigo-800'
+                  className={`block py-2 rounded text-sm transition-colors ${item.indent ? 'pl-8 pr-4' : 'px-4'} ${
+                    item.customClass ? item.customClass : 'hover:bg-indigo-800 hover:text-white text-indigo-100'
                   } ${item.iconRight ? 'flex items-center justify-between' : ''}`}
                   onClick={() => setIsOpen(false)}
                 >

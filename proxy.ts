@@ -52,6 +52,16 @@ export async function proxy(request: NextRequest) {
         if (pathname.startsWith('/coordinator/fgd') && (session.roles.includes('curator') || session.roles.includes('promoter') || session.roles.includes('viewer'))) {
           continue;
         }
+
+        // Exception: Allow viewer to access Semua Proposal
+        if (pathname.startsWith('/coordinator/proposals') && session.roles.includes('viewer')) {
+          continue;
+        }
+        
+        // Exception: Allow viewer to access proposal details (accessed via /curator/proposals)
+        if (pathname.startsWith('/curator/proposals') && session.roles.includes('viewer')) {
+          continue;
+        }
         
         // Exception: Allow regional to access Sidang Final Regional
         if (pathname.startsWith('/curator/regional-final') && session.roles.includes('regional')) {

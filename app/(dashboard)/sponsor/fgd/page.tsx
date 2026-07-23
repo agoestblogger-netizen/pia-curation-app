@@ -66,6 +66,9 @@ export default async function SponsorFgdPage() {
           <p className="text-sm text-gray-500 mt-1">
             Status Visibilitas: <span className="font-semibold text-gray-700">{visibility === 'open' ? 'Terbuka (Dapat melihat skor sponsor lain)' : 'Tertutup (Hanya melihat skor sendiri)'}</span>
           </p>
+          <div className="mt-2 bg-blue-50 text-blue-700 p-3 rounded-lg text-sm border border-blue-200">
+            Halaman ini bersifat <strong>Read-Only</strong>. Proses input dan kalibrasi skor Sidang Grand Final dilakukan secara terpusat oleh Koordinator.
+          </div>
         </div>
       </div>
 
@@ -123,12 +126,9 @@ export default async function SponsorFgdPage() {
                 })}
 
                 <td className="px-6 py-4 text-center whitespace-nowrap">
-                  <Link 
-                    href={`/sponsor/assess/${row.id}`}
-                    className="inline-flex items-center px-3 py-1.5 border border-indigo-600 text-indigo-600 bg-white hover:bg-indigo-50 rounded-md text-xs font-medium transition-colors"
-                  >
-                    Nilai / Koreksi
-                  </Link>
+                  <span className="inline-flex items-center px-3 py-1.5 border border-gray-300 text-gray-400 bg-gray-50 rounded-md text-xs font-medium cursor-not-allowed">
+                    Terkunci
+                  </span>
                 </td>
               </tr>
             ))}

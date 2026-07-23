@@ -76,7 +76,9 @@ export const GrandFinalBeritaAcara = ({
             <View key={p.id} style={styles.row} wrap={false}>
               <Text style={[styles.cell, styles.colNo]}>{idx + 1}</Text>
               <Text style={[styles.cell, styles.colTitle]}>{p.title}</Text>
-              <Text style={[styles.cell, styles.colCat]}>{p.category}</Text>
+              <Text style={[styles.cell, styles.colCat]}>
+                {p.category === 'BI' ? 'Breakthrough Innovation' : p.category === 'BC' ? 'Business Case' : p.category}
+              </Text>
               <Text style={[styles.cell, styles.colScore]}>{p.totalScore}</Text>
               <Text style={[styles.cell, styles.colClass]}>{p.classification}</Text>
             </View>

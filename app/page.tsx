@@ -18,6 +18,8 @@ export default async function DashboardRedirect() {
     redirect('/sponsor');
   } else if (session.roles.includes('regional')) {
     redirect('/regional-dashboard');
+  } else if (session.roles.includes('viewer')) {
+    redirect('/overview');
   } else {
     redirect('/login');
   }

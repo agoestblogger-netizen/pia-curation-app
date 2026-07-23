@@ -14,18 +14,28 @@ export default async function DashboardLayout({
   let regionalAssignments = { isPic: false, isJudge: false };
 
   if (session && session.roles.includes('regional')) {
-    const picCheck = await db.select({ id: regionalFinalPics.id })
-      .from(regionalFinalPics)
-      .where(eq(regionalFinalPics.userId, session.userId))
-      .limit(1);
-    
-    const judgeCheck = await db.select({ id: regionalFinalJudges.userId })
-      .from(regionalFinalJudges)
-      .where(eq(regionalFinalJudges.userId, session.userId))
-      .limit(1);
+    if (session.roles.includes('admin')) {
+      regionalAssignments.isPic = true;
       
-    regionalAssignments.isPic = picCheck.length > 0;
-    regionalAssignments.isJudge = judgeCheck.length > 0;
+      const judgeCheck = await db.select({ id: regionalFinalJudges.userId })
+        .from(regionalFinalJudges)
+        .where(eq(regionalFinalJudges.userId, session.userId))
+        .limit(1);
+      regionalAssignments.isJudge = judgeCheck.length > 0;
+    } else {
+      const picCheck = await db.select({ id: regionalFinalPics.id })
+        .from(regionalFinalPics)
+        .where(eq(regionalFinalPics.userId, session.userId))
+        .limit(1);
+      
+      const judgeCheck = await db.select({ id: regionalFinalJudges.userId })
+        .from(regionalFinalJudges)
+        .where(eq(regionalFinalJudges.userId, session.userId))
+        .limit(1);
+        
+      regionalAssignments.isPic = picCheck.length > 0;
+      regionalAssignments.isJudge = judgeCheck.length > 0;
+    }
   }
 
   return (

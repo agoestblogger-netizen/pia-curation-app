@@ -30,6 +30,8 @@ export default async function RegionalDashboardPage() {
   }
 
   // 1. Temukan sesi di mana user menjadi PIC atau Juri
+  const isSuperPic = session.roles.includes('admin') && session.roles.includes('regional');
+
   const picSessions = await db
     .select({ sessionId: regionalFinalPics.sessionId })
     .from(regionalFinalPics)
@@ -45,7 +47,7 @@ export default async function RegionalDashboardPage() {
     ...judgeSessions.map(s => s.sessionId)
   ]));
 
-  if (mySessionIds.length === 0) {
+  if (!isSuperPic && mySessionIds.length === 0) {
     return (
       <div className="p-8 max-w-5xl mx-auto">
         <h1 className="text-2xl font-bold mb-4 text-gray-900">Dashboard</h1>
@@ -64,7 +66,7 @@ export default async function RegionalDashboardPage() {
     .where(
       and(
         eq(regionalFinalSessions.competitionId, activeComp.id),
-        inArray(regionalFinalSessions.id, mySessionIds)
+        isSuperPic ? undefined : inArray(regionalFinalSessions.id, mySessionIds)
       )
     );
 

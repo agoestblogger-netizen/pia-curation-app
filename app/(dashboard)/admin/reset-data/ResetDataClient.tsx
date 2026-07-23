@@ -25,9 +25,6 @@ export default function ResetDataClient({ stats }: { stats: any }) {
 
   const hasSelectedAny = Object.values(options).some(Boolean);
 
-  // Peringatan: centang 3A tanpa 3B — data penilaian menjadi yatim
-  const showOrphanWarning = options.resetKelolaPicJuri && !options.resetPenilaianHasil && stats.penilaianHasil > 0;
-
   const handleReset = (e: React.FormEvent) => {
     e.preventDefault();
     if (confirmText !== 'RESET DATA') {
@@ -39,13 +36,19 @@ export default function ResetDataClient({ stats }: { stats: any }) {
     setSuccess('Sedang melakukan reset data...');
 
     startTransition(async () => {
-      const res = await resetDataAction(options);
-      if (res?.error) {
-        setError(res.error);
+      try {
+        const res = await resetDataAction(options);
+        if (res?.error) {
+          setError(res.error);
+          setSuccess(null);
+          setShowConfirm(false);
+        } else {
+          window.location.reload();
+        }
+      } catch (err: any) {
+        setError('Gagal melakukan reset (kesalahan tak terduga): ' + (err.message || 'Server timeout atau error.'));
         setSuccess(null);
         setShowConfirm(false);
-      } else {
-        window.location.reload();
       }
     });
   };
@@ -131,14 +134,23 @@ export default function ResetDataClient({ stats }: { stats: any }) {
                     type="checkbox"
                     className="mt-1 w-5 h-5 text-amber-600 rounded border-gray-300 focus:ring-amber-500"
                     checked={options.resetKelolaPicJuri}
-                    onChange={(e) => setOptions(prev => ({ ...prev, resetKelolaPicJuri: e.target.checked }))}
+                    onChange={(e) => {
+                      const checked = e.target.checked;
+                      setOptions(prev => ({ 
+                        ...prev, 
+                        resetKelolaPicJuri: checked,
+                        ...(checked ? { resetPenilaianHasil: true } : {})
+                      }));
+                    }}
                   />
                   <div>
                     <div className="font-semibold text-gray-900">3A. Reset Kelola Regional (Assignment PIC & Juri)</div>
                     <div className="text-sm text-gray-500">
                       Hapus semua assignment PIC dan Juri. Status sesi dikembalikan ke{' '}
                       <code className="bg-gray-100 px-1 rounded">finalis_terkunci</code> — seolah belum ada penugasan.
-                      Data penilaian/hasil yang sudah ada <strong>tidak ikut dihapus</strong>.
+                      <span className="block mt-1 text-amber-700 font-medium">
+                        * Mencentang opsi ini otomatis turut mencentang & mereset 3B, karena keduanya saling bergantung.
+                      </span>
                       <span className="block mt-1 font-medium text-indigo-600">
                         Terdeteksi: {stats.kelolaPicJuri} assignment (PIC + Juri).
                       </span>
@@ -146,24 +158,13 @@ export default function ResetDataClient({ stats }: { stats: any }) {
                   </div>
                 </label>
 
-                {/* Peringatan orphan data */}
-                {showOrphanWarning && (
-                  <div className="mx-4 mb-3 mt-1 p-3 bg-yellow-50 border border-yellow-300 text-yellow-800 rounded-lg text-sm flex items-start gap-2">
-                    <svg className="w-4 h-4 mt-0.5 shrink-0 text-yellow-600" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
-                    </svg>
-                    <span>
-                      <strong>Perhatian:</strong> Ada {stats.penilaianHasil} entri penilaian/hasil yang sudah ada. Jika hanya centang 3A tanpa 3B, data tersebut akan menjadi <em>data yatim</em> (menunjuk ke Juri yang assignment-nya sudah dihapus). Disarankan centang juga <strong>"3B. Reset Penilaian & Hasil"</strong>.
-                    </span>
-                  </div>
-                )}
-
                 {/* 3B – Penilaian & Hasil */}
-                <label className="flex items-start space-x-3 p-4 hover:bg-gray-50 cursor-pointer">
+                <label className={`flex items-start space-x-3 p-4 ${options.resetKelolaPicJuri ? 'bg-gray-50/50 cursor-not-allowed opacity-75' : 'hover:bg-gray-50 cursor-pointer'}`}>
                   <input
                     type="checkbox"
-                    className="mt-1 w-5 h-5 text-amber-600 rounded border-gray-300 focus:ring-amber-500"
+                    className="mt-1 w-5 h-5 text-amber-600 rounded border-gray-300 focus:ring-amber-500 disabled:opacity-50 disabled:cursor-not-allowed"
                     checked={options.resetPenilaianHasil}
+                    disabled={options.resetKelolaPicJuri}
                     onChange={(e) => setOptions(prev => ({ ...prev, resetPenilaianHasil: e.target.checked }))}
                   />
                   <div>

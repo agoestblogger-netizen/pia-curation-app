@@ -33,7 +33,7 @@ const EVENT_COLORS: Record<string, string> = {
 };
 
 export default async function ProposalHistoryPage({ params }: { params: Promise<{ id: string }> }) {
-  await requireRole('coordinator');
+  await requireRole(['coordinator', 'viewer']);
   const { id } = await params;
   const proposalId = parseInt(id);
 

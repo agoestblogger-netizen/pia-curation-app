@@ -83,7 +83,14 @@ export async function resetDataAction(options: ResetOptions) {
       const batches = await db.select({ id: curationBatches.id }).from(curationBatches).where(eq(curationBatches.competitionId, compId));
       const batchIds = batches.map(b => b.id);
       if (batchIds.length > 0) {
-        await db.delete(curatorAssignments).where(inArray(curatorAssignments.batchId, batchIds));
+        const assignments = await db.select({ id: curatorAssignments.id }).from(curatorAssignments).where(inArray(curatorAssignments.batchId, batchIds));
+        const assignmentIds = assignments.map(a => a.id);
+        
+        if (assignmentIds.length > 0) {
+          // Hapus screening_results yang terikat dengan assignment ini (agar tidak kena Foreign Key constraint)
+          await db.delete(screeningResults).where(inArray(screeningResults.assignmentId, assignmentIds));
+          await db.delete(curatorAssignments).where(inArray(curatorAssignments.id, assignmentIds));
+        }
         await db.delete(curationBatches).where(inArray(curationBatches.id, batchIds));
       }
 

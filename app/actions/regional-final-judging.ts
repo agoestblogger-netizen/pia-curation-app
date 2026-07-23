@@ -187,7 +187,7 @@ export async function updateRegionalSessionStatusAction(sessionId: number, statu
     }
   }
 
-  if (session.roles.includes('regional') && !session.roles.includes('coordinator')) {
+  if (session.roles.includes('regional') && !session.roles.includes('coordinator') && !session.roles.includes('admin')) {
     // Check if PIC from regionalFinalPics
     const [picAssignment] = await db
       .select({ userId: regionalFinalPics.userId })
@@ -392,7 +392,7 @@ export async function lockRegionalFinalResultsAction(sessionId: number, tieBreak
   const [session] = await db.select().from(regionalFinalSessions).where(eq(regionalFinalSessions.id, sessionId));
   if (!session) return { error: 'Sesi tidak ditemukan' };
   
-  if (userSession.roles.includes('regional') && !userSession.roles.includes('coordinator')) {
+  if (userSession.roles.includes('regional') && !userSession.roles.includes('coordinator') && !userSession.roles.includes('admin')) {
     // Check if PIC from regionalFinalPics
     const [picAssignment] = await db
       .select({ userId: regionalFinalPics.userId })

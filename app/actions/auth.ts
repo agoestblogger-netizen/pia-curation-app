@@ -62,6 +62,8 @@ export async function loginAction(
     redirect('/sponsor');
   } else if (user.roles.includes('regional')) {
     redirect('/regional-dashboard');
+  } else if (user.roles.includes('viewer')) {
+    redirect('/overview');
   } else {
     redirect('/');
   }
