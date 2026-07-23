@@ -3,7 +3,7 @@ import React from 'react';
 export default function LoadingOverlay() {
   return (
     <div className="flex-1 w-full min-h-[60vh] flex flex-col items-center justify-center animate-in fade-in duration-300">
-      <div className="flex flex-col items-center bg-white p-8 rounded-2xl shadow-xl border border-gray-100">
+      <div className="flex flex-col items-center p-8">
         <svg 
           className="animate-spin h-14 w-14 text-indigo-600 mb-5" 
           xmlns="http://www.w3.org/2000/svg" 
