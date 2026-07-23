@@ -5,6 +5,7 @@ import { db } from '@/lib/db';
 import { users } from '@/lib/db/schema';
 import { eq, and, sql } from 'drizzle-orm';
 import { getGrandFinalSponsors } from '@/app/actions/grand-final-sponsors';
+import { proposals, grandFinalAssessments } from '@/lib/db/schema';
 
 export const metadata = {
   title: 'Kelola Grand Final - PIA Curation',
@@ -41,6 +42,25 @@ export default async function KelolaGrandFinalPage() {
 
   const assignedSponsors = await getGrandFinalSponsors(activeComp.id);
 
+  // Fetch proposals
+  const gfProposals = await db.select({
+    id: proposals.id,
+    externalSubId: proposals.externalSubId,
+    title: proposals.title,
+    category: proposals.category,
+  })
+  .from(proposals)
+  .where(and(
+    eq(proposals.competitionId, activeComp.id),
+    eq(proposals.status, 'grand_final')
+  ))
+  .orderBy(proposals.id);
+
+  // Fetch assessments
+  const gfAssessments = await db.select()
+    .from(grandFinalAssessments)
+    .where(eq(grandFinalAssessments.competitionId, activeComp.id));
+
   return (
     <div className="p-6">
       <h1 className="text-2xl font-bold text-gray-900 mb-2">Kelola Grand Final</h1>
@@ -50,6 +70,8 @@ export default async function KelolaGrandFinalPage() {
         competitionId={activeComp.id}
         candidates={sponsorCandidates} 
         initialAssigned={assignedSponsors.map(s => s.userId)}
+        proposals={gfProposals}
+        assessments={gfAssessments}
       />
     </div>
   );

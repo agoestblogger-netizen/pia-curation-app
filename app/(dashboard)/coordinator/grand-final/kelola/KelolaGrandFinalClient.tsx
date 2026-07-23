@@ -18,6 +18,8 @@ export default function KelolaGrandFinalClient({
   competitionId: number;
   candidates: SponsorCandidate[];
   initialAssigned: number[];
+  proposals: any[];
+  assessments: any[];
 }) {
   const [selectedIds, setSelectedIds] = useState<number[]>(initialAssigned);
   const [isPending, startTransition] = useTransition();
@@ -42,6 +44,13 @@ export default function KelolaGrandFinalClient({
       }
     });
   };
+
+  const assignedSponsorsData = candidates.filter(c => selectedIds.includes(c.id));
+  const totalAssessmentsNeeded = proposals.length * assignedSponsorsData.length;
+  const validAssessments = assessments.filter(a => selectedIds.includes(a.sponsorId));
+  const totalAssessmentsDone = validAssessments.length;
+  const progressPercent = totalAssessmentsNeeded > 0 ? Math.round((totalAssessmentsDone / totalAssessmentsNeeded) * 100) : 0;
+  const isComplete = totalAssessmentsNeeded > 0 && totalAssessmentsDone === totalAssessmentsNeeded;
 
   return (
     <div className="bg-white rounded-lg shadow border border-gray-200">
@@ -123,6 +132,106 @@ export default function KelolaGrandFinalClient({
           </button>
         </div>
       </div>
+
+      {assignedSponsorsData.length > 0 && (
+        <div className="border-t border-gray-200 mt-8 pt-8">
+          <div className="p-4 border-b border-gray-200 flex justify-between items-center bg-gray-50">
+            <h2 className="text-lg font-semibold text-gray-800">Monitoring Progress Penilaian</h2>
+            <div className="flex items-center gap-4">
+              <div className="text-sm text-gray-600 text-right">
+                <div>Progress Keseluruhan</div>
+                <div className="font-semibold text-gray-900">{totalAssessmentsDone} / {totalAssessmentsNeeded} Penilaian</div>
+              </div>
+              <div className="w-32 bg-gray-200 rounded-full h-2.5">
+                <div className={`h-2.5 rounded-full ${progressPercent === 100 ? 'bg-green-600' : 'bg-indigo-600'}`} style={{ width: `${progressPercent}%` }}></div>
+              </div>
+            </div>
+          </div>
+
+          <div className="p-4">
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200 border rounded-lg overflow-hidden">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">ID</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Proposal</th>
+                    {assignedSponsorsData.map(sponsor => (
+                      <th key={sponsor.id} className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">
+                        {sponsor.name.split(' ')[0]}
+                      </th>
+                    ))}
+                    <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {proposals.map(p => {
+                    const pAssessments = validAssessments.filter(a => a.proposalId === p.id);
+                    const isFullyAssessed = pAssessments.length === assignedSponsorsData.length;
+                    
+                    return (
+                      <tr key={p.id} className="hover:bg-gray-50">
+                        <td className="px-4 py-3 text-sm text-gray-500">{p.externalSubId || p.id}</td>
+                        <td className="px-4 py-3 text-sm font-medium text-gray-900 line-clamp-2">{p.title}</td>
+                        {assignedSponsorsData.map(sponsor => {
+                          const assessment = pAssessments.find(a => a.sponsorId === sponsor.id);
+                          return (
+                            <td key={sponsor.id} className="px-4 py-3 text-center">
+                              {assessment ? (
+                                <span className="inline-flex flex-col items-center">
+                                  <span className="text-sm font-semibold text-gray-900">{assessment.totalScore}</span>
+                                  <span className={`text-[10px] px-1.5 rounded-full ${
+                                    assessment.classification === 'Diamond' ? 'bg-blue-100 text-blue-800' :
+                                    assessment.classification === 'Platinum' ? 'bg-gray-200 text-gray-800' :
+                                    assessment.classification === 'Gold' ? 'bg-yellow-100 text-yellow-800' :
+                                    assessment.classification === 'Silver' ? 'bg-gray-100 text-gray-600' :
+                                    'bg-orange-100 text-orange-800'
+                                  }`}>{assessment.classification}</span>
+                                </span>
+                              ) : (
+                                <span className="text-gray-300">-</span>
+                              )}
+                            </td>
+                          );
+                        })}
+                        <td className="px-4 py-3 text-center">
+                          {isFullyAssessed ? (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
+                              Selesai
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800">
+                              {pAssessments.length}/{assignedSponsorsData.length}
+                            </span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                  {proposals.length === 0 && (
+                    <tr>
+                      <td colSpan={3 + assignedSponsorsData.length} className="px-4 py-4 text-center text-sm text-gray-500">
+                        Belum ada proposal Grand Final.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="mt-6 flex justify-end">
+              <button
+                onClick={() => router.push('/coordinator/grand-final/sidang')}
+                disabled={!isComplete}
+                className={`inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white ${
+                  isComplete ? 'bg-indigo-600 hover:bg-indigo-700' : 'bg-gray-400 cursor-not-allowed'
+                }`}
+              >
+                Lanjut ke Sidang Penetapan &rarr;
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
