@@ -3,7 +3,7 @@
 import { db } from '@/lib/db';
 import { users } from '@/lib/db/schema';
 import { requireRole } from '@/lib/auth/helpers';
-import { eq, and, isNull, ne } from 'drizzle-orm';
+import { eq, and, isNull, ne, sql } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { createAuditLog, audit } from '@/lib/audit';
 import bcrypt from 'bcrypt';
@@ -207,6 +207,7 @@ export async function deleteUserAction(
 
   await db.update(users).set({
     isActive: false,
+    email: sql`${users.email} || '_deleted_' || ${Date.now()}`,
     deletedAt: new Date(),
     updatedAt: new Date(),
   }).where(eq(users.id, userId));
