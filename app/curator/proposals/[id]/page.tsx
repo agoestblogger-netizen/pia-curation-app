@@ -233,7 +233,7 @@ export default async function ProposalDetailPage({
                 <div className="flex flex-col sm:flex-row gap-2 mt-2 sm:mt-0">
                   {proposal.linkResubmitProposal && (
                     <a 
-                      href={proposal.linkResubmitProposal} 
+                      href={`/api/proxy-pdf?url=${encodeURIComponent(proposal.linkResubmitProposal)}`} 
                       target="_blank" 
                       rel="noreferrer"
                       className="inline-flex items-center justify-center text-xs font-bold text-blue-700 bg-blue-100 hover:bg-blue-200 px-3 py-1.5 rounded-md transition-colors border border-blue-200"
@@ -244,7 +244,7 @@ export default async function ProposalDetailPage({
                   )}
                   {proposal.linkSuratOrisinalitas && (
                     <a 
-                      href={proposal.linkSuratOrisinalitas} 
+                      href={`/api/proxy-pdf?url=${encodeURIComponent(proposal.linkSuratOrisinalitas)}`} 
                       target="_blank" 
                       rel="noreferrer"
                       className="inline-flex items-center justify-center text-xs font-bold text-amber-700 bg-amber-100 hover:bg-amber-200 px-3 py-1.5 rounded-md transition-colors border border-amber-200"
@@ -406,7 +406,7 @@ export default async function ProposalDetailPage({
                     <div>
                       <h3 className="font-bold text-amber-900 mb-1">Dokumen Kepatuhan</h3>
                       <p className="text-xs text-amber-800 mb-3">Peserta telah melampirkan Surat Pernyataan Orisinalitas pada saat resubmission. Silakan tinjau jika diperlukan.</p>
-                      <a href={proposal.linkSuratOrisinalitas} target="_blank" rel="noreferrer" className="inline-flex items-center justify-center w-full px-3 py-2 text-xs font-bold text-amber-900 bg-amber-200 hover:bg-amber-300 rounded-md transition-colors">
+                      <a href={`/api/proxy-pdf?url=${encodeURIComponent(proposal.linkSuratOrisinalitas)}`} target="_blank" rel="noreferrer" className="inline-flex items-center justify-center w-full px-3 py-2 text-xs font-bold text-amber-900 bg-amber-200 hover:bg-amber-300 rounded-md transition-colors">
                         Buka Surat Orisinalitas
                         <svg className="w-3.5 h-3.5 ml-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
                       </a>
