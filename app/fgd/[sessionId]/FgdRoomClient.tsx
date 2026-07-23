@@ -65,6 +65,7 @@ export default function FgdRoomClient({
   const [, startRefresh] = useTransition();
 
   const [activeTab, setActiveTab] = useState<'list' | 'detail' | 'penetapan'>('list');
+  const [showConfirmLock, setShowConfirmLock] = useState(false);
   const [isGeneratingAi, setIsGeneratingAi] = useState<Record<number, boolean>>({});
   const [aiError, setAiError] = useState<Record<number, string | null>>({});
   
@@ -255,7 +256,11 @@ export default function FgdRoomClient({
   }
 
   async function handleLock() {
-    if (!confirm(`Yakin ingin menetapkan ${selectedForFinal.length} proposal ini sebagai hasil final? Sesi akan dikunci dan tidak bisa diedit.`)) return;
+    setShowConfirmLock(true);
+  }
+
+  async function executeLock() {
+    setShowConfirmLock(false);
     setLocking(true);
     const res = await lockFgdSessionAction(fgd.id, selectedForFinal);
     setLocking(false);
@@ -909,6 +914,40 @@ export default function FgdRoomClient({
           </div>
         )}
       </div>
+
+      {showConfirmLock && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-xl max-w-md w-full overflow-hidden border border-gray-100">
+            <div className="bg-green-600 text-white p-5">
+              <h3 className="text-lg font-bold">Kunci Sesi FGD</h3>
+            </div>
+            <div className="p-6">
+              <p className="text-gray-700 font-medium">
+                Yakin ingin menetapkan {selectedForFinal.length} proposal ini sebagai hasil final?
+              </p>
+              <p className="text-sm text-gray-500 mt-2">
+                Sesi FGD akan dikunci secara permanen dan hasilnya tidak bisa diedit atau diubah lagi.
+              </p>
+            </div>
+            <div className="bg-gray-50 px-6 py-4 flex justify-end space-x-3 border-t border-gray-100">
+              <button
+                onClick={() => setShowConfirmLock(false)}
+                disabled={locking}
+                className="px-4 py-2 bg-white border border-gray-300 text-gray-700 font-bold rounded-lg text-sm hover:bg-gray-100 disabled:opacity-50"
+              >
+                Batal
+              </button>
+              <button
+                onClick={executeLock}
+                disabled={locking}
+                className="px-6 py-2 bg-green-600 hover:bg-green-700 text-white font-bold rounded-lg text-sm shadow-sm disabled:opacity-50 flex items-center gap-2"
+              >
+                {locking ? 'Memproses...' : 'Ya, Tetapkan & Kunci'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
