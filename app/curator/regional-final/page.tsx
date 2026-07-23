@@ -18,7 +18,7 @@ export default async function CuratorRegionalFinalPage() {
   }
 
   let sessions: any[] = [];
-  const isAdminOrCoordinator = session.roles.some(r => ['admin', 'coordinator', 'curator'].includes(r));
+  const isAdminOrCoordinator = session.roles.some(r => ['admin', 'coordinator'].includes(r));
 
   if (isAdminOrCoordinator) {
     sessions = await db.select().from(regionalFinalSessions)
@@ -31,14 +31,25 @@ export default async function CuratorRegionalFinalPage() {
     .from(regionalFinalPics)
     .where(eq(regionalFinalPics.userId, session.userId));
     
-    const mySessionIds = myPicSessions.map(p => p.sessionId);
+    // Get sessions where user is assigned as Judge
+    const myJudgeSessions = await db.select({
+      sessionId: regionalFinalJudges.sessionId
+    })
+    .from(regionalFinalJudges)
+    .where(eq(regionalFinalJudges.userId, session.userId));
+    
+    const picIds = myPicSessions.map(p => p.sessionId);
+    const judgeIds = myJudgeSessions.map(j => j.sessionId);
+    
+    // Combine and deduplicate session IDs
+    const mySessionIds = Array.from(new Set([...picIds, ...judgeIds]));
 
     if (mySessionIds.length === 0) {
       return (
         <div className="p-8 max-w-4xl mx-auto">
           <h1 className="text-2xl font-bold text-gray-900 mb-6">Setup Final Regional</h1>
           <div className="bg-white p-6 rounded-xl border shadow-sm text-gray-600">
-            Anda belum ditugaskan sebagai PIC Regional untuk grup manapun pada kompetisi ini.
+            Anda belum ditugaskan sebagai PIC maupun Juri Regional untuk grup manapun pada kompetisi ini.
           </div>
         </div>
       );
