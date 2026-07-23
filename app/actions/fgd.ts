@@ -208,3 +208,43 @@ export async function lockFgdSessionAction(sessionId: number, selectedProposalId
   revalidatePath(`/fgd/${sessionId}`);
   return { success: true };
 }
+
+export async function releaseSingleFgdProposalAction(sessionId: number, proposalId: number) {
+  const session = await requireRole(['coordinator']);
+
+  const [fgd] = await db.select().from(fgdSessions).where(eq(fgdSessions.id, sessionId)).limit(1);
+  if (!fgd) return { error: 'Sesi tidak ditemukan' };
+  if (fgd.status !== 'locked') return { error: 'Hanya bisa membatalkan di sesi yang sudah dikunci.' };
+
+  const [proposal] = await db.select().from(proposals).where(eq(proposals.id, proposalId)).limit(1);
+  if (!proposal) return { error: 'Proposal tidak ditemukan' };
+
+  if (fgd.scope === 'nasional') {
+    if (proposal.status !== 'promotor_selection' && proposal.status !== 'takeout') {
+      return { error: 'Status proposal saat ini tidak valid untuk di-release.' };
+    }
+  } else {
+    if (proposal.status !== 'regional_finalist') {
+      return { error: 'Status proposal saat ini tidak valid untuk di-release.' };
+    }
+  }
+
+  await db.update(proposals).set({
+    status: 'fgd',
+    takeoutReason: null,
+    regionalFinalistRank: null,
+    regionalFinalizedBy: null,
+    regionalFinalizedAt: null,
+    updatedAt: new Date(),
+  }).where(eq(proposals.id, proposalId));
+
+  await createAuditLog({
+    action: 'release_single_fgd_proposal',
+    entity: 'proposal',
+    entityId: proposalId.toString(),
+    after: { sessionId, previousStatus: proposal.status },
+  });
+
+  revalidatePath(`/fgd/${sessionId}`);
+  return { success: true };
+}

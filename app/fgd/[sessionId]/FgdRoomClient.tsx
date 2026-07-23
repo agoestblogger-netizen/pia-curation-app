@@ -2,7 +2,7 @@
 
 import { useState, useTransition, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { submitFgdCommentAction, submitFgdVoteAction, lockFgdSessionAction } from '@/app/actions/fgd';
+import { submitFgdCommentAction, submitFgdVoteAction, lockFgdSessionAction, releaseSingleFgdProposalAction } from '@/app/actions/fgd';
 import { generateFgdAiAnalysis } from '@/app/actions/aiAnalysis';
 import { uploadFgdAdditionalDocument } from '@/app/actions/uploadDocument';
 import { deleteFgdAdditionalDocument } from '@/app/actions/deleteDocument';
@@ -189,6 +189,7 @@ export default function FgdRoomClient({
   const [commentText, setCommentText] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [locking, setLocking] = useState(false);
+  const [releasing, setReleasing] = useState<Record<number, boolean>>({});
   const [selectedForFinal, setSelectedForFinal] = useState<number[]>([]);
 
   // ─── Helpers ──────────────────────────────────────────────────────────────
@@ -261,6 +262,18 @@ export default function FgdRoomClient({
     setLocking(false);
     if (res.error) {
       alert(res.error);
+    } else {
+      refresh();
+    }
+  }
+
+  async function handleReleaseProposal(proposalId: number) {
+    if (!confirm('Yakin ingin merilis (membatalkan penetapan) proposal ini dari hasil FGD? Proposal akan kembali ke status FGD.')) return;
+    setReleasing(prev => ({ ...prev, [proposalId]: true }));
+    const res = await releaseSingleFgdProposalAction(fgd.id, proposalId);
+    if (res.error) {
+      alert(res.error);
+      setReleasing(prev => ({ ...prev, [proposalId]: false }));
     } else {
       refresh();
     }
@@ -804,13 +817,15 @@ export default function FgdRoomClient({
                   </a>
                 ) : (
                   <>
-                    <div className={`text-3xl font-black ${selectedForFinal.length === fgd.targetCandidates ? 'text-green-600' : 'text-teal-600'}`}>
-                      {selectedForFinal.length}
+                    <div className={`text-3xl font-black ${
+                      (fgd.status === 'locked' ? proposals.filter(p => fgd.fgdType === 'promoter' ? p.status === 'grand_final' : (fgd.scope === 'nasional' ? p.status === 'promotor_selection' : p.status === 'regional_finalist')).length : selectedForFinal.length) === fgd.targetCandidates ? 'text-green-600' : 'text-teal-600'
+                    }`}>
+                      {fgd.status === 'locked' ? proposals.filter(p => fgd.fgdType === 'promoter' ? p.status === 'grand_final' : (fgd.scope === 'nasional' ? p.status === 'promotor_selection' : p.status === 'regional_finalist')).length : selectedForFinal.length}
                       <span className="text-gray-400 text-xl mx-1">/</span>
                       <span className="text-gray-700 text-xl">{fgd.targetCandidates}</span>
                     </div>
                     <div className="text-xs text-gray-500 font-semibold uppercase mt-0.5">
-                      {selectedForFinal.length === fgd.targetCandidates ? '✅ Target tercapai' : 'Proposal dipilih'}
+                      {(fgd.status === 'locked' ? proposals.filter(p => fgd.fgdType === 'promoter' ? p.status === 'grand_final' : (fgd.scope === 'nasional' ? p.status === 'promotor_selection' : p.status === 'regional_finalist')).length : selectedForFinal.length) === fgd.targetCandidates ? '✅ Target tercapai' : 'Proposal dipilih'}
                     </div>
                   </>
                 )}
@@ -822,8 +837,10 @@ export default function FgdRoomClient({
               <table className="w-full text-left text-sm">
                 <thead className="bg-gray-50 border-b border-gray-200">
                   <tr>
-                    {!readOnly && session.roles.includes('coordinator') && fgd.status !== 'locked' && (
-                      <th className="px-4 py-3 w-12 text-center font-semibold text-gray-600">Pilih</th>
+                    {!readOnly && session.roles.includes('coordinator') && (
+                      <th className="px-4 py-3 w-12 text-center font-semibold text-gray-600">
+                        {fgd.status === 'locked' ? 'Aksi' : 'Pilih'}
+                      </th>
                     )}
                     <th className="px-4 py-3 font-semibold text-gray-600 w-8">#</th>
                     <th className="px-4 py-3 font-semibold text-gray-600">Proposal</th>
@@ -833,7 +850,12 @@ export default function FgdRoomClient({
                 </thead>
                 <tbody className="divide-y divide-gray-100">
                   {sortedByVotes.map((p, rank) => {
-                    const isSelected = selectedForFinal.includes(p.id);
+                    let isSelected = selectedForFinal.includes(p.id);
+                    if (fgd.status === 'locked') {
+                      if (fgd.fgdType === 'promoter') isSelected = p.status === 'grand_final';
+                      else if (fgd.scope === 'nasional') isSelected = p.status === 'promotor_selection';
+                      else isSelected = p.status === 'regional_finalist';
+                    }
                     const nom = voteCount(p.id, 'nominate');
                     const notNom = voteCount(p.id, 'not_nominate');
                     return (
@@ -841,14 +863,29 @@ export default function FgdRoomClient({
                         key={p.id}
                         className={`transition ${isSelected ? 'bg-teal-50' : 'hover:bg-gray-50'}`}
                       >
-                        {!readOnly && session.roles.includes('coordinator') && fgd.status !== 'locked' && (
+                        {!readOnly && session.roles.includes('coordinator') && (
                           <td className="px-4 py-3 text-center">
-                            <input
-                              type="checkbox"
-                              checked={isSelected}
-                              onChange={() => toggleFinalSelection(p.id)}
-                              className="w-4 h-4 text-teal-600 rounded border-gray-300 focus:ring-teal-500 cursor-pointer"
-                            />
+                            {fgd.status !== 'locked' ? (
+                              <input
+                                type="checkbox"
+                                checked={isSelected}
+                                onChange={() => toggleFinalSelection(p.id)}
+                                className="w-4 h-4 text-teal-600 rounded border-gray-300 focus:ring-teal-500 cursor-pointer"
+                              />
+                            ) : (
+                              isSelected ? (
+                                <button
+                                  onClick={() => handleReleaseProposal(p.id)}
+                                  disabled={releasing[p.id]}
+                                  className="text-[10px] bg-red-100 text-red-700 px-2 py-1 rounded hover:bg-red-200 disabled:opacity-50 font-bold"
+                                  title="Release proposal ini"
+                                >
+                                  {releasing[p.id] ? '...' : '✖ Release'}
+                                </button>
+                              ) : (
+                                <span className="text-gray-300">-</span>
+                              )
+                            )}
                           </td>
                         )}
                         <td className="px-4 py-3 text-gray-500 text-xs font-bold">{rank + 1}</td>
