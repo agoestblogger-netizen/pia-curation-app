@@ -9,7 +9,9 @@ import { useState, useTransition } from 'react';
 
 export default function FgdListClient({ sessions, isCoordinator, roles = [] }: { sessions: FgdSession[], isCoordinator?: boolean, roles?: string[] }) {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<'curator' | 'promoter'>('curator');
+  
+  const isPurePromoter = roles.includes('promoter') && !roles.includes('coordinator') && !roles.includes('curator') && !roles.includes('admin');
+  const [activeTab, setActiveTab] = useState<'curator' | 'promoter'>(isPurePromoter ? 'promoter' : 'curator');
   const [isPending, startTransition] = useTransition();
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
@@ -30,6 +32,7 @@ export default function FgdListClient({ sessions, isCoordinator, roles = [] }: {
     });
   }
 
+  const showCuratorTab = !isPurePromoter;
   const showPromoterTab = roles.includes('promoter') || roles.includes('coordinator') || roles.includes('admin') || roles.includes('viewer');
 
   const filteredSessions = sessions.filter(s => s.fgdType === activeTab);
@@ -52,7 +55,7 @@ export default function FgdListClient({ sessions, isCoordinator, roles = [] }: {
       </div>
 
       <div className="bg-white rounded-lg shadow overflow-hidden border border-gray-200">
-        {showPromoterTab && (
+        {showCuratorTab && showPromoterTab && (
           <div className="flex border-b border-gray-200">
             <button
               onClick={() => setActiveTab('curator')}
