@@ -25,13 +25,11 @@ export default async function GrandFinalSidangPage() {
   }
 
   // Check if locked
-  const lockedResults = await db.select().from(finalResults)
+  const lockedResultsPromise = db.select().from(finalResults)
     .where(eq(finalResults.competitionId, activeComp.id));
   
-  const isLocked = lockedResults.length > 0;
-
   // Get GF proposals
-  const gfProposals = await db.select({
+  const gfProposalsPromise = db.select({
     id: proposals.id,
     title: proposals.title,
     proposerName: proposals.proposerName,
@@ -44,18 +42,34 @@ export default async function GrandFinalSidangPage() {
     ));
 
   // Get AI Analyses for claims
-  const aiAnalysesData = await db.select()
+  const aiAnalysesDataPromise = db.select()
     .from(proposalAiAnalyses)
     .where(sql`proposal_id IN (SELECT id FROM proposals WHERE competition_id = ${activeComp.id} AND status = 'grand_final')`);
-  const aiAnalysesMap = new Map(aiAnalysesData.map(a => [a.proposalId, a]));
 
   // Get assessments
-  const assessments = await db.select().from(grandFinalAssessments)
+  const assessmentsPromise = db.select().from(grandFinalAssessments)
     .where(eq(grandFinalAssessments.competitionId, activeComp.id));
 
   // Get all sponsors
-  const sponsorUsers = await db.select({ id: users.id, name: users.name })
+  const sponsorUsersPromise = db.select({ id: users.id, name: users.name })
     .from(users).where(sql`'sponsor' = ANY(${users.roles})`);
+
+  const [
+    lockedResults,
+    gfProposals,
+    aiAnalysesData,
+    assessments,
+    sponsorUsers
+  ] = await Promise.all([
+    lockedResultsPromise,
+    gfProposalsPromise,
+    aiAnalysesDataPromise,
+    assessmentsPromise,
+    sponsorUsersPromise
+  ]);
+
+  const isLocked = lockedResults.length > 0;
+  const aiAnalysesMap = new Map(aiAnalysesData.map(a => [a.proposalId, a]));
 
   // Map results if locked
   const resultsMap = new Map(lockedResults.map(r => [r.proposalId, r]));

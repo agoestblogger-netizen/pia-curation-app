@@ -6,7 +6,6 @@ import { submitFgdCommentAction, submitFgdVoteAction, lockFgdSessionAction } fro
 import { generateFgdAiAnalysis } from '@/app/actions/aiAnalysis';
 import { uploadFgdAdditionalDocument } from '@/app/actions/uploadDocument';
 import { deleteFgdAdditionalDocument } from '@/app/actions/deleteDocument';
-import confetti from 'canvas-confetti';
 
 // 5 warna per verdict — sesuai SCREENING_VERDICT_COLORS
 const VERDICT_COLORS: Record<string, string> = {
@@ -224,11 +223,13 @@ export default function FgdRoomClient({
     
     // Tembakkan confetti jika user berhasil memberikan vote "nominate"
     if (voteType === 'nominate' && myVote(proposalId) !== 'nominate') {
-      confetti({
-        particleCount: 150,
-        spread: 80,
-        origin: { y: 0.6 },
-        colors: ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6']
+      import('canvas-confetti').then((confetti) => {
+        confetti.default({
+          particleCount: 150,
+          spread: 80,
+          origin: { y: 0.6 },
+          colors: ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6']
+        });
       });
     }
 

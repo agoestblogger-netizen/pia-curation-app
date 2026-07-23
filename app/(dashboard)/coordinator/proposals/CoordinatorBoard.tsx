@@ -10,7 +10,6 @@ interface ProposalCard {
   category: string;
   proposerName: string;
   division: string | null;
-  summary: string | null;
   regionCenter: string | null;
   status: string; // 'imported', 'assigned', 'in_review', 'completed'
   aiScore: string;
@@ -67,56 +66,69 @@ export default function CoordinatorBoard({ proposals, duplicates: initialDuplica
     }
   });
 
-  const renderProposalList = (items: ProposalCard[]) => (
-    <div className="border-t border-gray-100 divide-y divide-gray-100">
-      {items.map((p) => (
-        <div key={p.id} className="p-6 flex items-start group hover:bg-gray-50 transition-colors">
-          {/* Row Number Badge */}
-          <div className="w-10 h-10 bg-gray-100 rounded-lg text-gray-700 flex items-center justify-center flex-shrink-0 mr-3 shadow-sm font-bold text-sm border border-gray-200">
-            {p.proposalRowNumber}
-          </div>
+  const ProposalListPaginated = ({ items }: { items: ProposalCard[] }) => {
+    const [page, setPage] = useState(1);
+    const limit = 50;
+    const displayed = items.slice(0, page * limit);
 
-          {/* Icon */}
-          <div className="w-12 h-12 bg-[#0F4C81] rounded-lg text-white flex items-center justify-center flex-shrink-0 mr-4 shadow-sm">
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M8 14v3m4-3v3m4-3v3M3 21h18M3 10h18M3 7l9-4 9 4M4 10h16v11H4V10z" /></svg>
-          </div>
-
-          {/* Content */}
-          <div className="flex-1 pr-4">
-            <div className="flex items-center space-x-3 mb-1">
-              <Link href={`/curator/proposals/${p.id}?from=coordinator`} className="hover:underline">
-                <h4 className="text-[15px] font-bold text-gray-900 leading-tight">
-                  {p.title}
-                </h4>
-              </Link>
-              <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-green-50 text-green-700 border border-green-200 whitespace-nowrap">
-                AI: {p.aiScore}
-              </span>
+    return (
+      <div className="border-t border-gray-100 divide-y divide-gray-100">
+        {displayed.map((p) => (
+          <div key={p.id} className="p-6 flex items-start group hover:bg-gray-50 transition-colors">
+            {/* Row Number Badge */}
+            <div className="w-10 h-10 bg-gray-100 rounded-lg text-gray-700 flex items-center justify-center flex-shrink-0 mr-3 shadow-sm font-bold text-sm border border-gray-200">
+              {p.proposalRowNumber}
             </div>
-            <div className="text-xs text-gray-600 font-semibold mb-2">
-              {p.division || p.regionCenter || 'Operasional'}
-              {p.curatorName && (
-                <span className="ml-2 px-2 py-0.5 rounded text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200">
-                  Di-assign ke: {p.curatorName}
+
+            {/* Icon */}
+            <div className="w-12 h-12 bg-[#0F4C81] rounded-lg text-white flex items-center justify-center flex-shrink-0 mr-4 shadow-sm">
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M8 14v3m4-3v3m4-3v3M3 21h18M3 10h18M3 7l9-4 9 4M4 10h16v11H4V10z" /></svg>
+            </div>
+
+            {/* Content */}
+            <div className="flex-1 pr-4">
+              <div className="flex items-center space-x-3 mb-1">
+                <Link href={`/curator/proposals/${p.id}?from=coordinator`} className="hover:underline">
+                  <h4 className="text-[15px] font-bold text-gray-900 leading-tight">
+                    {p.title}
+                  </h4>
+                </Link>
+                <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-green-50 text-green-700 border border-green-200 whitespace-nowrap">
+                  AI: {p.aiScore}
                 </span>
-              )}
+              </div>
+              <div className="text-xs text-gray-600 font-semibold mb-2">
+                {p.division || p.regionCenter || 'Operasional'}
+                {p.curatorName && (
+                  <span className="ml-2 px-2 py-0.5 rounded text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200">
+                    Di-assign ke: {p.curatorName}
+                  </span>
+                )}
+              </div>
             </div>
-            <p className="text-sm text-gray-500 line-clamp-2 leading-relaxed">
-              {p.summary || 'Tidak ada ringkasan.'}
-            </p>
-          </div>
 
-          {/* Right action / Arrow */}
-          <div className="flex-shrink-0 ml-auto pl-4 self-center flex flex-col items-end space-y-2">
-            <Link href={`/curator/proposals/${p.id}?from=coordinator`} className="hidden md:block px-3 py-1 bg-indigo-100 text-indigo-800 text-xs font-bold rounded-md border border-indigo-200 hover:bg-indigo-200">
-              Lihat Detail & Penilaian
-            </Link>
-            <svg className="w-5 h-5 text-gray-300 group-hover:text-gray-500 transition-colors md:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" /></svg>
+            {/* Right action / Arrow */}
+            <div className="flex-shrink-0 ml-auto pl-4 self-center flex flex-col items-end space-y-2">
+              <Link href={`/curator/proposals/${p.id}?from=coordinator`} className="hidden md:block px-3 py-1 bg-indigo-100 text-indigo-800 text-xs font-bold rounded-md border border-indigo-200 hover:bg-indigo-200">
+                Lihat Detail & Penilaian
+              </Link>
+              <svg className="w-5 h-5 text-gray-300 group-hover:text-gray-500 transition-colors md:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" /></svg>
+            </div>
           </div>
-        </div>
-      ))}
-    </div>
-  );
+        ))}
+        {items.length > displayed.length && (
+          <div className="p-4 text-center">
+            <button 
+              onClick={() => setPage(p => p + 1)}
+              className="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 text-sm font-semibold transition-colors"
+            >
+              Tampilkan Lebih Banyak ({items.length - displayed.length} tersisa)
+            </button>
+          </div>
+        )}
+      </div>
+    );
+  };
 
   return (
     <div>
@@ -295,7 +307,7 @@ export default function CoordinatorBoard({ proposals, duplicates: initialDuplica
                 </div>
               </button>
 
-              {isExpanded && items.length > 0 && cat !== 'WILAYAH' && renderProposalList(items)}
+              {isExpanded && items.length > 0 && cat !== 'WILAYAH' && <ProposalListPaginated items={items} />}
 
               {isExpanded && items.length > 0 && cat === 'WILAYAH' && (
                 <div className="border-t border-gray-100 p-4 space-y-3 bg-gray-50 rounded-b-xl">
@@ -328,7 +340,7 @@ export default function CoordinatorBoard({ proposals, duplicates: initialDuplica
                               )}
                             </div>
                           </button>
-                          {wExpanded && renderProposalList(wItems)}
+                          {wExpanded && <ProposalListPaginated items={wItems} />}
                         </div>
                       );
                     });

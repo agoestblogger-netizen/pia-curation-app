@@ -34,29 +34,53 @@ export default async function OverviewDashboard() {
     );
   }
 
-  // Fetch all proposals for this competition
-  const allProposals = await db
-    .select({
-      id: proposals.id,
-      category: proposals.category,
-      regionCenter: proposals.regionCenter,
-      status: proposals.status
-    })
-    .from(proposals)
-    .where(eq(proposals.competitionId, activeComp.id));
+  // ─── Parallelize Queries ──────────────────────────────────────────────────
+  const statsPromise = db.execute(sql`
+    SELECT 
+      p.category, 
+      p.region_center,
+      COUNT(DISTINCT p.id) as total,
+      COUNT(DISTINCT CASE WHEN ca.status = 'completed' THEN p.id ELSE NULL END) as curated
+    FROM proposals p
+    LEFT JOIN curator_assignments ca ON p.id = ca.proposal_id
+    WHERE p.competition_id = ${activeComp.id}
+    GROUP BY p.category, p.region_center
+  `);
 
-  // Fetch all completed curator assignments
-  const completedAssignments = await db
-    .select({
-      proposalId: curatorAssignments.proposalId
-    })
-    .from(curatorAssignments)
-    .where(eq(curatorAssignments.status, 'completed'));
+  let curatorsPromise: Promise<any[]> = Promise.resolve([]);
+  let assignmentsPromise: Promise<any[]> = Promise.resolve([]);
 
-  const completedProposalIds = new Set(completedAssignments.map(a => a.proposalId));
+  if (session?.roles?.includes('coordinator')) {
+    curatorsPromise = db
+      .select({ id: users.id, name: users.name })
+      .from(users)
+      .where(and(
+        sql`'curator' = ANY(${users.roles})`,
+        eq(users.isActive, true)
+      ));
+
+    assignmentsPromise = db
+      .select({
+        curatorId: curatorAssignments.curatorId,
+        status: curatorAssignments.status,
+        category: proposals.category,
+        regionCenter: proposals.regionCenter,
+      })
+      .from(curatorAssignments)
+      .innerJoin(proposals, eq(curatorAssignments.proposalId, proposals.id))
+      .where(eq(proposals.competitionId, activeComp.id));
+  }
+
+  const [statsQuery, curators, assignments] = await Promise.all([
+    statsPromise,
+    curatorsPromise,
+    assignmentsPromise
+  ]);
+
+  const statsData = statsQuery as unknown as any[];
 
   // Calculate Stats
-  const totalDiimpor = allProposals.length;
+  let totalDiimpor = 0;
   let totalTerkurasi = 0;
 
   const catTotal: Record<string, number> = { WILAYAH: 0, PUSAT: 0, BI: 0, BC: 0 };
@@ -65,25 +89,30 @@ export default async function OverviewDashboard() {
   const wilTotal: Record<string, number> = {};
   const wilCurated: Record<string, number> = {};
 
-  allProposals.forEach(p => {
-    const isCurated = completedProposalIds.has(p.id);
-    if (isCurated) totalTerkurasi++;
+  statsData.forEach(row => {
+    const total = Number(row.total) || 0;
+    const curated = Number(row.curated) || 0;
+    const cat = row.category;
+    const rc = row.region_center;
+
+    totalDiimpor += total;
+    totalTerkurasi += curated;
 
     // Kategori
-    if (p.category in catTotal) {
-      catTotal[p.category]++;
-      if (isCurated) catCurated[p.category]++;
+    if (cat in catTotal) {
+      catTotal[cat] += total;
+      catCurated[cat] += curated;
     }
 
-    // Wilayah & Pusat (combine for specific table)
-    if (p.category === 'WILAYAH' && p.regionCenter) {
-      const city = `Kanwil ${p.regionCenter}`;
-      wilTotal[city] = (wilTotal[city] || 0) + 1;
-      if (isCurated) wilCurated[city] = (wilCurated[city] || 0) + 1;
-    } else if (p.category === 'PUSAT') {
+    // Wilayah & Pusat
+    if (cat === 'WILAYAH' && rc) {
+      const city = `Kanwil ${rc}`;
+      wilTotal[city] = (wilTotal[city] || 0) + total;
+      wilCurated[city] = (wilCurated[city] || 0) + curated;
+    } else if (cat === 'PUSAT') {
       const label = 'Kantor Pusat';
-      wilTotal[label] = (wilTotal[label] || 0) + 1;
-      if (isCurated) wilCurated[label] = (wilCurated[label] || 0) + 1;
+      wilTotal[label] = (wilTotal[label] || 0) + total;
+      wilCurated[label] = (wilCurated[label] || 0) + curated;
     }
   });
 
@@ -97,24 +126,6 @@ export default async function OverviewDashboard() {
   // Calculate Curator Assignment Stats (Only for Coordinator)
   let curatorStats: { name: string; categoriesAssigned: string; total: number; completed: number; sisa: number }[] = [];
   if (session?.roles?.includes('coordinator')) {
-    const curators = await db
-      .select({ id: users.id, name: users.name })
-      .from(users)
-      .where(and(
-        sql`'curator' = ANY(${users.roles})`,
-        eq(users.isActive, true)
-      ));
-
-    const assignments = await db
-      .select({
-        curatorId: curatorAssignments.curatorId,
-        status: curatorAssignments.status,
-        category: proposals.category,
-        regionCenter: proposals.regionCenter,
-      })
-      .from(curatorAssignments)
-      .innerJoin(proposals, eq(curatorAssignments.proposalId, proposals.id))
-      .where(eq(proposals.competitionId, activeComp.id));
 
     curatorStats = curators.map((c) => {
       const myAss = assignments.filter((a) => a.curatorId === c.id);

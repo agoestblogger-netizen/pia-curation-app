@@ -42,22 +42,22 @@ export default async function BatchesPage() {
     batch = newBatch;
   }
 
-  const batchDetails = await getBatchWithAssignments(batch.id);
+  const batchDetailsPromise = getBatchWithAssignments(batch.id);
 
-  const curators = await db
+  const curatorsPromise = db
     .select({ id: users.id, name: users.name })
     .from(users)
     .where(and(sql`'curator' = ANY(${users.roles})`, eq(users.isActive, true)))
     .orderBy(users.name);
 
   // ─── Promotor Data ──────────────────────────────────────────────────────────
-  const promoters = await db
+  const promotersPromise = db
     .select({ id: users.id, name: users.name })
     .from(users)
     .where(and(sql`'promoter' = ANY(${users.roles})`, eq(users.isActive, true)))
     .orderBy(users.name);
 
-  const promAssignments = await db
+  const promAssignmentsPromise = db
     .select({
       id: promoterAssignments.id,
       proposalId: promoterAssignments.proposalId,
@@ -73,12 +73,26 @@ export default async function BatchesPage() {
 
   // ─── Proposals Pool ────────────────────────────────────────────────────────
   // All proposals with correct row numbers
-  const rankedProposalsResult = await db.execute(sql`
+  const rankedProposalsResultPromise = db.execute(sql`
     SELECT id, title, summary, category, region_center as "regionCenter", status,
            ROW_NUMBER() OVER (PARTITION BY category, region_center ORDER BY id ASC) as "rowNumber"
     FROM proposals
     WHERE competition_id = ${activeComp.id}
   `);
+
+  const [
+    batchDetails,
+    curators,
+    promoters,
+    promAssignments,
+    rankedProposalsResult
+  ] = await Promise.all([
+    batchDetailsPromise,
+    curatorsPromise,
+    promotersPromise,
+    promAssignmentsPromise,
+    rankedProposalsResultPromise
+  ]);
   
   const allProposals = rankedProposalsResult as unknown as any[];
   // For promotor we only want 'promotor_selection'

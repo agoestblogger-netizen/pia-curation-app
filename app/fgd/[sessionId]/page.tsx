@@ -124,12 +124,53 @@ export default async function FgdRoomPage({ params }: { params: Promise<{ sessio
   // Fetch AI analyses for the proposals in this session
   const proposalIds = allRawProposals.map(p => p.id);
   
+  let aiAnalysesPromise: Promise<any[]> = Promise.resolve([]);
+  let addlDocsPromise: Promise<any[]> = Promise.resolve([]);
+
   if (proposalIds.length > 0) {
-    const aiAnalyses = await db
+    aiAnalysesPromise = db
       .select()
       .from(proposalAiAnalyses)
       .where(inArray(proposalAiAnalyses.proposalId, proposalIds));
-      
+
+    addlDocsPromise = db
+      .select()
+      .from(fgdAdditionalDocuments)
+      .where(inArray(fgdAdditionalDocuments.proposalId, proposalIds));
+  }
+
+  const votesPromise = db
+    .select({
+      id: fgdVotes.id,
+      proposalId: fgdVotes.proposalId,
+      curatorId: fgdVotes.curatorId,
+      vote: fgdVotes.vote,
+    })
+    .from(fgdVotes)
+    .where(eq(fgdVotes.sessionId, sId));
+
+  const commentsPromise = db
+    .select({
+      id: fgdComments.id,
+      proposalId: fgdComments.proposalId,
+      curatorId: fgdComments.curatorId,
+      content: fgdComments.content,
+      createdAt: fgdComments.createdAt,
+      curatorName: users.name,
+    })
+    .from(fgdComments)
+    .leftJoin(users, eq(fgdComments.curatorId, users.id))
+    .where(eq(fgdComments.sessionId, sId))
+    .orderBy(fgdComments.createdAt);
+
+  const [aiAnalyses, addlDocs, votesRaw, commentsRaw] = await Promise.all([
+    aiAnalysesPromise,
+    addlDocsPromise,
+    votesPromise,
+    commentsPromise
+  ]);
+
+  if (proposalIds.length > 0) {
     // Attach aiAnalysis to each proposal
     const aiMap = new Map();
     for (const analysis of aiAnalyses) {
@@ -142,12 +183,6 @@ export default async function FgdRoomPage({ params }: { params: Promise<{ sessio
       }
     }
 
-    // Fetch additional documents
-    const addlDocs = await db
-      .select()
-      .from(fgdAdditionalDocuments)
-      .where(inArray(fgdAdditionalDocuments.proposalId, proposalIds));
-      
     const docMap = new Map();
     for (const doc of addlDocs) {
       if (!docMap.has(doc.proposalId)) {
@@ -164,32 +199,6 @@ export default async function FgdRoomPage({ params }: { params: Promise<{ sessio
       }
     }
   }
-
-  // ─── Get votes ────────────────────────────────────────────────────────────
-  const votesRaw = await db
-    .select({
-      id: fgdVotes.id,
-      proposalId: fgdVotes.proposalId,
-      curatorId: fgdVotes.curatorId,
-      vote: fgdVotes.vote,
-    })
-    .from(fgdVotes)
-    .where(eq(fgdVotes.sessionId, sId));
-
-  // ─── Get comments ─────────────────────────────────────────────────────────
-  const commentsRaw = await db
-    .select({
-      id: fgdComments.id,
-      proposalId: fgdComments.proposalId,
-      curatorId: fgdComments.curatorId,
-      content: fgdComments.content,
-      createdAt: fgdComments.createdAt,
-      curatorName: users.name,
-    })
-    .from(fgdComments)
-    .leftJoin(users, eq(fgdComments.curatorId, users.id))
-    .where(eq(fgdComments.sessionId, sId))
-    .orderBy(fgdComments.createdAt);
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">

@@ -58,14 +58,16 @@ export async function createCompetitionAction(
 }
 
 
-export async function getActiveCompetition() {
+import { cache } from 'react';
+
+export const getActiveCompetition = cache(async () => {
   const [comp] = await db
     .select()
     .from(competitions)
     .where(eq(competitions.isActive, true))
     .limit(1);
   return comp ?? null;
-}
+});
 
 export async function getAllCompetitions() {
   return db.select().from(competitions).orderBy(desc(competitions.year));
