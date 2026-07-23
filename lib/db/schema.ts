@@ -304,6 +304,17 @@ export const promoterSelections = pgTable('promoter_selections', {
   index('promoter_selection_proposal_idx').on(table.proposalId),
 ]);
 
+// ─── GRAND FINAL SPONSORS ───────────────────────────────────────────────────
+export const grandFinalSponsors = pgTable('grand_final_sponsors', {
+  id: serial('id').primaryKey(),
+  competitionId: integer('competition_id').notNull().references(() => competitions.id),
+  userId: integer('user_id').notNull().references(() => users.id),
+  assignedBy: integer('assigned_by').references(() => users.id),
+  assignedAt: timestamp('assigned_at', { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [
+  uniqueIndex('grand_final_sponsor_unique').on(table.competitionId, table.userId),
+]);
+
 // ─── GRAND FINAL SELECTIONS ───────────────────────────────────────────────────
 export const grandFinalSelections = pgTable('grand_final_selections', {
   id: serial('id').primaryKey(),
@@ -567,6 +578,7 @@ export type CuratorAssignment = typeof curatorAssignments.$inferSelect;
 export type ScreeningResult = typeof screeningResults.$inferSelect;
 export type PromoterSelection = typeof promoterSelections.$inferSelect;
 export type GrandFinalSelection = typeof grandFinalSelections.$inferSelect;
+export type GrandFinalSponsor = typeof grandFinalSponsors.$inferSelect;
 export type GrandFinalAssessment = typeof grandFinalAssessments.$inferSelect;
 
 export type ScoringCriterion = typeof scoringCriteria.$inferSelect;

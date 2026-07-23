@@ -181,6 +181,7 @@ export default function ClientSidebar({
               ...(regionalAssignments.isJudge ? [{ label: 'Penilaian Final Regional', path: '/regional-judge', roles: ['regional'], iconRight: '→', indent: true }] : []),
               
               { isSubHeader: true, headerText: 'Grand Final', roles: ['coordinator'] },
+              { label: 'Kelola Grand Final', path: '/coordinator/grand-final/kelola', roles: ['coordinator'], indent: true },
               { label: 'Sidang Penetapan', path: '/coordinator/grand-final/sidang', roles: ['coordinator'], indent: true },
               { label: 'Hasil Grand Final', path: '/coordinator/grand-final/hasil', roles: ['coordinator'], indent: true },
               

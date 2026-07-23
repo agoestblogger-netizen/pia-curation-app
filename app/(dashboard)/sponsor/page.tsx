@@ -3,7 +3,7 @@ import { getActiveCompetition } from '@/app/actions/competitions';
 import { getGrandFinalProposals, getCriteria } from '@/app/actions/scoring';
 import Link from 'next/link';
 import { db } from '@/lib/db';
-import { grandFinalAssessments } from '@/lib/db/schema';
+import { grandFinalAssessments, grandFinalSponsors } from '@/lib/db/schema';
 import { eq, and } from 'drizzle-orm';
 
 export default async function SponsorDashboard() {
@@ -19,6 +19,26 @@ export default async function SponsorDashboard() {
           {activeComp 
             ? `Tahap penilaian belum dibuka (Saat ini: ${activeComp.phase}).`
             : 'Belum ada kompetisi aktif.'}
+        </div>
+      </div>
+    );
+  }
+
+  // Cek apakah sponsor ini di-assign ke Grand Final kompetisi ini
+  const [assignment] = await db.select()
+    .from(grandFinalSponsors)
+    .where(and(
+      eq(grandFinalSponsors.competitionId, activeComp.id),
+      eq(grandFinalSponsors.userId, session.userId)
+    ))
+    .limit(1);
+
+  if (!assignment) {
+    return (
+      <div className="p-8">
+        <h1 className="text-2xl font-bold mb-4">Penilaian Sponsor</h1>
+        <div className="bg-red-50 text-red-800 p-4 rounded-md">
+          Anda belum ditugaskan untuk menilai sesi Grand Final pada kompetisi ini.
         </div>
       </div>
     );

@@ -1,6 +1,6 @@
 import { requireRole } from '@/lib/auth/helpers';
 import { db } from '@/lib/db';
-import { proposals, grandFinalAssessments, users, competitions, finalResults, proposalAiAnalyses } from '@/lib/db/schema';
+import { proposals, grandFinalAssessments, users, competitions, finalResults, proposalAiAnalyses, grandFinalSponsors } from '@/lib/db/schema';
 import { eq, and, sql } from 'drizzle-orm';
 import GrandFinalSidangClient from './GrandFinalSidangClient';
 import { getActiveCompetition } from '@/app/actions/competitions';
@@ -50,9 +50,11 @@ export default async function GrandFinalSidangPage() {
   const assessmentsPromise = db.select().from(grandFinalAssessments)
     .where(eq(grandFinalAssessments.competitionId, activeComp.id));
 
-  // Get all sponsors
+  // Get assigned sponsors for this competition
   const sponsorUsersPromise = db.select({ id: users.id, name: users.name })
-    .from(users).where(sql`'sponsor' = ANY(${users.roles})`);
+    .from(users)
+    .innerJoin(grandFinalSponsors, eq(users.id, grandFinalSponsors.userId))
+    .where(eq(grandFinalSponsors.competitionId, activeComp.id));
 
   const [
     lockedResults,
