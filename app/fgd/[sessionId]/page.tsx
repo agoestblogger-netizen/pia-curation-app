@@ -61,7 +61,11 @@ export default async function FgdRoomPage({ params }: { params: Promise<{ sessio
 
   let queryCondition: ReturnType<typeof sql>;
   if (fgd.fgdType === 'promoter') {
-    queryCondition = sql`p.status = 'promotor_selection'`;
+    if (fgd.status === 'locked') {
+      queryCondition = sql`(p.status = 'promotor_selection' OR p.status = 'grand_final' OR (p.status = 'takeout' AND p.takeout_reason = 'not_selected_in_final_filter'))`;
+    } else {
+      queryCondition = sql`p.status = 'promotor_selection'`;
+    }
   } else {
     queryCondition = sql`sr.verdict IN (${sql.raw(rawStatuses.map(s => `'${s}'`).join(', '))}) AND ${scopeSql}`;
   }
