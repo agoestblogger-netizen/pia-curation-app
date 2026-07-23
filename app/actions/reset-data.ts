@@ -27,7 +27,7 @@ import {
   regionalFinalResults
 } from '@/lib/db/schema';
 import { requireRole } from '@/lib/auth/helpers';
-import { eq, inArray, and, sql } from 'drizzle-orm';
+import { eq, inArray, and, sql, ne } from 'drizzle-orm';
 import { getActiveCompetition } from './competitions';
 import { revalidatePath } from 'next/cache';
 import { del } from '@vercel/blob';
@@ -62,7 +62,7 @@ export async function resetDataAction(options: ResetOptions) {
     // 1. Reset Kurasi Nasional
     if (options.resetKurasiNasional) {
       const compProposals = await db.select({ id: proposals.id }).from(proposals)
-        .where(and(eq(proposals.competitionId, compId), eq(proposals.category, 'PUSAT')));
+        .where(and(eq(proposals.competitionId, compId), ne(proposals.category, 'WILAYAH')));
       const compNasionalIds = compProposals.map(p => p.id);
 
       if (compNasionalIds.length > 0) {
@@ -102,7 +102,7 @@ export async function resetDataAction(options: ResetOptions) {
           .where(
             and(
               eq(proposals.competitionId, compId),
-              eq(proposals.category, 'PUSAT'),
+              ne(proposals.category, 'WILAYAH'),
               inArray(proposals.status, kurasiStatuses)
             )
           );
@@ -113,7 +113,7 @@ export async function resetDataAction(options: ResetOptions) {
     // 1B. Reset Hard Lock Promotor (Kembalikan wewenang ke Kurator)
     if (options.resetHardLockPromotor) {
       const compProposals = await db.select({ id: proposals.id }).from(proposals)
-        .where(and(eq(proposals.competitionId, compId), eq(proposals.category, 'PUSAT')));
+        .where(and(eq(proposals.competitionId, compId), ne(proposals.category, 'WILAYAH')));
       const compNasionalIds = compProposals.map(p => p.id);
 
       if (compNasionalIds.length > 0) {
@@ -139,7 +139,7 @@ export async function resetDataAction(options: ResetOptions) {
           .where(
             and(
               eq(proposals.competitionId, compId),
-              eq(proposals.category, 'PUSAT'),
+              ne(proposals.category, 'WILAYAH'),
               inArray(proposals.status, targetStatuses)
             )
           );
@@ -335,7 +335,7 @@ export async function getResetStatsAction() {
   const [screeningCount] = await db.execute(sql`
     SELECT count(*) FROM screening_results sr
     JOIN proposals p ON p.id = sr.proposal_id
-    WHERE p.competition_id = ${compId} AND p.category = 'PUSAT'
+    WHERE p.competition_id = ${compId} AND p.category != 'WILAYAH'
   `);
 
   const [assignmentCount] = await db.execute(sql`
