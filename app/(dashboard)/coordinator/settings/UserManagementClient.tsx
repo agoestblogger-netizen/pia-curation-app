@@ -57,6 +57,7 @@ export default function UserManagementClient({ users: initialUsers, currentUserI
   const [showForm, setShowForm] = useState(false);
   const formRef = useRef<HTMLDivElement>(null);
   const [editMode, setEditMode] = useState<UserRow | null>(null);
+  const [userToDelete, setUserToDelete] = useState<{id: number, name: string} | null>(null);
   const [isPending, startTransition] = useTransition();
   const [formError, setFormError] = useState<string | null>(null);
   const [formSuccess, setFormSuccess] = useState<string | null>(null);
@@ -70,17 +71,21 @@ export default function UserManagementClient({ users: initialUsers, currentUserI
     setTogglingId(null);
   };
 
-  const handleDelete = async (userId: number, userName: string) => {
-    if (confirm(`Apakah Anda yakin ingin menghapus user ${userName}? Aksi ini hanya akan me-nonaktifkan akun dan menandainya sebagai terhapus.`)) {
-      startTransition(async () => {
-        const result = await deleteUserAction(userId);
-        if (result.success) {
-          setUsers(prev => prev.filter(u => u.id !== userId));
-        } else {
-          alert(result.error);
-        }
-      });
-    }
+  const handleDelete = (userId: number, userName: string) => {
+    setUserToDelete({ id: userId, name: userName });
+  };
+
+  const confirmDelete = () => {
+    if (!userToDelete) return;
+    startTransition(async () => {
+      const result = await deleteUserAction(userToDelete.id);
+      if (result.success) {
+        setUsers(prev => prev.filter(u => u.id !== userToDelete.id));
+      } else {
+        alert(result.error);
+      }
+      setUserToDelete(null);
+    });
   };
 
   const openAddForm = () => {
@@ -357,6 +362,34 @@ export default function UserManagementClient({ users: initialUsers, currentUserI
           </tbody>
         </table>
       </div>
+
+      {/* Delete Confirmation Modal */}
+      {userToDelete && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
+            <h3 className="text-lg font-bold text-gray-900 mb-2">Konfirmasi Hapus</h3>
+            <p className="text-gray-600 mb-6">
+              Apakah Anda yakin ingin menghapus user <strong>{userToDelete.name}</strong>? Aksi ini hanya akan me-nonaktifkan akun dan menandainya sebagai terhapus.
+            </p>
+            <div className="flex justify-end space-x-3">
+              <button 
+                disabled={isPending}
+                onClick={() => setUserToDelete(null)}
+                className="px-4 py-2 text-sm font-semibold text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
+              >
+                Batal
+              </button>
+              <button 
+                disabled={isPending}
+                onClick={confirmDelete}
+                className="px-4 py-2 text-sm font-semibold text-white bg-red-600 rounded-lg hover:bg-red-700 disabled:opacity-50"
+              >
+                {isPending ? 'Menghapus...' : 'Ya, Hapus'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
