@@ -12,9 +12,16 @@ export default function FgdListClient({ sessions, isCoordinator, roles = [] }: {
   const [activeTab, setActiveTab] = useState<'curator' | 'promoter'>('curator');
   const [isPending, startTransition] = useTransition();
   const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
 
-  async function handleDelete(id: number) {
-    if (!confirm('Yakin ingin menghapus sesi FGD ini? Data komentar dan vote di dalamnya akan hilang.')) return;
+  function confirmDelete(id: number) {
+    setConfirmDeleteId(id);
+  }
+
+  async function executeDelete() {
+    if (confirmDeleteId === null) return;
+    const id = confirmDeleteId;
+    setConfirmDeleteId(null);
     setDeletingId(id);
     startTransition(async () => {
       const res = await deleteFgdSessionAction(id);
@@ -120,7 +127,7 @@ export default function FgdListClient({ sessions, isCoordinator, roles = [] }: {
                 </Link>
                 {isCoordinator && s.status !== 'locked' && (
                   <button 
-                    onClick={() => handleDelete(s.id)}
+                    onClick={() => confirmDelete(s.id)}
                     disabled={deletingId === s.id}
                     className="text-red-600 font-medium hover:text-red-800 text-sm disabled:opacity-50"
                   >
@@ -132,6 +139,38 @@ export default function FgdListClient({ sessions, isCoordinator, roles = [] }: {
           ))}
         </tbody>
       </table>
+      )}
+      
+      {confirmDeleteId !== null && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-xl max-w-md w-full overflow-hidden border border-gray-100">
+            <div className="bg-red-600 text-white p-5">
+              <h3 className="text-lg font-bold">Hapus Sesi FGD</h3>
+            </div>
+            <div className="p-6">
+              <p className="text-gray-700 font-medium">
+                Yakin ingin menghapus sesi FGD ini?
+              </p>
+              <p className="text-sm text-gray-500 mt-2">
+                Data komentar dan vote di dalamnya akan ikut terhapus dan tidak bisa dikembalikan.
+              </p>
+            </div>
+            <div className="bg-gray-50 px-6 py-4 flex justify-end space-x-3 border-t border-gray-100">
+              <button
+                onClick={() => setConfirmDeleteId(null)}
+                className="px-4 py-2 bg-white border border-gray-300 text-gray-700 font-bold rounded-lg text-sm hover:bg-gray-100"
+              >
+                Batal
+              </button>
+              <button
+                onClick={executeDelete}
+                className="px-6 py-2 bg-red-600 hover:bg-red-700 text-white font-bold rounded-lg text-sm shadow-sm flex items-center gap-2"
+              >
+                Ya, Hapus Sesi
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
     </div>
