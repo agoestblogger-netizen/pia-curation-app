@@ -309,6 +309,7 @@ export const grandFinalSponsors = pgTable('grand_final_sponsors', {
   id: serial('id').primaryKey(),
   competitionId: integer('competition_id').notNull().references(() => competitions.id),
   userId: integer('user_id').notNull().references(() => users.id),
+  sortOrder: integer('sort_order').notNull().default(0),
   assignedBy: integer('assigned_by').references(() => users.id),
   assignedAt: timestamp('assigned_at', { withTimezone: true }).notNull().defaultNow(),
 }, (table) => [

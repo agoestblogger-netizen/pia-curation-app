@@ -3,7 +3,7 @@
 import { db } from '@/lib/db';
 import { grandFinalSponsors, users } from '@/lib/db/schema';
 import { requireRole } from '@/lib/auth/helpers';
-import { eq, and, sql } from 'drizzle-orm';
+import { eq, and, sql, asc } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 
 export async function getGrandFinalSponsors(competitionId: number) {
@@ -14,6 +14,7 @@ export async function getGrandFinalSponsors(competitionId: number) {
       id: grandFinalSponsors.id,
       competitionId: grandFinalSponsors.competitionId,
       userId: grandFinalSponsors.userId,
+      sortOrder: grandFinalSponsors.sortOrder,
       assignedBy: grandFinalSponsors.assignedBy,
       assignedAt: grandFinalSponsors.assignedAt,
       user: {
@@ -22,20 +23,22 @@ export async function getGrandFinalSponsors(competitionId: number) {
     })
     .from(grandFinalSponsors)
     .innerJoin(users, eq(users.id, grandFinalSponsors.userId))
-    .where(eq(grandFinalSponsors.competitionId, competitionId));
+    .where(eq(grandFinalSponsors.competitionId, competitionId))
+    .orderBy(asc(grandFinalSponsors.sortOrder));
 }
 
-export async function assignGrandFinalSponsorsAction(competitionId: number, sponsorIds: number[]) {
+export async function assignGrandFinalSponsorsAction(competitionId: number, sponsors: { userId: number, sortOrder: number }[]) {
   const session = await requireRole('coordinator');
 
   // Hapus assignment yang lama untuk kompetisi ini
   await db.delete(grandFinalSponsors).where(eq(grandFinalSponsors.competitionId, competitionId));
 
   // Insert yang baru
-  if (sponsorIds.length > 0) {
-    const values = sponsorIds.map(userId => ({
+  if (sponsors.length > 0) {
+    const values = sponsors.map(s => ({
       competitionId,
-      userId,
+      userId: s.userId,
+      sortOrder: s.sortOrder,
       assignedBy: session.userId,
     }));
     await db.insert(grandFinalSponsors).values(values);

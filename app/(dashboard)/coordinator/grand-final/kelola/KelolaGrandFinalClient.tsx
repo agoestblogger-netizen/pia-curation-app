@@ -24,20 +24,48 @@ export default function KelolaGrandFinalClient({
   assessments: any[];
 }) {
   const [selectedIds, setSelectedIds] = useState<number[]>(initialAssigned);
+  const [orderMap, setOrderMap] = useState<Record<number, number>>(() => {
+    const map: Record<number, number> = {};
+    initialAssigned.forEach((id, idx) => {
+      map[id] = idx + 1; // Default initial order if they already exist
+    });
+    return map;
+  });
   const [isPending, startTransition] = useTransition();
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const router = useRouter();
 
-  const handleToggle = (id: number) => {
-    setSelectedIds(prev =>
-      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
-    );
+  const handleToggle = (id: number, e?: React.MouseEvent) => {
+    // Prevent toggle if clicking on the number input
+    if (e && (e.target as HTMLElement).tagName === 'INPUT' && (e.target as HTMLInputElement).type === 'number') {
+      return;
+    }
+    
+    setSelectedIds(prev => {
+      if (prev.includes(id)) {
+        setOrderMap(old => {
+          const newMap = { ...old };
+          delete newMap[id];
+          return newMap;
+        });
+        return prev.filter(x => x !== id);
+      } else {
+        setOrderMap(old => ({ ...old, [id]: prev.length + 1 }));
+        return [...prev, id];
+      }
+    });
+  };
+
+  const handleOrderChange = (id: number, val: string) => {
+    const num = parseInt(val, 10);
+    setOrderMap(old => ({ ...old, [id]: isNaN(num) ? 0 : num }));
   };
 
   const handleSave = () => {
     setMessage(null);
     startTransition(async () => {
-      const res = await assignGrandFinalSponsorsAction(competitionId, selectedIds);
+      const payload = selectedIds.map(id => ({ userId: id, sortOrder: orderMap[id] || 0 }));
+      const res = await assignGrandFinalSponsorsAction(competitionId, payload);
       if (res.success) {
         setMessage({ type: 'success', text: 'Penugasan Sponsor berhasil disimpan.' });
         router.refresh();
@@ -47,7 +75,9 @@ export default function KelolaGrandFinalClient({
     });
   };
 
-  const assignedSponsorsData = candidates.filter(c => selectedIds.includes(c.id));
+  const assignedSponsorsData = candidates
+    .filter(c => selectedIds.includes(c.id))
+    .sort((a, b) => (orderMap[a.id] || 0) - (orderMap[b.id] || 0));
   const totalAssessmentsNeeded = proposals.length * assignedSponsorsData.length;
   const validAssessments = assessments.filter(a => selectedIds.includes(a.sponsorId));
   const totalAssessmentsDone = validAssessments.length;
@@ -82,6 +112,9 @@ export default function KelolaGrandFinalClient({
                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Nama Sponsor
                 </th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-24">
+                  Urutan
+                </th>
                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Email
                 </th>
@@ -108,6 +141,19 @@ export default function KelolaGrandFinalClient({
                       <div className="text-sm font-medium text-gray-900">{candidate.name}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
+                      {isSelected ? (
+                        <input
+                          type="number"
+                          min="1"
+                          className="w-16 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-indigo-500 focus:border-indigo-500"
+                          value={orderMap[candidate.id] || ''}
+                          onChange={(e) => handleOrderChange(candidate.id, e.target.value)}
+                        />
+                      ) : (
+                        <span className="text-gray-300">-</span>
+                      )}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm text-gray-500">{candidate.email || '-'}</div>
                     </td>
                   </tr>
@@ -115,7 +161,7 @@ export default function KelolaGrandFinalClient({
               })}
               {candidates.length === 0 && (
                 <tr>
-                  <td colSpan={3} className="px-6 py-4 text-center text-sm text-gray-500">
+                  <td colSpan={4} className="px-6 py-4 text-center text-sm text-gray-500">
                     Tidak ada user dengan role Sponsor.
                   </td>
                 </tr>
