@@ -318,6 +318,7 @@ export default function ResetDataClient({ stats }: { stats: any }) {
         <div className="mt-8 pt-6 border-t border-gray-100">
           {!showConfirm ? (
             <button
+              type="button"
               onClick={() => setShowConfirm(true)}
               disabled={!hasSelectedAny || isPending}
               className="px-6 py-3 bg-red-600 text-white font-bold rounded-xl hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"

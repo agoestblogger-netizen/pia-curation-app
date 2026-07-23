@@ -131,25 +131,26 @@ export default function FgdRoomClient({
     }
   };
 
-  const handleDeleteDocument = async (proposalId: number, docId: number) => {
-    if (!confirm('Hapus dokumen tambahan ini?')) return;
-    setIsDeletingDoc(prev => ({ ...prev, [docId]: true }));
-    try {
-      const res = await deleteFgdAdditionalDocument(docId);
-      if (res.error) {
-        alert(res.error);
-      } else {
-        setLocalAdditionalDocs(prev => ({
-          ...prev,
-          [proposalId]: (prev[proposalId] || []).filter((d: any) => d.id !== docId)
-        }));
+  async function handleDeleteDoc(proposalId: number, docId: number) {
+    showConfirm('Hapus Dokumen?', 'Hapus dokumen tambahan ini?', async () => {
+      setIsDeletingDoc(prev => ({ ...prev, [docId]: true }));
+      try {
+        const res = await deleteFgdAdditionalDocument(docId);
+        if (res.error) {
+          alert(res.error);
+        } else {
+          setLocalAdditionalDocs(prev => ({
+            ...prev,
+            [proposalId]: (prev[proposalId] || []).filter((d: any) => d.id !== docId)
+          }));
+        }
+      } catch (err: any) {
+        alert(err.message || 'Gagal menghapus dokumen.');
+      } finally {
+        setIsDeletingDoc(prev => ({ ...prev, [docId]: false }));
       }
-    } catch (err: any) {
-      alert(err.message || 'Gagal menghapus dokumen.');
-    } finally {
-      setIsDeletingDoc(prev => ({ ...prev, [docId]: false }));
-    }
-  };
+    });
+  }
 
   const handleGenerateAi = async (proposalId: number) => {
     setIsGeneratingAi(prev => ({ ...prev, [proposalId]: true }));
@@ -191,6 +192,18 @@ export default function FgdRoomClient({
   const [locking, setLocking] = useState(false);
   const [releasing, setReleasing] = useState<Record<number, boolean>>({});
   const [selectedForFinal, setSelectedForFinal] = useState<number[]>([]);
+
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+  }>({ isOpen: false, title: '', message: '', onConfirm: () => {} });
+
+  const showConfirm = (title: string, message: string, onConfirm: () => void) => {
+    setConfirmModal({ isOpen: true, title, message, onConfirm });
+  };
+
 
   // ─── Helpers ──────────────────────────────────────────────────────────────
   const refresh = () => startRefresh(() => router.refresh());
@@ -256,28 +269,39 @@ export default function FgdRoomClient({
   }
 
   async function handleLock() {
-    if (!confirm(`Yakin ingin menetapkan ${selectedForFinal.length} proposal ini sebagai hasil final? Sesi akan dikunci dan tidak bisa diedit.`)) return;
-    setLocking(true);
-    const res = await lockFgdSessionAction(fgd.id, selectedForFinal);
-    setLocking(false);
-    if (res.error) {
-      alert(res.error);
-    } else {
-      refresh();
-    }
+    showConfirm(
+      'Tetapkan Hasil & Kunci Sesi?',
+      `Yakin ingin menetapkan ${selectedForFinal.length} proposal ini sebagai hasil final? Sesi akan dikunci dan tidak bisa diedit.`,
+      async () => {
+        setLocking(true);
+        const res = await lockFgdSessionAction(fgd.id, selectedForFinal);
+        setLocking(false);
+        if (res.error) {
+          alert(res.error);
+        } else {
+          refresh();
+        }
+      }
+    );
   }
 
   async function handleReleaseProposal(proposalId: number) {
-    if (!confirm('Yakin ingin merilis (membatalkan penetapan) proposal ini dari hasil FGD? Proposal akan kembali ke status FGD.')) return;
-    setReleasing(prev => ({ ...prev, [proposalId]: true }));
-    const res = await releaseSingleFgdProposalAction(fgd.id, proposalId);
-    if (res.error) {
-      alert(res.error);
-      setReleasing(prev => ({ ...prev, [proposalId]: false }));
-    } else {
-      refresh();
-    }
+    showConfirm(
+      'Release Proposal?',
+      'Yakin ingin merilis (membatalkan penetapan) proposal ini dari hasil FGD? Proposal akan kembali ke status FGD.',
+      async () => {
+        setReleasing(prev => ({ ...prev, [proposalId]: true }));
+        const res = await releaseSingleFgdProposalAction(fgd.id, proposalId);
+        if (res.error) {
+          alert(res.error);
+          setReleasing(prev => ({ ...prev, [proposalId]: false }));
+        } else {
+          refresh();
+        }
+      }
+    );
   }
+
 
   function openDetail(idx: number) {
     setActiveProposalIdx(idx);
@@ -635,7 +659,7 @@ export default function FgdRoomClient({
                             <div key={doc.id || idx} className="bg-gray-50 p-4 rounded border border-gray-200 relative">
                               {!readOnly && session?.roles?.includes('coordinator') && (
                                 <button 
-                                  onClick={() => handleDeleteDocument(activeProposal.id, doc.id)}
+                                  onClick={() => handleDeleteDoc(activeProposal.id, doc.id)}
                                   disabled={isDeletingDoc[doc.id]}
                                   className="absolute top-2 right-2 text-gray-400 hover:text-red-600 transition-colors bg-white p-1 rounded shadow-sm border border-gray-200 disabled:opacity-50"
                                   title="Hapus dokumen ini"
@@ -946,6 +970,34 @@ export default function FgdRoomClient({
           </div>
         )}
       </div>
+      {/* Custom Confirm Modal */}
+      {confirmModal.isOpen && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-xl max-w-sm w-full overflow-hidden border border-gray-100">
+            <div className="p-6">
+              <h3 className="text-lg font-bold text-gray-900 mb-2">{confirmModal.title}</h3>
+              <p className="text-gray-600">{confirmModal.message}</p>
+            </div>
+            <div className="bg-gray-50 px-6 py-4 flex justify-end space-x-3 border-t border-gray-100">
+              <button
+                onClick={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
+                className="px-4 py-2 bg-white border border-gray-300 text-gray-700 font-bold rounded-lg text-sm hover:bg-gray-100 transition-colors"
+              >
+                Batal
+              </button>
+              <button
+                onClick={() => {
+                  setConfirmModal(prev => ({ ...prev, isOpen: false }));
+                  confirmModal.onConfirm();
+                }}
+                className="px-6 py-2 bg-teal-600 hover:bg-teal-700 text-white font-bold rounded-lg text-sm shadow-sm transition-colors"
+              >
+                Ya, Lanjutkan
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
