@@ -29,7 +29,7 @@ export default async function FgdPage() {
     <div className="p-8 max-w-6xl mx-auto">
 
 
-      <FgdListClient sessions={sessions} isCoordinator={isCoordinator} />
+      <FgdListClient sessions={sessions} isCoordinator={isCoordinator} roles={session.roles} />
     </div>
   );
 }

@@ -21,6 +21,24 @@ export default async function FgdRoomPage({ params }: { params: Promise<{ sessio
   const [fgd] = await db.select().from(fgdSessions).where(eq(fgdSessions.id, sId)).limit(1);
   if (!fgd) return <div className="p-8">Sesi FGD tidak ditemukan.</div>;
 
+  const isPureCurator = session.roles.includes('curator') && !session.roles.some(r => ['promoter', 'coordinator', 'admin'].includes(r));
+  if (fgd.fgdType === 'promoter' && isPureCurator) {
+    return (
+      <div className="p-8 flex flex-col items-center justify-center min-h-[50vh]">
+        <div className="text-red-500 mb-4">
+          <svg className="w-16 h-16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+        </div>
+        <h1 className="text-2xl font-bold text-gray-900 mb-2">Akses Ditolak</h1>
+        <p className="text-gray-600 text-center max-w-md">
+          Anda tidak memiliki izin untuk mengakses sesi FGD Promotor. Sesi ini hanya diperuntukkan bagi peran Promotor dan Koordinator.
+        </p>
+        <Link href="/coordinator/fgd" className="mt-6 text-teal-600 hover:underline">
+          ← Kembali ke Daftar FGD
+        </Link>
+      </div>
+    );
+  }
+
   // ─── Build proposal pool with screening verdict filter ────────────────────
   // filterStatuses in fgd stores screening verdicts like ['lolos', 'duplication', ...]
   const rawStatuses = Array.isArray(fgd.filterStatuses) && fgd.filterStatuses.length > 0 ? (fgd.filterStatuses as string[]) : ['lolos'];

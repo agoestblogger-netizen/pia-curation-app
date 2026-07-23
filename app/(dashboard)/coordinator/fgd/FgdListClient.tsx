@@ -7,7 +7,7 @@ import { deleteFgdSessionAction } from '@/app/actions/fgd';
 
 import { useState, useTransition } from 'react';
 
-export default function FgdListClient({ sessions, isCoordinator }: { sessions: FgdSession[], isCoordinator?: boolean }) {
+export default function FgdListClient({ sessions, isCoordinator, roles = [] }: { sessions: FgdSession[], isCoordinator?: boolean, roles?: string[] }) {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<'curator' | 'promoter'>('curator');
   const [isPending, startTransition] = useTransition();
@@ -23,13 +23,15 @@ export default function FgdListClient({ sessions, isCoordinator }: { sessions: F
     });
   }
 
+  const showPromoterTab = roles.includes('promoter') || roles.includes('coordinator') || roles.includes('admin') || roles.includes('viewer');
+
   const filteredSessions = sessions.filter(s => s.fgdType === activeTab);
 
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center mb-8">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">Sesi FGD (Kurator & Promotor)</h1>
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">Sesi FGD</h1>
           <p className="text-gray-600">Kelola sesi Focus Group Discussion (FGD) untuk penetapan proposal.</p>
         </div>
         {isCoordinator && (
@@ -43,24 +45,26 @@ export default function FgdListClient({ sessions, isCoordinator }: { sessions: F
       </div>
 
       <div className="bg-white rounded-lg shadow overflow-hidden border border-gray-200">
-        <div className="flex border-b border-gray-200">
-        <button
-          onClick={() => setActiveTab('curator')}
-          className={`flex-1 py-4 text-center font-medium ${
-            activeTab === 'curator' ? 'text-teal-600 border-b-2 border-teal-600 bg-teal-50/30' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
-          }`}
-        >
-          FGD Kurator
-        </button>
-        <button
-          onClick={() => setActiveTab('promoter')}
-          className={`flex-1 py-4 text-center font-medium ${
-            activeTab === 'promoter' ? 'text-teal-600 border-b-2 border-teal-600 bg-teal-50/30' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
-          }`}
-        >
-          FGD Promotor
-        </button>
-      </div>
+        {showPromoterTab && (
+          <div className="flex border-b border-gray-200">
+            <button
+              onClick={() => setActiveTab('curator')}
+              className={`flex-1 py-4 text-center font-medium ${
+                activeTab === 'curator' ? 'text-teal-600 border-b-2 border-teal-600 bg-teal-50/30' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+              }`}
+            >
+              FGD Kurator
+            </button>
+            <button
+              onClick={() => setActiveTab('promoter')}
+              className={`flex-1 py-4 text-center font-medium ${
+                activeTab === 'promoter' ? 'text-teal-600 border-b-2 border-teal-600 bg-teal-50/30' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+              }`}
+            >
+              FGD Promotor
+            </button>
+          </div>
+        )}
       
       {filteredSessions.length === 0 ? (
         <div className="p-8 text-center text-gray-500">
