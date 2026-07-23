@@ -11,7 +11,7 @@ export default async function DashboardRedirect() {
   if (session.roles.includes('coordinator')) {
     redirect('/overview');
   } else if (session.roles.includes('curator')) {
-    redirect('/curator');
+    redirect('/overview');
   } else if (session.roles.includes('promoter')) {
     redirect('/promoter');
   } else if (session.roles.includes('sponsor')) {

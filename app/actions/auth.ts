@@ -55,7 +55,7 @@ export async function loginAction(
   if (user.roles.includes('coordinator')) {
     redirect('/overview');
   } else if (user.roles.includes('curator')) {
-    redirect('/curator');
+    redirect('/overview');
   } else if (user.roles.includes('promoter')) {
     redirect('/promoter');
   } else if (user.roles.includes('sponsor')) {
