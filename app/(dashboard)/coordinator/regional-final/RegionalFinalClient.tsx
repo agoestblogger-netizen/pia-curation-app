@@ -149,22 +149,24 @@ export default function RegionalFinalClient({ competitionId, groups, readOnly }:
                 </div>
               </div>
               <div className="flex items-center space-x-3">
-                <select
-                  className="text-xs border-gray-300 rounded-md py-1 px-2 focus:ring-indigo-500 focus:border-indigo-500"
-                  value={filterVerdict[group.region] || 'lolos'}
-                  onClick={(e) => e.stopPropagation()}
-                  onChange={(e) => {
-                    e.stopPropagation();
-                    setFilterVerdict(prev => ({ ...prev, [group.region]: e.target.value }));
-                    if (!isExpanded) setExpandedGroup(group.region);
-                  }}
-                >
-                  <option value="lolos">Status: Lolos</option>
-                  <option value="duplication">Status: Duplication</option>
-                  <option value="mapped">Status: Mapped</option>
-                  <option value="non_compliance">Status: Non Compliance</option>
-                  <option value="low_impact">Status: Low Impact</option>
-                </select>
+                {false && (
+                  <select
+                    className="text-xs border-gray-300 rounded-md py-1 px-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    value={filterVerdict[group.region] || 'lolos'}
+                    onClick={(e) => e.stopPropagation()}
+                    onChange={(e) => {
+                      e.stopPropagation();
+                      setFilterVerdict(prev => ({ ...prev, [group.region]: e.target.value }));
+                      if (!isExpanded) setExpandedGroup(group.region);
+                    }}
+                  >
+                    <option value="lolos">Status: Lolos</option>
+                    <option value="duplication">Status: Duplication</option>
+                    <option value="mapped">Status: Mapped</option>
+                    <option value="non_compliance">Status: Non Compliance</option>
+                    <option value="low_impact">Status: Low Impact</option>
+                  </select>
+                )}
                 <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
                   group.finalistCount === 0 ? 'bg-gray-100 text-gray-500' :
                   group.finalistCount < 10 ? 'bg-yellow-100 text-yellow-700' :
