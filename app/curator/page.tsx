@@ -48,7 +48,8 @@ export default async function CuratorDashboard() {
         .innerJoin(proposals, eq(curatorAssignments.proposalId, proposals.id))
         .where(and(
           eq(curatorAssignments.curatorId, session.userId),
-          eq(proposals.competitionId, activeComp.id)
+          eq(proposals.competitionId, activeComp.id),
+          sql`(${proposals.status} IS NULL OR ${proposals.status} != 'gugur')`
         )),
       getCuratorPotentialDuplicates()
     ]);

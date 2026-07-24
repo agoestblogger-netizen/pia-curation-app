@@ -94,6 +94,7 @@ export default async function FgdRoomPage({ params }: { params: Promise<{ sessio
     FROM proposals p
     LEFT JOIN screening_results sr ON sr.proposal_id = p.id
     WHERE p.competition_id = ${fgd.competitionId}
+      AND (p.status IS NULL OR p.status != 'gugur')
       AND ${queryCondition}
     ORDER BY p.category, p.region_center, p.id ASC
   `);

@@ -72,6 +72,7 @@ export async function assignPromoterRangeAction(_prev: any, formData: FormData) 
       FROM proposals
       WHERE competition_id = ${competitionId}
         AND category = ${category}
+        AND (status IS NULL OR status != 'gugur')
         ${regionCenter ? sql`AND region_center = ${regionCenter}` : sql`AND (region_center IS NULL OR region_center = '')`}
     )
     SELECT id, row_number, status FROM RankedProposals
