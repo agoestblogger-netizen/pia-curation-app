@@ -32,26 +32,28 @@ export default async function SettingsPage() {
           </p>
         </div>
 
-        {/* SECTION: Pengaturan Kompetisi */}
-        <section className="mb-12">
-          <h2 className="text-xl font-bold text-gray-900 mb-4 pb-2 border-b border-gray-200">
-            Pengaturan Kompetisi
-          </h2>
-          {!activeComp ? (
-            <div className="bg-yellow-50 text-yellow-800 p-4 rounded-xl border border-yellow-200">
-              Tidak ada kompetisi aktif.
-            </div>
-          ) : (
-            <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm space-y-6">
-              <SettingsClient 
-                competitionId={activeComp.id} 
-                initialVisibility={activeComp.sponsorScoreVisibility as 'open' | 'closed'} 
-                initialRegionalCuratorMode={(activeComp.regionalCuratorMode ?? 'single') as 'single' | 'multiple'}
-                initialShowGugurProposals={activeComp.showGugurProposals ?? false}
-              />
-            </div>
-          )}
-        </section>
+        {/* SECTION: Pengaturan Kompetisi (Hanya Role Admin) */}
+        {isAdmin && (
+          <section className="mb-12">
+            <h2 className="text-xl font-bold text-gray-900 mb-4 pb-2 border-b border-gray-200">
+              Pengaturan Kompetisi
+            </h2>
+            {!activeComp ? (
+              <div className="bg-yellow-50 text-yellow-800 p-4 rounded-xl border border-yellow-200">
+                Tidak ada kompetisi aktif.
+              </div>
+            ) : (
+              <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm space-y-6">
+                <SettingsClient 
+                  competitionId={activeComp.id} 
+                  initialVisibility={activeComp.sponsorScoreVisibility as 'open' | 'closed'} 
+                  initialRegionalCuratorMode={(activeComp.regionalCuratorMode ?? 'single') as 'single' | 'multiple'}
+                  initialShowGugurProposals={activeComp.showGugurProposals ?? false}
+                />
+              </div>
+            )}
+          </section>
+        )}
 
         {/* SECTION: Manajemen User */}
         <section>
