@@ -83,7 +83,7 @@ export default async function ProposalDetailPage({
     )
   ).limit(1);
 
-  const warnings = await getProposalDuplicateWarnings(proposalId);
+  const warnings = isViewer ? [] : await getProposalDuplicateWarnings(proposalId);
     
   let isLinkedToDuplicate = false;
   if (!assignment && !isCoordinator && !isViewer && warnings.length > 0) {
@@ -432,14 +432,14 @@ export default async function ProposalDetailPage({
               </div>
             )}
 
-            {/* Bandingkan dengan Proposal Lain */}
-            {(isCurator || isCoordinator || isViewer) && (
+            {/* Bandingkan dengan Proposal Lain (Admin, Coordinator, Curator only) */}
+            {!isViewer && (isCurator || isCoordinator) && (
               <CompareProposalsPanel
                 proposalId={proposal.id}
                 proposalTitle={proposal.title}
                 category={proposal.category}
                 competitionId={proposal.competitionId}
-                isReadOnly={!assignment && !isCoordinator && !isViewer && isLinkedToDuplicate}
+                isReadOnly={!assignment && !isCoordinator && isLinkedToDuplicate}
               />
             )}
 
