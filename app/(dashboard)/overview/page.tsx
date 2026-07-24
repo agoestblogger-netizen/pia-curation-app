@@ -2,10 +2,11 @@ import { cookies } from 'next/headers';
 import { getActiveCompetition } from '@/app/actions/competitions';
 import { getSession } from '@/lib/auth/session';
 import { db } from '@/lib/db';
-import { proposals, curatorAssignments, users } from '@/lib/db/schema';
+import { proposals, curatorAssignments, users, screeningResults } from '@/lib/db/schema';
 import { eq, sql, and, isNotNull, gte } from 'drizzle-orm';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
+import OverviewGaugeSection from './OverviewGaugeSection';
 
 export default async function OverviewDashboard() {
   const session = await getSession();
@@ -66,6 +67,15 @@ export default async function OverviewDashboard() {
     GROUP BY p.category, p.region_center
   `);
 
+  const verdictsPromise = db.execute(sql`
+    SELECT sr.verdict, COUNT(DISTINCT sr.proposal_id) as count
+    FROM screening_results sr
+    JOIN proposals p ON sr.proposal_id = p.id
+    WHERE p.competition_id = ${activeComp.id}
+      AND (p.status IS NULL OR p.status != 'gugur')
+    GROUP BY sr.verdict
+  `);
+
   let curatorsPromise: Promise<any[]> = Promise.resolve([]);
   let assignmentsPromise: Promise<any[]> = Promise.resolve([]);
   const gugurPromise = db.select({ count: sql<number>`count(*)` })
@@ -99,8 +109,9 @@ export default async function OverviewDashboard() {
       ));
   }
 
-  const [statsQuery, curators, assignments, [gugurStat]] = await Promise.all([
+  const [statsQuery, verdictsQuery, curators, assignments, [gugurStat]] = await Promise.all([
     statsPromise,
+    verdictsPromise,
     curatorsPromise,
     assignmentsPromise,
     gugurPromise
@@ -200,6 +211,21 @@ export default async function OverviewDashboard() {
     curatorStats.sort((a, b) => b.sisa - a.sisa || a.name.localeCompare(b.name));
   }
 
+  const verdictsData = (verdictsQuery as unknown as any[]) || [];
+  const verdictCounts = {
+    lolos: 0,
+    duplication: 0,
+    mapped: 0,
+    non_compliance: 0,
+    low_impact: 0,
+  };
+  verdictsData.forEach((row: any) => {
+    const key = row.verdict as keyof typeof verdictCounts;
+    if (key && verdictCounts.hasOwnProperty(key)) {
+      verdictCounts[key] = Number(row.count || 0);
+    }
+  });
+
   return (
     <div className="p-8">
       <div className="flex justify-between items-center mb-8">
@@ -256,7 +282,7 @@ export default async function OverviewDashboard() {
             <div className="text-3xl font-bold text-indigo-600">{totalTerkurasi.toLocaleString('id-ID')}</div>
           </div>
           <div className="mt-3 text-xs font-semibold text-gray-500 pt-2 border-t border-gray-100 flex items-center justify-between">
-            <span>Progress: <strong className="text-indigo-600">{totalResubmit > 0 ? Math.round((totalTerkurasi / totalResubmit) * 100) : 0}%</strong></span>
+            <span>Progress: <strong className="text-indigo-600">{totalResubmit > 0 ? ((totalTerkurasi / totalResubmit) * 100).toFixed(1) : '0.0'}%</strong></span>
             <span>dari proposal aktif</span>
           </div>
         </div>
@@ -272,6 +298,14 @@ export default async function OverviewDashboard() {
           </div>
         </div>
       </div>
+
+      {/* Gauge Meter (Semua Role) & 5 Parameter Breakdown (Khusus Koordinator & Admin) */}
+      <OverviewGaugeSection
+        totalResubmit={totalResubmit}
+        totalCurated={totalTerkurasi}
+        verdicts={verdictCounts}
+        showVerdictsBreakdown={session?.roles?.some(r => r === 'coordinator' || r === 'admin')}
+      />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
         {/* Category Breakdown (Fixed) */}
