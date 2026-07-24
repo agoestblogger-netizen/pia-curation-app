@@ -62,9 +62,9 @@ export default function CoordinatorBoard({
   const displayedProposals = proposals.filter(p => {
     if (!showGugur && p.status === 'gugur') return false;
 
-    const matchesTab = activeTab === 'assigned' ? p.status !== 'completed' : p.status === 'completed';
+    const matchesTab = activeTab === 'assigned' ? !p.isScreened : activeTab === 'review' ? p.isScreened : true;
     const matchesSearch = p.title.toLowerCase().includes(searchQuery.toLowerCase()) || p.proposerName.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCurator = !curatorFilter || p.curatorName === curatorFilter;
+    const matchesCurator = activeTab === 'review' && curatorFilter ? p.curatorName === curatorFilter : true;
     return matchesTab && matchesSearch && matchesCurator;
   });
 
@@ -216,10 +216,10 @@ export default function CoordinatorBoard({
           />
         </div>
         
-        {/* Curator Filter (Admin & Coordinator only) */}
-        {!isViewer && (
+        {/* Curator Filter (Only inside "Selesai Discreening" tab for Admin & Coordinator) */}
+        {activeTab === 'review' && !isViewer && (
           <div className="w-full sm:w-auto shrink-0 flex items-center bg-white rounded-lg border border-gray-300 p-1 shadow-sm h-full">
-            <span className="px-3 text-sm font-semibold text-gray-600 border-r border-gray-200 hidden sm:inline-block">Kurator:</span>
+            <span className="px-3 text-sm font-semibold text-gray-600 border-r border-gray-200 hidden sm:inline-block">Filter Kurator:</span>
             <select 
               className="bg-transparent border-0 text-sm font-medium focus:ring-0 text-gray-900 py-2 pl-3 pr-8 w-full cursor-pointer outline-none"
               value={curatorFilter}

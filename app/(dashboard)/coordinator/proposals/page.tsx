@@ -69,8 +69,8 @@ export default async function ProposalsPage() {
 
   mappedProposals.sort((a, b) => a.proposalRowNumber - b.proposalRowNumber);
 
-  const completedCount = mappedProposals.filter(p => p.isScreened).length;
-  const totalCount = mappedProposals.length;
+  const completedCount = mappedProposals.filter(p => p.isScreened && p.status !== 'gugur').length;
+  const totalActiveCount = mappedProposals.filter(p => p.status !== 'gugur').length;
 
   const duplicates = await getCoordinatorPotentialDuplicates();
 
@@ -80,7 +80,7 @@ export default async function ProposalsPage() {
         <div className="flex justify-between items-end mb-1">
           <h1 className="text-2xl font-bold text-gray-900">Semua Proposal</h1>
           <div className="text-sm font-semibold text-gray-500">
-            {completedCount} dari {totalCount} total proposal sudah discreening semua kurator
+            {completedCount} dari {totalActiveCount} total proposal sudah discreening semua kurator
           </div>
         </div>
         <p className="text-gray-500 text-sm">
