@@ -15,7 +15,7 @@ interface CuratorAssignmentTableProps {
 }
 
 export default function CuratorAssignmentTable({ curatorStats }: CuratorAssignmentTableProps) {
-  const [sortBy, setSortBy] = useState<'sisa' | 'completed'>('sisa');
+  const [sortBy, setSortBy] = useState<'sisa' | 'completed'>('completed');
 
   const sortedStats = [...curatorStats].sort((a, b) => {
     if (sortBy === 'completed') {
