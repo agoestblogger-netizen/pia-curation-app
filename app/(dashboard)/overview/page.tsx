@@ -7,6 +7,7 @@ import { eq, sql, and, isNotNull, gte } from 'drizzle-orm';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import OverviewGaugeSection from './OverviewGaugeSection';
+import CuratorAssignmentTable from './CuratorAssignmentTable';
 
 export default async function OverviewDashboard() {
   const session = await getSession();
@@ -417,44 +418,8 @@ export default async function OverviewDashboard() {
         </div>
       </div>
 
-      {session?.roles?.includes('coordinator') && (
-        <div className="mt-8 bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden flex flex-col">
-          <div className="px-5 py-4 border-b border-gray-100 bg-gray-50">
-            <h2 className="font-bold text-gray-900">Assignment per Kurator</h2>
-            <p className="text-xs text-gray-500 mt-1">Data beban kerja dan progres seluruh kurator (diurutkan berdasarkan sisa terbanyak).</p>
-          </div>
-          <div className="overflow-x-auto w-full">
-          <table className="min-w-full divide-y divide-gray-100 flex-1">
-            <thead className="bg-white">
-              <tr>
-                <th className="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Kurator</th>
-                <th className="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Kategori yang Di-assign</th>
-                <th className="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Total Assigned</th>
-                <th className="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Sudah Discreening</th>
-                <th className="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Sisa</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {curatorStats.map((stat) => (
-                <tr key={stat.name} className="hover:bg-gray-50">
-                  <td className="px-5 py-3 font-semibold text-sm text-gray-900">{stat.name}</td>
-                  <td className="px-5 py-3 text-xs text-gray-500 max-w-xs truncate" title={stat.categoriesAssigned}>{stat.categoriesAssigned}</td>
-                  <td className="px-5 py-3 text-sm text-gray-600">{stat.total}</td>
-                  <td className="px-5 py-3 text-sm font-semibold text-emerald-600">{stat.completed}</td>
-                  <td className="px-5 py-3 text-sm font-bold text-rose-600">{stat.sisa}</td>
-                </tr>
-              ))}
-              {curatorStats.length === 0 && (
-                <tr>
-                  <td colSpan={5} className="px-5 py-4 text-center text-sm text-gray-500">
-                    Belum ada kurator yang terdaftar atau aktif.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-          </div>
-        </div>
+      {session?.roles?.some(r => r === 'coordinator' || r === 'admin') && (
+        <CuratorAssignmentTable curatorStats={curatorStats} />
       )}
 
 

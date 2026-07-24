@@ -4,6 +4,7 @@ import Script from "next/script";
 import { Suspense } from "react";
 import "./globals.css";
 import NavigationOverlay from "@/app/components/ui/NavigationOverlay";
+import DevEnvBanner from "@/app/components/ui/DevEnvBanner";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -44,6 +45,7 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col" suppressHydrationWarning>
+        <DevEnvBanner />
         <Suspense fallback={null}>
           <NavigationOverlay />
         </Suspense>
