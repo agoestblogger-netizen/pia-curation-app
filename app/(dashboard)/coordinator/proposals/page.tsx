@@ -61,7 +61,7 @@ export default async function ProposalsPage() {
       status: r.assignmentStatus === 'completed' ? 'completed' : r.status,
       isScreened,
       aiScore: r.aiScore !== null ? Number(r.aiScore).toFixed(2) : 'N/A',
-      curatorName: r.curatorName,
+      curatorName: isViewer ? undefined : r.curatorName,
       proposalRowNumber: r.nomorUrut || 0,
       hasResubmission: !!r.linkResubmitProposal,
     };

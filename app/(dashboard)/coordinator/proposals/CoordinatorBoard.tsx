@@ -138,7 +138,7 @@ export default function CoordinatorBoard({
               </div>
               <div className="text-xs text-gray-600 font-semibold mb-2">
                 {p.division || p.regionCenter || 'Operasional'}
-                {p.curatorName && (
+                {p.curatorName && !isViewer && (
                   <span className="ml-2 px-2 py-0.5 rounded text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200">
                     Dikurasi oleh : {p.curatorName}
                   </span>
