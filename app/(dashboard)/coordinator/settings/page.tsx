@@ -43,15 +43,10 @@ export default async function SettingsPage() {
             </div>
           ) : (
             <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm space-y-6">
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900">Sidang Penetapan (Grand Final)</h3>
-                <p className="text-sm text-gray-500 mt-1">
-                  Pengaturan visibilitas skor antar Sponsor selama Sidang Penetapan berlangsung.
-                </p>
-              </div>
               <SettingsClient 
                 competitionId={activeComp.id} 
                 initialVisibility={activeComp.sponsorScoreVisibility as 'open' | 'closed'} 
+                initialRegionalCuratorMode={(activeComp.regionalCuratorMode ?? 'single') as 'single' | 'multiple'}
               />
             </div>
           )}

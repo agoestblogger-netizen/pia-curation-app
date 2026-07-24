@@ -9,6 +9,7 @@ import {
   proposals,
   users,
   quotaFactorConfigs,
+  competitions,
 } from '@/lib/db/schema';
 import { requireRole } from '@/lib/auth/helpers';
 import { eq, and, inArray, sql } from 'drizzle-orm';
@@ -399,32 +400,40 @@ export async function assignRangeAction(_prev: BatchActionState, formData: FormD
   const isRegionalCategory = category === 'PUSAT' || category === 'WILAYAH';
 
   if (isRegionalCategory) {
-    // Cari kurator yang sudah pernah dapat assignment di grup regional ini
-    const existingRegionalOwner = await db
-      .select({ curatorId: curatorAssignments.curatorId, curatorName: users.name })
-      .from(curatorAssignments)
-      .innerJoin(proposals, eq(proposals.id, curatorAssignments.proposalId))
-      .leftJoin(users, eq(users.id, curatorAssignments.curatorId))
-      .where(
-        and(
-          eq(proposals.competitionId, batch.competitionId),
-          eq(proposals.category, category),
-          regionCenter
-            ? eq(proposals.regionCenter, regionCenter)
-            : sql`(${proposals.regionCenter} IS NULL OR ${proposals.regionCenter} = '')`,
-        )
-      )
+    const [comp] = await db
+      .select({ regionalCuratorMode: competitions.regionalCuratorMode })
+      .from(competitions)
+      .where(eq(competitions.id, batch.competitionId))
       .limit(1);
 
-    if (existingRegionalOwner.length > 0) {
-      const owner = existingRegionalOwner[0];
-      if (owner.curatorId !== curatorId) {
-        const regionLabel = category === 'PUSAT'
-          ? 'Kantor Pusat'
-          : `Kanwil ${regionCenter}`;
-        return {
-          error: `Grup regional "${regionLabel}" sudah menjadi tanggung jawab ${owner.curatorName ?? 'kurator lain'} — regional tidak boleh dibagi ke lebih dari 1 kurator.`,
-        };
+    if (comp?.regionalCuratorMode !== 'multiple') {
+      // Cari kurator yang sudah pernah dapat assignment di grup regional ini
+      const existingRegionalOwner = await db
+        .select({ curatorId: curatorAssignments.curatorId, curatorName: users.name })
+        .from(curatorAssignments)
+        .innerJoin(proposals, eq(proposals.id, curatorAssignments.proposalId))
+        .leftJoin(users, eq(users.id, curatorAssignments.curatorId))
+        .where(
+          and(
+            eq(proposals.competitionId, batch.competitionId),
+            eq(proposals.category, category),
+            regionCenter
+              ? eq(proposals.regionCenter, regionCenter)
+              : sql`(${proposals.regionCenter} IS NULL OR ${proposals.regionCenter} = '')`,
+          )
+        )
+        .limit(1);
+
+      if (existingRegionalOwner.length > 0) {
+        const owner = existingRegionalOwner[0];
+        if (owner.curatorId !== curatorId) {
+          const regionLabel = category === 'PUSAT'
+            ? 'Kantor Pusat'
+            : `Kanwil ${regionCenter}`;
+          return {
+            error: `Grup regional "${regionLabel}" sudah menjadi tanggung jawab ${owner.curatorName ?? 'kurator lain'} — regional tidak boleh dibagi ke lebih dari 1 kurator. (Ubah "Mode Assignment Kurator Regional" di Pengaturan jika ingin membagi ke banyak kurator)`,
+          };
+        }
       }
     }
   }

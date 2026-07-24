@@ -10,19 +10,33 @@ export async function updateCompetitionSettingsAction(
   competitionId: number,
   formData: FormData
 ) {
-  await requireRole('admin'); // Only admin can access this
+  await requireRole(['coordinator', 'admin']);
 
-  const sponsorScoreVisibility = formData.get('sponsorScoreVisibility') as 'open' | 'closed';
+  const sponsorScoreVisibility = formData.get('sponsorScoreVisibility') as 'open' | 'closed' | null;
+  const regionalCuratorMode = formData.get('regionalCuratorMode') as 'single' | 'multiple' | null;
 
-  if (!['open', 'closed'].includes(sponsorScoreVisibility)) {
-    return { error: 'Invalid sponsorScoreVisibility' };
+  const updateData: Record<string, any> = { updatedAt: new Date() };
+
+  if (sponsorScoreVisibility) {
+    if (!['open', 'closed'].includes(sponsorScoreVisibility)) {
+      return { error: 'Invalid sponsorScoreVisibility' };
+    }
+    updateData.sponsorScoreVisibility = sponsorScoreVisibility;
+  }
+
+  if (regionalCuratorMode) {
+    if (!['single', 'multiple'].includes(regionalCuratorMode)) {
+      return { error: 'Invalid regionalCuratorMode' };
+    }
+    updateData.regionalCuratorMode = regionalCuratorMode;
   }
 
   await db.update(competitions)
-    .set({ sponsorScoreVisibility })
+    .set(updateData)
     .where(eq(competitions.id, competitionId));
 
-  revalidatePath('/admin/settings');
+  revalidatePath('/coordinator/settings');
+  revalidatePath('/coordinator/batches');
   revalidatePath('/sponsor/fgd');
   
   return { success: true };

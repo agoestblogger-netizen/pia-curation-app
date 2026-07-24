@@ -160,7 +160,7 @@ export async function setRegionalFinalistsAction(
   if (!session.roles.includes('coordinator')) {
     // Kurator yang ter-assign di grup regional ini otomatis berwenang (auto-derive dari curatorAssignments)
     const isKanpusCheck = regionKey === 'PUSAT';
-    const [ownerAssignment] = await db
+    const ownerAssignments = await db
       .select({ curatorId: curatorAssignments.curatorId })
       .from(curatorAssignments)
       .innerJoin(proposals, eq(proposals.id, curatorAssignments.proposalId))
@@ -171,9 +171,9 @@ export async function setRegionalFinalistsAction(
             ? eq(proposals.category, 'PUSAT')
             : and(eq(proposals.category, 'WILAYAH'), eq(proposals.regionCenter, dbRegion))
         )
-      )
-      .limit(1);
-    if (!ownerAssignment || ownerAssignment.curatorId !== session.userId) {
+      );
+    const isOwner = ownerAssignments.some(a => a.curatorId === session.userId);
+    if (!isOwner) {
       return { error: 'Akses Ditolak: Hanya kurator yang bertanggung jawab atas grup regional ini yang berwenang.' };
     }
   }
@@ -251,7 +251,7 @@ export async function lockRegionalGroupAction(
   if (!session.roles.includes('coordinator')) {
     // Auto-derive: kurator yang ter-assign di grup regional ini otomatis berwenang
     const isKanpusCheck = regionKey === 'PUSAT';
-    const [ownerAssignment] = await db
+    const ownerAssignments = await db
       .select({ curatorId: curatorAssignments.curatorId })
       .from(curatorAssignments)
       .innerJoin(proposals, eq(proposals.id, curatorAssignments.proposalId))
@@ -262,9 +262,9 @@ export async function lockRegionalGroupAction(
             ? eq(proposals.category, 'PUSAT')
             : and(eq(proposals.category, 'WILAYAH'), eq(proposals.regionCenter, dbRegion))
         )
-      )
-      .limit(1);
-    if (!ownerAssignment || ownerAssignment.curatorId !== session.userId) {
+      );
+    const isOwner = ownerAssignments.some(a => a.curatorId === session.userId);
+    if (!isOwner) {
       return { error: 'Akses Ditolak: Hanya kurator yang bertanggung jawab atas grup regional ini yang berwenang untuk mengunci grup.' };
     }
   }
@@ -325,7 +325,7 @@ export async function reopenRegionalGroupAction(
   if (!session.roles.includes('coordinator')) {
     // Auto-derive: kurator yang ter-assign di grup regional ini otomatis berwenang
     const isKanpusCheck = regionKey === 'PUSAT';
-    const [ownerAssignment] = await db
+    const ownerAssignments = await db
       .select({ curatorId: curatorAssignments.curatorId })
       .from(curatorAssignments)
       .innerJoin(proposals, eq(proposals.id, curatorAssignments.proposalId))
@@ -336,9 +336,9 @@ export async function reopenRegionalGroupAction(
             ? eq(proposals.category, 'PUSAT')
             : and(eq(proposals.category, 'WILAYAH'), eq(proposals.regionCenter, dbRegion))
         )
-      )
-      .limit(1);
-    if (!ownerAssignment || ownerAssignment.curatorId !== session.userId) {
+      );
+    const isOwner = ownerAssignments.some(a => a.curatorId === session.userId);
+    if (!isOwner) {
       return { error: 'Akses Ditolak: Hanya kurator yang bertanggung jawab atas grup regional ini yang berwenang untuk membuka grup kembali.' };
     }
   }

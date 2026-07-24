@@ -42,6 +42,7 @@ export const competitions = pgTable('competitions', {
   phaseLockedBy: integer('phase_locked_by').references(() => users.id),
   promotorAccessMode: text('promotor_access_mode').notNull().default('open'), // 'assigned' | 'open'
   sponsorScoreVisibility: text('sponsor_score_visibility').notNull().default('closed'), // 'open' | 'closed'
+  regionalCuratorMode: text('regional_curator_mode').notNull().default('single'), // 'single' | 'multiple'
   isActive: boolean('is_active').notNull().default(true),
   createdBy: integer('created_by').references(() => users.id),
   claimDeadline: timestamp('claim_deadline', { withTimezone: true }),
