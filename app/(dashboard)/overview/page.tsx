@@ -212,11 +212,12 @@ export default async function OverviewDashboard() {
         )}
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+      {/* Stats Header */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        {/* Card 1: Total Proposal Submit */}
         <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-200 flex flex-col justify-between">
           <div>
-            <div className="text-sm text-gray-500 font-medium mb-1">Total Proposal SBD</div>
+            <div className="text-sm text-gray-500 font-medium mb-1">Total Proposal Submit</div>
             <div className="text-3xl font-bold text-gray-900">{totalSbd.toLocaleString('id-ID')}</div>
           </div>
           <div className="mt-3 text-xs font-semibold text-gray-500 pt-2 border-t border-gray-100 flex items-center justify-between">
@@ -224,6 +225,8 @@ export default async function OverviewDashboard() {
             <span>Gugur: <strong className="text-rose-600">{totalGugur}</strong></span>
           </div>
         </div>
+
+        {/* Card 2: Proposal Aktif */}
         <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-200 flex flex-col justify-between">
           <div>
             <div className="text-sm text-gray-500 font-medium mb-1">Proposal Aktif (Resubmission)</div>
@@ -233,12 +236,26 @@ export default async function OverviewDashboard() {
             Diproses dalam kegiatan kurasi aktif
           </div>
         </div>
+
+        {/* Card 3: Total Terkurasi */}
         <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-200 flex flex-col justify-between">
           <div>
-            <div className="text-sm text-gray-500 font-medium mb-1">Tidak Resubmission (Gugur)</div>
-            <div className="text-3xl font-bold text-rose-600">{totalGugur.toLocaleString('id-ID')}</div>
+            <div className="text-sm text-gray-500 font-medium mb-1">Total Terkurasi</div>
+            <div className="text-3xl font-bold text-indigo-600">{totalTerkurasi.toLocaleString('id-ID')}</div>
           </div>
-          <div className="mt-3 text-xs text-gray-500 pt-2 border-t border-gray-100">
+          <div className="mt-3 text-xs font-semibold text-gray-500 pt-2 border-t border-gray-100 flex items-center justify-between">
+            <span>Progress: <strong className="text-indigo-600">{totalResubmit > 0 ? Math.round((totalTerkurasi / totalResubmit) * 100) : 0}%</strong></span>
+            <span>dari proposal aktif</span>
+          </div>
+        </div>
+
+        {/* Card 4: Tidak Resubmission (Gugur) - Paling Kanan, Ukuran Lebih Kecil */}
+        <div className="bg-gray-50/80 p-5 rounded-xl border border-gray-200 flex flex-col justify-between">
+          <div>
+            <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Tidak Resubmission (Gugur)</div>
+            <div className="text-xl font-bold text-rose-600">{totalGugur.toLocaleString('id-ID')} <span className="text-xs font-normal text-rose-500">proposal</span></div>
+          </div>
+          <div className="mt-3 text-xs text-gray-400 pt-2 border-t border-gray-200">
             Dikeluarkan dari alur kegiatan
           </div>
         </div>
