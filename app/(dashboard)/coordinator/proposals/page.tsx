@@ -72,7 +72,7 @@ export default async function ProposalsPage() {
   const completedCount = mappedProposals.filter(p => p.isScreened && p.status !== 'gugur').length;
   const totalActiveCount = mappedProposals.filter(p => p.status !== 'gugur').length;
 
-  const duplicates = await getCoordinatorPotentialDuplicates();
+  const duplicates = isViewer ? [] : await getCoordinatorPotentialDuplicates();
 
   return (
     <div className="p-8 max-w-[1200px] mx-auto">

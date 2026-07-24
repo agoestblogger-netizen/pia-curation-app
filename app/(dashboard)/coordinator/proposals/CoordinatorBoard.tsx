@@ -189,14 +189,16 @@ export default function CoordinatorBoard({
         >
           Selesai Discreening
         </button>
-        <button 
-          onClick={() => setActiveTab('duplicates')}
-          className={`px-6 py-2 rounded-full text-sm font-semibold transition-colors ${
-            activeTab === 'duplicates' ? 'bg-red-600 text-white' : 'text-gray-500 hover:text-gray-900'
-          }`}
-        >
-          Potensi Duplikat
-        </button>
+        {!isViewer && (
+          <button 
+            onClick={() => setActiveTab('duplicates')}
+            className={`px-6 py-2 rounded-full text-sm font-semibold transition-colors ${
+              activeTab === 'duplicates' ? 'bg-red-600 text-white' : 'text-gray-500 hover:text-gray-900'
+            }`}
+          >
+            Potensi Duplikat
+          </button>
+        )}
       </div>
 
       {/* Search & Filters */}
