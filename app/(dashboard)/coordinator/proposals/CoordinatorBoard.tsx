@@ -25,19 +25,30 @@ const CATEGORY_MAP: Record<string, { label: string, short: string, bg: string }>
   'BC': { label: 'Business Case', short: 'BC', bg: 'bg-[#B45309]' },
 };
 
-export default function CoordinatorBoard({ proposals, duplicates: initialDuplicates = [], isViewer = false }: { proposals: ProposalCard[], duplicates?: any[], isViewer?: boolean }) {
+export default function CoordinatorBoard({ 
+  proposals, 
+  duplicates: initialDuplicates = [], 
+  isViewer = false,
+  showGugur = false,
+}: { 
+  proposals: ProposalCard[], 
+  duplicates?: any[], 
+  isViewer?: boolean,
+  showGugur?: boolean,
+}) {
   const [activeTab, setActiveTab] = useState<'assigned' | 'review' | 'duplicates'>('assigned');
   const [duplicates, setDuplicates] = useState(initialDuplicates);
   const [isPending, startTransition] = useTransition();
   const [searchQuery, setSearchQuery] = useState('');
-  const [resubmissionFilter, setResubmissionFilter] = useState<'semua' | 'ya' | 'tidak'>('semua');
-  const [showGugur, setShowGugur] = useState(false);
+  const [curatorFilter, setCuratorFilter] = useState('');
   const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>({
     'PUSAT': true
   });
   const [expandedWilayah, setExpandedWilayah] = useState<Record<string, boolean>>({});
 
-  const gugurCount = proposals.filter(p => p.status === 'gugur').length;
+  const availableCurators = Array.from(
+    new Set(proposals.map(p => p.curatorName).filter(Boolean) as string[])
+  ).sort((a, b) => a.localeCompare(b));
 
   const toggleCategory = (cat: string) => {
     setExpandedCategories(prev => ({ ...prev, [cat]: !prev[cat] }));
@@ -52,10 +63,8 @@ export default function CoordinatorBoard({ proposals, duplicates: initialDuplica
 
     const matchesTab = activeTab === 'assigned' ? p.status !== 'completed' : p.status === 'completed';
     const matchesSearch = p.title.toLowerCase().includes(searchQuery.toLowerCase()) || p.proposerName.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesResubmission = resubmissionFilter === 'semua' 
-      ? true 
-      : resubmissionFilter === 'ya' ? !!p.hasResubmission : !p.hasResubmission;
-    return matchesTab && matchesSearch && matchesResubmission;
+    const matchesCurator = !curatorFilter || p.curatorName === curatorFilter;
+    return matchesTab && matchesSearch && matchesCurator;
   });
 
   // Group by category
@@ -200,34 +209,22 @@ export default function CoordinatorBoard({ proposals, duplicates: initialDuplica
           />
         </div>
         
-        {/* Resubmission Filter */}
-        <div className="w-full sm:w-auto shrink-0 flex items-center bg-white rounded-lg border border-gray-300 p-1 shadow-sm h-full">
-          <span className="px-3 text-sm font-semibold text-gray-600 border-r border-gray-200 hidden sm:inline-block">Resubmission:</span>
-          <select 
-            className="bg-transparent border-0 text-sm font-medium focus:ring-0 text-gray-900 py-2 pl-3 pr-8 w-full cursor-pointer outline-none"
-            value={resubmissionFilter}
-            onChange={(e) => setResubmissionFilter(e.target.value as any)}
-          >
-            <option value="semua">Semua</option>
-            <option value="ya">Ya (Terisi)</option>
-            <option value="tidak">Tidak (Kosong)</option>
-          </select>
-        </div>
-
-        {/* Toggle Gugur */}
-        <label className={`w-full sm:w-auto shrink-0 flex items-center bg-white rounded-lg border px-3 py-2 shadow-sm cursor-pointer transition-colors ${
-          showGugur ? 'border-rose-400 bg-rose-50/40 text-rose-900' : 'border-gray-300 text-gray-700 hover:bg-gray-50'
-        }`}>
-          <input
-            type="checkbox"
-            checked={showGugur}
-            onChange={(e) => setShowGugur(e.target.checked)}
-            className="w-4 h-4 text-rose-600 rounded border-gray-300 focus:ring-rose-500 cursor-pointer"
-          />
-          <span className="ml-2 text-sm font-semibold select-none">
-            Tampilkan yang Gugur ({gugurCount})
-          </span>
-        </label>
+        {/* Curator Filter (Admin & Coordinator only) */}
+        {!isViewer && (
+          <div className="w-full sm:w-auto shrink-0 flex items-center bg-white rounded-lg border border-gray-300 p-1 shadow-sm h-full">
+            <span className="px-3 text-sm font-semibold text-gray-600 border-r border-gray-200 hidden sm:inline-block">Kurator:</span>
+            <select 
+              className="bg-transparent border-0 text-sm font-medium focus:ring-0 text-gray-900 py-2 pl-3 pr-8 w-full cursor-pointer outline-none"
+              value={curatorFilter}
+              onChange={(e) => setCuratorFilter(e.target.value)}
+            >
+              <option value="">Semua Kurator ({availableCurators.length})</option>
+              {availableCurators.map(name => (
+                <option key={name} value={name}>{name}</option>
+              ))}
+            </select>
+          </div>
+        )}
       </div>
 
       <div className="space-y-4">

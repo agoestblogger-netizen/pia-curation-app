@@ -14,6 +14,8 @@ export async function updateCompetitionSettingsAction(
 
   const sponsorScoreVisibility = formData.get('sponsorScoreVisibility') as 'open' | 'closed' | null;
   const regionalCuratorMode = formData.get('regionalCuratorMode') as 'single' | 'multiple' | null;
+  const showGugurRaw = formData.get('showGugurProposals');
+  const showGugurProposals = showGugurRaw !== null ? showGugurRaw === 'true' || showGugurRaw === 'on' : null;
 
   const updateData: Record<string, any> = { updatedAt: new Date() };
 
@@ -31,11 +33,16 @@ export async function updateCompetitionSettingsAction(
     updateData.regionalCuratorMode = regionalCuratorMode;
   }
 
+  if (showGugurProposals !== null) {
+    updateData.showGugurProposals = showGugurProposals;
+  }
+
   await db.update(competitions)
     .set(updateData)
     .where(eq(competitions.id, competitionId));
 
   revalidatePath('/coordinator/settings');
+  revalidatePath('/coordinator/proposals');
   revalidatePath('/coordinator/batches');
   revalidatePath('/sponsor/fgd');
   

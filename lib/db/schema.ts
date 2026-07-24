@@ -44,6 +44,7 @@ export const competitions = pgTable('competitions', {
   promotorAccessMode: text('promotor_access_mode').notNull().default('open'), // 'assigned' | 'open'
   sponsorScoreVisibility: text('sponsor_score_visibility').notNull().default('closed'), // 'open' | 'closed'
   regionalCuratorMode: text('regional_curator_mode').notNull().default('single'), // 'single' | 'multiple'
+  showGugurProposals: boolean('show_gugur_proposals').notNull().default(false),
   isActive: boolean('is_active').notNull().default(true),
   createdBy: integer('created_by').references(() => users.id),
   claimDeadline: timestamp('claim_deadline', { withTimezone: true }),
