@@ -16,6 +16,7 @@ interface ProposalCard {
   curatorName?: string | null;
   proposalRowNumber: number;
   hasResubmission?: boolean;
+  isScreened?: boolean;
 }
 
 const CATEGORY_MAP: Record<string, { label: string, short: string, bg: string }> = {
@@ -115,6 +116,12 @@ export default function CoordinatorBoard({ proposals, duplicates: initialDuplica
                       <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-bold bg-blue-50 text-blue-700 border border-blue-200 whitespace-nowrap" title="Peserta telah mengirim resubmission">
                         <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                         Resubmission
+                      </span>
+                    )}
+                    {p.isScreened && !isViewer && (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 whitespace-nowrap shadow-2xs" title="Selesai Dikurasi oleh Kurator">
+                        <svg className="w-3.5 h-3.5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7"></path></svg>
+                        ✓ Selesai
                       </span>
                     )}
                   </>

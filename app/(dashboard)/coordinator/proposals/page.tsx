@@ -39,6 +39,7 @@ export default async function ProposalsPage() {
       curatorName: users.name,
       nomorUrut: proposals.nomorUrut,
       linkResubmitProposal: proposals.linkResubmitProposal,
+      assignmentStatus: curatorAssignments.status,
     })
     .from(proposals)
     .leftJoin(
@@ -48,23 +49,27 @@ export default async function ProposalsPage() {
     .leftJoin(users, eq(curatorAssignments.curatorId, users.id))
     .where(eq(proposals.competitionId, activeComp.id));
 
-  const mappedProposals = rows.map(r => ({
-    id: r.id,
-    title: r.title,
-    category: r.category,
-    proposerName: r.proposerName,
-    division: r.division,
-    regionCenter: r.regionCenter,
-    status: r.status,
-    aiScore: r.aiScore !== null ? Number(r.aiScore).toFixed(2) : 'N/A',
-    curatorName: r.curatorName,
-    proposalRowNumber: r.nomorUrut || 0,
-    hasResubmission: !!r.linkResubmitProposal,
-  }));
+  const mappedProposals = rows.map(r => {
+    const isScreened = r.assignmentStatus === 'completed' || r.status === 'completed' || r.status === 'curation_passed' || r.status === 'curation_rejected';
+    return {
+      id: r.id,
+      title: r.title,
+      category: r.category,
+      proposerName: r.proposerName,
+      division: r.division,
+      regionCenter: r.regionCenter,
+      status: r.assignmentStatus === 'completed' ? 'completed' : r.status,
+      isScreened,
+      aiScore: r.aiScore !== null ? Number(r.aiScore).toFixed(2) : 'N/A',
+      curatorName: r.curatorName,
+      proposalRowNumber: r.nomorUrut || 0,
+      hasResubmission: !!r.linkResubmitProposal,
+    };
+  });
 
   mappedProposals.sort((a, b) => a.proposalRowNumber - b.proposalRowNumber);
 
-  const completedCount = mappedProposals.filter(p => p.status === 'completed').length;
+  const completedCount = mappedProposals.filter(p => p.isScreened).length;
   const totalCount = mappedProposals.length;
 
   const duplicates = await getCoordinatorPotentialDuplicates();
