@@ -72,12 +72,13 @@ export default async function BatchesPage() {
     .where(eq(promoterAssignments.competitionId, activeComp.id));
 
   // ─── Proposals Pool ────────────────────────────────────────────────────────
-  // All proposals with correct row numbers
+  // All active proposals with correct row numbers (excluding gugur)
   const rankedProposalsResultPromise = db.execute(sql`
     SELECT id, title, summary, category, region_center as "regionCenter", status,
            ROW_NUMBER() OVER (PARTITION BY category, region_center ORDER BY id ASC) as "rowNumber"
     FROM proposals
     WHERE competition_id = ${activeComp.id}
+      AND (status IS NULL OR status != 'gugur')
   `);
 
   const [

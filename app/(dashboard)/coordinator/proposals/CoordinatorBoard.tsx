@@ -31,10 +31,13 @@ export default function CoordinatorBoard({ proposals, duplicates: initialDuplica
   const [isPending, startTransition] = useTransition();
   const [searchQuery, setSearchQuery] = useState('');
   const [resubmissionFilter, setResubmissionFilter] = useState<'semua' | 'ya' | 'tidak'>('semua');
+  const [showGugur, setShowGugur] = useState(false);
   const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>({
     'PUSAT': true
   });
   const [expandedWilayah, setExpandedWilayah] = useState<Record<string, boolean>>({});
+
+  const gugurCount = proposals.filter(p => p.status === 'gugur').length;
 
   const toggleCategory = (cat: string) => {
     setExpandedCategories(prev => ({ ...prev, [cat]: !prev[cat] }));
@@ -45,8 +48,10 @@ export default function CoordinatorBoard({ proposals, duplicates: initialDuplica
   };
 
   const displayedProposals = proposals.filter(p => {
+    if (!showGugur && p.status === 'gugur') return false;
+
     const matchesTab = activeTab === 'assigned' ? p.status !== 'completed' : p.status === 'completed';
-    const matchesSearch = p.title.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesSearch = p.title.toLowerCase().includes(searchQuery.toLowerCase()) || p.proposerName.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesResubmission = resubmissionFilter === 'semua' 
       ? true 
       : resubmissionFilter === 'ya' ? !!p.hasResubmission : !p.hasResubmission;
@@ -91,20 +96,28 @@ export default function CoordinatorBoard({ proposals, duplicates: initialDuplica
 
             {/* Content */}
             <div className="flex-1 pr-4">
-              <div className="flex items-center space-x-3 mb-1">
+              <div className="flex items-center space-x-3 mb-1 flex-wrap gap-y-1">
                 <Link href={`/curator/proposals/${p.id}?from=coordinator`} className="hover:underline">
                   <h4 className="text-[15px] font-bold text-gray-900 leading-tight">
                     {p.title}
                   </h4>
                 </Link>
-                <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-green-50 text-green-700 border border-green-200 whitespace-nowrap">
-                  AI: {p.aiScore}
-                </span>
-                {p.hasResubmission && (
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-bold bg-blue-50 text-blue-700 border border-blue-200 whitespace-nowrap" title="Peserta telah mengirim resubmission">
-                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                    Resubmission
+                {p.status === 'gugur' ? (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded text-xs font-extrabold bg-rose-100 text-rose-800 border border-rose-300 whitespace-nowrap">
+                    Gugur — Tidak Resubmission
                   </span>
+                ) : (
+                  <>
+                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-green-50 text-green-700 border border-green-200 whitespace-nowrap">
+                      AI: {p.aiScore}
+                    </span>
+                    {p.hasResubmission && (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-bold bg-blue-50 text-blue-700 border border-blue-200 whitespace-nowrap" title="Peserta telah mengirim resubmission">
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                        Resubmission
+                      </span>
+                    )}
+                  </>
                 )}
               </div>
               <div className="text-xs text-gray-600 font-semibold mb-2">
@@ -200,6 +213,21 @@ export default function CoordinatorBoard({ proposals, duplicates: initialDuplica
             <option value="tidak">Tidak (Kosong)</option>
           </select>
         </div>
+
+        {/* Toggle Gugur */}
+        <label className={`w-full sm:w-auto shrink-0 flex items-center bg-white rounded-lg border px-3 py-2 shadow-sm cursor-pointer transition-colors ${
+          showGugur ? 'border-rose-400 bg-rose-50/40 text-rose-900' : 'border-gray-300 text-gray-700 hover:bg-gray-50'
+        }`}>
+          <input
+            type="checkbox"
+            checked={showGugur}
+            onChange={(e) => setShowGugur(e.target.checked)}
+            className="w-4 h-4 text-rose-600 rounded border-gray-300 focus:ring-rose-500 cursor-pointer"
+          />
+          <span className="ml-2 text-sm font-semibold select-none">
+            Tampilkan yang Gugur ({gugurCount})
+          </span>
+        </label>
       </div>
 
       <div className="space-y-4">

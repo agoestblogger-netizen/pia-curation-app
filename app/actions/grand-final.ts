@@ -39,7 +39,8 @@ export async function saveSponsorAssessmentAction(
   param1Score: number,
   param2Score: number,
   param3Score: number,
-  param4Score: number
+  param4Score: number,
+  notes?: string
 ) {
   const session = await requireRole('sponsor');
 
@@ -60,7 +61,8 @@ export async function saveSponsorAssessmentAction(
       param3Score,
       param4Score,
       totalScore,
-      classification
+      classification,
+      notes: notes !== undefined ? notes : null,
     })
     .onConflictDoUpdate({
       target: [
@@ -75,6 +77,7 @@ export async function saveSponsorAssessmentAction(
         param4Score,
         totalScore,
         classification,
+        ...(notes !== undefined ? { notes } : {}),
         updatedAt: new Date()
       }
     });
@@ -83,6 +86,49 @@ export async function saveSponsorAssessmentAction(
   revalidatePath('/sponsor/fgd');
   
   return { success: true, totalScore, classification };
+}
+
+export async function saveSponsorNotesAction(
+  competitionId: number,
+  proposalId: number,
+  notes: string
+) {
+  const session = await requireRole('sponsor');
+
+  const [existing] = await db.select().from(grandFinalAssessments)
+    .where(and(
+      eq(grandFinalAssessments.competitionId, competitionId),
+      eq(grandFinalAssessments.proposalId, proposalId),
+      eq(grandFinalAssessments.sponsorId, session.userId)
+    ));
+
+  if (existing) {
+    await db.update(grandFinalAssessments)
+      .set({
+        notes,
+        updatedAt: new Date(),
+      })
+      .where(eq(grandFinalAssessments.id, existing.id));
+  } else {
+    await db.insert(grandFinalAssessments)
+      .values({
+        competitionId,
+        proposalId,
+        sponsorId: session.userId,
+        param1Score: 0,
+        param2Score: 0,
+        param3Score: 0,
+        param4Score: 0,
+        totalScore: 0,
+        classification: 'Bronze',
+        notes,
+      });
+  }
+
+  revalidatePath('/sponsor/assess/[id]', 'page');
+  revalidatePath('/sponsor/fgd');
+
+  return { success: true };
 }
 
 export async function calibrateGrandFinalScoreAction(

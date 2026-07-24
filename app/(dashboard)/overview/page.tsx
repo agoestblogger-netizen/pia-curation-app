@@ -55,6 +55,12 @@ export default async function OverviewDashboard() {
 
   let curatorsPromise: Promise<any[]> = Promise.resolve([]);
   let assignmentsPromise: Promise<any[]> = Promise.resolve([]);
+  const gugurPromise = db.select({ count: sql<number>`count(*)` })
+    .from(proposals)
+    .where(and(
+      eq(proposals.competitionId, activeComp.id),
+      eq(proposals.status, 'gugur')
+    ));
 
   if (session?.roles?.includes('coordinator')) {
     curatorsPromise = db
@@ -77,11 +83,14 @@ export default async function OverviewDashboard() {
       .where(eq(proposals.competitionId, activeComp.id));
   }
 
-  const [statsQuery, curators, assignments] = await Promise.all([
+  const [statsQuery, curators, assignments, [gugurStat]] = await Promise.all([
     statsPromise,
     curatorsPromise,
-    assignmentsPromise
+    assignmentsPromise,
+    gugurPromise
   ]);
+
+  const totalGugur = Number(gugurStat?.count) || 0;
 
   const statsData = statsQuery as unknown as any[];
 
@@ -121,6 +130,8 @@ export default async function OverviewDashboard() {
       wilCurated[label] = (wilCurated[label] || 0) + curated;
     }
   });
+
+  const totalResubmit = totalDiimpor - totalGugur;
 
   // Sort Kanwil/Pusat alphabetically, but put Kantor Pusat at the end
   const sortedWilayahKeys = Object.keys(wilTotal).sort((a, b) => {
@@ -197,14 +208,34 @@ export default async function OverviewDashboard() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 gap-4 mb-8">
-        <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-200">
-          <div className="text-sm text-gray-500 font-medium mb-1">Total Proposal</div>
-          <div className="text-3xl font-bold text-gray-900">{totalDiimpor.toLocaleString('id-ID')}</div>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+        <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-200 flex flex-col justify-between">
+          <div>
+            <div className="text-sm text-gray-500 font-medium mb-1">Total Proposal SBD</div>
+            <div className="text-3xl font-bold text-gray-900">{totalDiimpor.toLocaleString('id-ID')}</div>
+          </div>
+          <div className="mt-3 text-xs font-semibold text-gray-500 pt-2 border-t border-gray-100 flex items-center justify-between">
+            <span>Resubmission: <strong className="text-emerald-600">{totalResubmit}</strong></span>
+            <span>Gugur: <strong className="text-rose-600">{totalGugur}</strong></span>
+          </div>
         </div>
-        <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-200">
-          <div className="text-sm text-gray-500 font-medium mb-1">Total Terkurasi</div>
-          <div className="text-3xl font-bold text-indigo-600">{totalTerkurasi.toLocaleString('id-ID')}</div>
+        <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-200 flex flex-col justify-between">
+          <div>
+            <div className="text-sm text-gray-500 font-medium mb-1">Proposal Aktif (Resubmission)</div>
+            <div className="text-3xl font-bold text-emerald-600">{totalResubmit.toLocaleString('id-ID')}</div>
+          </div>
+          <div className="mt-3 text-xs text-gray-500 pt-2 border-t border-gray-100">
+            Diproses dalam kegiatan kurasi aktif
+          </div>
+        </div>
+        <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-200 flex flex-col justify-between">
+          <div>
+            <div className="text-sm text-gray-500 font-medium mb-1">Tidak Resubmission (Gugur)</div>
+            <div className="text-3xl font-bold text-rose-600">{totalGugur.toLocaleString('id-ID')}</div>
+          </div>
+          <div className="mt-3 text-xs text-gray-500 pt-2 border-t border-gray-100">
+            Dikeluarkan dari alur kegiatan
+          </div>
         </div>
       </div>
 

@@ -90,7 +90,8 @@ export default async function GrandFinalSidangPage() {
         param3: a.param3Score,
         param4: a.param4Score,
         totalScore: a.totalScore,
-        classification: a.classification
+        classification: a.classification,
+        notes: a.notes || null,
       };
     });
 

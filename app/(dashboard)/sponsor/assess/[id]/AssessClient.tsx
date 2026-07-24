@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useEffect, useTransition } from 'react';
+import { useState, useEffect, useRef, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { saveSponsorAssessmentAction } from '@/app/actions/grand-final';
+import { saveSponsorAssessmentAction, saveSponsorNotesAction } from '@/app/actions/grand-final';
 
 type Assessment = {
   param1Score: number;
@@ -88,7 +88,62 @@ export default function AssessClient({
   });
   const [saveStatus, setSaveStatus] = useState('');
 
-  // Auto-save logic
+  // Notes state & auto-save setup
+  const [notes, setNotes] = useState<string>(existingAssessment?.notes || '');
+  const [notesSaveStatus, setNotesSaveStatus] = useState<string>('');
+  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const lastSavedNotesRef = useRef<string>(existingAssessment?.notes || '');
+
+  const handleSaveNotes = (newNotesText: string) => {
+    if (newNotesText === lastSavedNotesRef.current) return;
+    setNotesSaveStatus('Menyimpan catatan...');
+    startTransition(async () => {
+      let res;
+      if (scores.param1Score && scores.param2Score && scores.param3Score && scores.param4Score) {
+        res = await saveSponsorAssessmentAction(
+          competitionId,
+          proposalId,
+          scores.param1Score,
+          scores.param2Score,
+          scores.param3Score,
+          scores.param4Score,
+          newNotesText
+        );
+      } else {
+        res = await saveSponsorNotesAction(competitionId, proposalId, newNotesText);
+      }
+
+      if (res.success) {
+        lastSavedNotesRef.current = newNotesText;
+        setNotesSaveStatus('Catatan tersimpan ✓');
+        router.refresh();
+        setTimeout(() => setNotesSaveStatus(''), 2500);
+      } else {
+        setNotesSaveStatus('Gagal menyimpan catatan');
+      }
+    });
+  };
+
+  const handleNotesChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const val = e.target.value;
+    setNotes(val);
+
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
+    debounceTimerRef.current = setTimeout(() => {
+      handleSaveNotes(val);
+    }, 2000);
+  };
+
+  const handleNotesBlur = () => {
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
+    handleSaveNotes(notes);
+  };
+
+  // Auto-save logic for scores
   useEffect(() => {
     if (scores.param1Score && scores.param2Score && scores.param3Score && scores.param4Score) {
       setSaveStatus('Menyimpan...');
@@ -99,7 +154,8 @@ export default function AssessClient({
           scores.param1Score,
           scores.param2Score,
           scores.param3Score,
-          scores.param4Score
+          scores.param4Score,
+          notes
         );
         if (res.success) {
           setSaveStatus('Tersimpan otomatis ✓');
@@ -214,6 +270,32 @@ export default function AssessClient({
       {renderParam('param3Score', RUBRIC.param3)}
       {renderParam('param4Score', RUBRIC.param4)}
       
+      {/* Catatan Juri (opsional) */}
+      <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm space-y-3">
+        <div className="flex justify-between items-center">
+          <div>
+            <h3 className="text-lg font-bold text-gray-900">Catatan Juri <span className="text-xs font-normal text-gray-400">(opsional)</span></h3>
+            <p className="text-xs text-gray-500 mt-0.5">Catatan kualitatif atau pertimbangan tambahan mengenai proposal ini (tersimpan otomatis & tampil saat Kalibrasi Sidang Penetapan).</p>
+          </div>
+          {notesSaveStatus && (
+            <span className={`text-xs font-semibold px-3 py-1 rounded-full ${
+              notesSaveStatus.includes('tersimpan') ? 'bg-green-100 text-green-800 border border-green-200' :
+              notesSaveStatus.includes('Gagal') ? 'bg-red-100 text-red-800 border border-red-200' : 'bg-blue-50 text-blue-700 border border-blue-200 animate-pulse'
+            }`}>
+              {notesSaveStatus}
+            </span>
+          )}
+        </div>
+        <textarea
+          value={notes}
+          onChange={handleNotesChange}
+          onBlur={handleNotesBlur}
+          placeholder="Tuliskan catatan kualitatif atau pertimbangan khusus untuk proposal ini..."
+          rows={4}
+          className="w-full p-3.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition resize-y text-gray-900 placeholder:text-gray-400"
+        />
+      </div>
+
       <div className="pb-12" />
     </div>
   );

@@ -389,15 +389,17 @@ export default function AssignProposalUI({
                     <span className="ml-2 px-2 py-0.5 bg-red-100 text-red-700 rounded-full text-xs font-bold">{belumDiscreening} belum screening</span>
                   )}
                 </div>
-                {isKurator && users.length > 0 && (
+                {users.length > 0 && (
                   (() => {
-                    const rec = Math.round(allProps.length / users.length);
+                    const activePropsCount = allProps.filter(p => p.status !== 'gugur').length;
+                    const rec = Math.round(activePropsCount / users.length);
                     const diff = rec - totalJatah;
                     const isOver = totalJatah > rec;
+                    const roleLabel = isKurator ? 'kurator' : 'promotor';
                     return (
                       <div className="mt-1 pt-2 border-t border-indigo-100/50">
                         <div className="text-gray-600 mb-1">
-                          Rekomendasi: <span className="font-semibold">~{rec}</span> proposal/kurator ({allProps.length} ÷ {users.length} kurator aktif)
+                          Rekomendasi: <span className="font-semibold">~{rec}</span> proposal/{roleLabel} ({activePropsCount} ÷ {users.length} {roleLabel} aktif)
                         </div>
                         {isOver ? (
                           <div className="text-orange-600 font-medium">
