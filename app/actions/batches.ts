@@ -311,7 +311,10 @@ export async function getBatchWithAssignments(batchId: number) {
       id: proposals.id,
       regionCenter: proposals.regionCenter,
       rowNumber: sql<number>`ROW_NUMBER() OVER (PARTITION BY ${proposals.category}, ${proposals.regionCenter} ORDER BY ${proposals.id} ASC)`.as('row_number')
-    }).from(proposals).where(eq(proposals.competitionId, batch.competitionId))
+    }).from(proposals).where(and(
+      eq(proposals.competitionId, batch.competitionId),
+      sql`(${proposals.status} IS NULL OR ${proposals.status} != 'gugur')`
+    ))
   );
 
   const assignments = await db
@@ -438,6 +441,7 @@ export async function assignRangeAction(_prev: BatchActionState, formData: FormD
       FROM proposals
       WHERE competition_id = ${batch.competitionId}
         AND category = ${category}
+        AND (status IS NULL OR status != 'gugur')
         ${regionCenter ? sql`AND region_center = ${regionCenter}` : sql`AND (region_center IS NULL OR region_center = '')`}
     )
     SELECT id, row_number FROM RankedProposals
