@@ -50,6 +50,7 @@ export default async function OverviewDashboard() {
     FROM proposals p
     LEFT JOIN curator_assignments ca ON p.id = ca.proposal_id
     WHERE p.competition_id = ${activeComp.id}
+      AND (p.status IS NULL OR p.status != 'gugur')
     GROUP BY p.category, p.region_center
   `);
 
@@ -80,7 +81,10 @@ export default async function OverviewDashboard() {
       })
       .from(curatorAssignments)
       .innerJoin(proposals, eq(curatorAssignments.proposalId, proposals.id))
-      .where(eq(proposals.competitionId, activeComp.id));
+      .where(and(
+        eq(proposals.competitionId, activeComp.id),
+        sql`(${proposals.status} IS NULL OR ${proposals.status} != 'gugur')`
+      ));
   }
 
   const [statsQuery, curators, assignments, [gugurStat]] = await Promise.all([
@@ -95,7 +99,7 @@ export default async function OverviewDashboard() {
   const statsData = statsQuery as unknown as any[];
 
   // Calculate Stats
-  let totalDiimpor = 0;
+  let totalAktif = 0;
   let totalTerkurasi = 0;
 
   const catTotal: Record<string, number> = { WILAYAH: 0, PUSAT: 0, BI: 0, BC: 0 };
@@ -110,7 +114,7 @@ export default async function OverviewDashboard() {
     const cat = row.category;
     const rc = row.region_center;
 
-    totalDiimpor += total;
+    totalAktif += total;
     totalTerkurasi += curated;
 
     // Kategori
@@ -131,7 +135,8 @@ export default async function OverviewDashboard() {
     }
   });
 
-  const totalResubmit = totalDiimpor - totalGugur;
+  const totalResubmit = totalAktif;
+  const totalSbd = totalAktif + totalGugur;
 
   // Sort Kanwil/Pusat alphabetically, but put Kantor Pusat at the end
   const sortedWilayahKeys = Object.keys(wilTotal).sort((a, b) => {
@@ -212,7 +217,7 @@ export default async function OverviewDashboard() {
         <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-200 flex flex-col justify-between">
           <div>
             <div className="text-sm text-gray-500 font-medium mb-1">Total Proposal SBD</div>
-            <div className="text-3xl font-bold text-gray-900">{totalDiimpor.toLocaleString('id-ID')}</div>
+            <div className="text-3xl font-bold text-gray-900">{totalSbd.toLocaleString('id-ID')}</div>
           </div>
           <div className="mt-3 text-xs font-semibold text-gray-500 pt-2 border-t border-gray-100 flex items-center justify-between">
             <span>Resubmission: <strong className="text-emerald-600">{totalResubmit}</strong></span>
