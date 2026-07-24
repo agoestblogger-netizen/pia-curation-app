@@ -88,7 +88,12 @@ export default async function ProposalsPage() {
         </p>
       </div>
 
-      <CoordinatorBoard proposals={mappedProposals} duplicates={duplicates} isViewer={isViewer} />
+      <CoordinatorBoard 
+        proposals={mappedProposals} 
+        duplicates={duplicates} 
+        isViewer={isViewer} 
+        showGugur={activeComp.showGugurProposals ?? false}
+      />
     </div>
   );
 }

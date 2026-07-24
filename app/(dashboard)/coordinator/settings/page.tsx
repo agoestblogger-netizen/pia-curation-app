@@ -47,6 +47,7 @@ export default async function SettingsPage() {
                 competitionId={activeComp.id} 
                 initialVisibility={activeComp.sponsorScoreVisibility as 'open' | 'closed'} 
                 initialRegionalCuratorMode={(activeComp.regionalCuratorMode ?? 'single') as 'single' | 'multiple'}
+                initialShowGugurProposals={activeComp.showGugurProposals ?? false}
               />
             </div>
           )}
