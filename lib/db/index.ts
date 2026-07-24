@@ -56,7 +56,7 @@ const client = postgres(safeUrl, {
   max: 10,                        // Serverless & Dev: pool of 10
   idle_timeout: 20,               // Close idle connections after 20s
   connect_timeout: 10,            // Fail fast if cannot connect in 10s
-  ssl: safeUrl.includes('supabase.co') ? 'require' : undefined,
+  ssl: safeUrl.includes('supabase') ? 'require' : undefined,
 });
 
 export const db = drizzle(client, { schema });
