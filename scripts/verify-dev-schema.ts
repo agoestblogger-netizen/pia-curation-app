@@ -6,12 +6,12 @@ dotenv.config({ path: '.env.local' });
 const devUrl = process.env.DEV_DATABASE_URL;
 const prodUrl = process.env.DATABASE_URL;
 
-if (!devUrl) {
-  console.error('❌ ERROR: DEV_DATABASE_URL is missing in .env.local');
-  process.exit(1);
-}
-
 async function verify() {
+  if (!devUrl) {
+    console.error('❌ ERROR: DEV_DATABASE_URL is missing in .env.local');
+    process.exit(1);
+  }
+
   console.log('🔍 Verifikasi Skema Database Supabase Dev...\n');
   const sqlDev = postgres(devUrl, { max: 1 });
 

@@ -5,14 +5,14 @@ dotenv.config({ path: '.env.local' });
 
 const devUrl = process.env.DEV_DATABASE_URL;
 
-if (!devUrl) {
-  console.error('❌ DEV_DATABASE_URL is missing in .env.local');
-  process.exit(1);
-}
-
 async function pingDev() {
+  if (!devUrl) {
+    console.error('❌ DEV_DATABASE_URL is missing in .env.local');
+    process.exit(1);
+  }
+
   console.log('⏰ Executing Supabase Dev Keep-Alive Ping...');
-  const sqlDev = postgres(devUrl!, { max: 1 });
+  const sqlDev = postgres(devUrl, { max: 1 });
   try {
     const startTime = Date.now();
     const result = await sqlDev`SELECT 1 as ping;`;
