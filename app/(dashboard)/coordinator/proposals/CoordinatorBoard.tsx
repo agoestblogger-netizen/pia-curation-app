@@ -124,7 +124,7 @@ export default function CoordinatorBoard({ proposals, duplicates: initialDuplica
                 {p.division || p.regionCenter || 'Operasional'}
                 {p.curatorName && (
                   <span className="ml-2 px-2 py-0.5 rounded text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200">
-                    Di-assign ke: {p.curatorName}
+                    Dikurasi oleh : {p.curatorName}
                   </span>
                 )}
               </div>

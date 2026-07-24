@@ -1,5 +1,8 @@
 import { getSession, SessionPayload } from './session';
 import { redirect } from 'next/navigation';
+import { db } from '@/lib/db';
+import { users } from '@/lib/db/schema';
+import { eq } from 'drizzle-orm';
 
 export type Role = 'admin' | 'coordinator' | 'curator' | 'promoter' | 'sponsor' | 'viewer' | 'regional';
 
@@ -11,6 +14,13 @@ export async function requireAuth(): Promise<SessionPayload> {
   if (!session) {
     redirect('/login');
   }
+
+  // Update lastActiveAt timestamp in background (non-blocking)
+  db.update(users)
+    .set({ lastActiveAt: new Date() })
+    .where(eq(users.id, session.userId))
+    .catch((err) => console.error('Failed to update lastActiveAt:', err));
+
   return session;
 }
 

@@ -3,7 +3,7 @@ import { getActiveCompetition } from '@/app/actions/competitions';
 import { getSession } from '@/lib/auth/session';
 import { db } from '@/lib/db';
 import { proposals, curatorAssignments, users } from '@/lib/db/schema';
-import { eq, sql, and } from 'drizzle-orm';
+import { eq, sql, and, isNotNull, gte } from 'drizzle-orm';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 
@@ -38,6 +38,18 @@ export default async function OverviewDashboard() {
         </div>
       </div>
     );
+  }
+
+  // Active Users count for Admin
+  const isAdmin = session?.roles?.includes('admin');
+  let activeUsersCount = 0;
+  if (isAdmin) {
+    const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000);
+    const [activeRes] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(users)
+      .where(and(eq(users.isActive, true), isNotNull(users.lastActiveAt), gte(users.lastActiveAt, fiveMinAgo)));
+    activeUsersCount = Number(activeRes?.count || 0);
   }
 
   // ─── Parallelize Queries ──────────────────────────────────────────────────

@@ -26,6 +26,7 @@ export const users = pgTable('users', {
   roles: text('roles').array().notNull().default(sql`'{"curator"}'`), // array of coordinator | curator | promoter | sponsor
   isActive: boolean('is_active').notNull().default(true),
   deletedAt: timestamp('deleted_at', { withTimezone: true }),
+  lastActiveAt: timestamp('last_active_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });

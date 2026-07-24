@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { logoutAction } from '@/app/actions/auth';
+import { getActiveUsersAction } from '@/app/actions/active-users';
 
 type Session = {
   userId: number;
@@ -19,6 +20,7 @@ export default function ClientSidebar({
   regionalAssignments?: { isPic: boolean; isJudge: boolean };
 }) {
   const [isOpen, setIsOpen] = useState(false);
+  const [activeUsersCount, setActiveUsersCount] = useState<number | null>(null);
   const pathname = usePathname();
 
   const userRoles = session?.roles || [];
@@ -27,6 +29,24 @@ export default function ClientSidebar({
   const functionalRoles = userRoles.filter(r => allFunctionalRoles.includes(r));
   const hasMultipleFunctional = functionalRoles.length > 1;
   const showToggle = !isAdmin && hasMultipleFunctional;
+
+  useEffect(() => {
+    if (isAdmin) {
+      const fetchCount = async () => {
+        try {
+          const res = await getActiveUsersAction();
+          if (res.success) {
+            setActiveUsersCount(res.activeCount);
+          }
+        } catch {
+          // ignore error
+        }
+      };
+      fetchCount();
+      const timer = setInterval(fetchCount, 30000);
+      return () => clearInterval(timer);
+    }
+  }, [isAdmin]);
 
   const [activeRole, setActiveRole] = useState<string>(() => {
     if (functionalRoles.includes('coordinator')) return 'coordinator';
@@ -92,8 +112,22 @@ export default function ClientSidebar({
 
       {/* Sidebar Content */}
       <div className={`fixed inset-y-0 left-0 transform ${isOpen ? 'translate-x-0' : '-translate-x-full'} md:relative md:translate-x-0 z-50 w-64 bg-indigo-900 text-white flex flex-col transition-transform duration-200 ease-in-out`}>
-        <div className="p-4 text-xl font-bold border-b border-indigo-800 hidden md:block">
-          PIA Curation App
+        <div className="p-4 border-b border-indigo-800 hidden md:block">
+          <div className="text-xl font-bold">PIA Curation App</div>
+          {isAdmin && activeUsersCount !== null && (
+            <Link 
+              href="/admin/active-users"
+              className="inline-flex items-center gap-1.5 px-2.5 py-0.5 mt-2 rounded-full text-xs font-semibold bg-emerald-950/90 text-emerald-300 border border-emerald-700/60 hover:bg-emerald-900 transition-colors shadow-xs"
+              title="Klik untuk melihat rincian pengguna aktif"
+            >
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+              </span>
+              <span><strong>{activeUsersCount}</strong> user sedang aktif</span>
+              <span className="text-emerald-400 text-[10px]">&rarr;</span>
+            </Link>
+          )}
         </div>
         
         <div className="p-4 text-sm text-indigo-300 border-b border-indigo-800 flex flex-col gap-3">
@@ -193,6 +227,7 @@ export default function ClientSidebar({
               
               { isDivider: true, roles: ['admin'] },
               { isHeader: true, headerText: 'Admin Zone', roles: ['admin'] },
+              { label: 'User Aktif', path: '/admin/active-users', roles: ['admin'], customClass: 'hover:bg-red-900/50 text-red-300' },
               { label: 'Audit Log', path: '/coordinator/audit-log', roles: ['admin'], customClass: 'hover:bg-red-900/50 text-red-300' },
               { label: 'Reset Data Testing', path: '/admin/reset-data', roles: ['admin'], customClass: 'hover:bg-red-900/50 text-red-300' },
             ];
