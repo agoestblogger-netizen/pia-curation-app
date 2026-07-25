@@ -104,6 +104,11 @@ export default function CuratorAssignmentTable({ curatorStats }: CuratorAssignme
                   <td className="px-5 py-3 text-sm text-gray-600">{stat.total}</td>
                   <td className={`px-5 py-3 text-sm font-semibold ${stat.completed > 0 ? 'text-emerald-600' : 'text-gray-400'}`}>
                     {stat.completed}
+                    {stat.total > 0 && stat.completed === stat.total && (
+                      <span className="ml-1.5 inline-flex items-center text-emerald-600 font-bold" title="Workload 100% Selesai">
+                        ✓
+                      </span>
+                    )}
                   </td>
                   <td className={`px-5 py-3 text-sm font-bold ${stat.sisa > 0 ? 'text-rose-600' : 'text-gray-400'}`}>
                     {stat.sisa}

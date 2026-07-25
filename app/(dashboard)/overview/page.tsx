@@ -357,6 +357,11 @@ export default async function OverviewDashboard() {
                   </td>
                   <td className="px-5 py-3 text-sm font-semibold text-indigo-700">
                     {catCurated[cat]} / <span className="text-gray-500 font-normal">{catTotal[cat]}</span>
+                    {catTotal[cat] > 0 && catCurated[cat] === catTotal[cat] && (
+                      <span className="ml-2 inline-flex items-center text-emerald-600 font-bold" title="Screening 100% Selesai">
+                        ✓
+                      </span>
+                    )}
                   </td>
                 </tr>
               ))}
@@ -409,6 +414,11 @@ export default async function OverviewDashboard() {
                   <td className="px-5 py-3 font-semibold text-sm text-gray-900">{key}</td>
                   <td className="px-5 py-3 text-sm font-semibold text-indigo-700">
                     {wilCurated[key] || 0} / <span className="text-gray-500 font-normal">{wilTotal[key]}</span>
+                    {wilTotal[key] > 0 && (wilCurated[key] || 0) === wilTotal[key] && (
+                      <span className="ml-2 inline-flex items-center text-emerald-600 font-bold" title="Screening 100% Selesai">
+                        ✓
+                      </span>
+                    )}
                   </td>
                 </tr>
               ))}
