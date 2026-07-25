@@ -515,19 +515,12 @@ export default function FgdRoomClient({
                 <div className="flex-1 flex overflow-hidden">
                   {/* LEFT: Proposal Detail */}
                   <div className="w-1/2 p-6 overflow-y-auto border-r border-gray-200 bg-white">
-                    <div className="flex items-start justify-between mb-4">
+                    <div className="flex items-start justify-between mb-3">
                       <div>
                         <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
                           No. {activeProposal.rowNumber}
                         </span>
-                        <div className="flex items-center space-x-3 mt-1">
-                          <h2 className="text-xl font-bold text-gray-900 leading-tight">{activeProposal.title}</h2>
-                          <ProposalDocumentButtons
-                            linkProposal={activeProposal.linkProposal}
-                            linkResubmitProposal={activeProposal.linkResubmitProposal}
-                            linkSuratOrisinalitas={activeProposal.linkSuratOrisinalitas}
-                          />
-                        </div>
+                        <h2 className="text-xl font-bold text-gray-900 leading-tight mt-0.5">{activeProposal.title}</h2>
                         <p className="text-gray-500 mt-1 text-sm">
                           {activeProposal.proposerName ? `${activeProposal.proposerName}${activeProposal.proposerUnitKerja ? ` · ${activeProposal.proposerUnitKerja}` : ''}` : null}
                           {activeProposal.curatorName && (
@@ -543,6 +536,16 @@ export default function FgdRoomClient({
                           <div className="text-2xl font-black text-indigo-700">{activeProposal.aiCidaTotal.toFixed(1)}</div>
                         </div>
                       )}
+                    </div>
+
+                    {/* TOMBOL DOKUMEN (Sejajar di atas Rangkuman Proposal) */}
+                    <div className="mb-4">
+                      <ProposalDocumentButtons
+                        linkProposal={activeProposal.linkProposal}
+                        linkResubmitProposal={activeProposal.linkResubmitProposal}
+                        linkSuratOrisinalitas={activeProposal.linkSuratOrisinalitas}
+                        size="md"
+                      />
                     </div>
 
                     {/* NEW AI ANALYSIS SECTION */}
