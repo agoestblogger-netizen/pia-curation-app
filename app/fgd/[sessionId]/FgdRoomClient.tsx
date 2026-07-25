@@ -44,6 +44,7 @@ type Proposal = {
   linkProposal: string | null;
   rowNumber: number;
   verdict: string;
+  curatorName?: string | null;
   aiAnalysis?: any;
   additionalDocuments?: any[];
 };
@@ -336,7 +337,14 @@ export default function FgdRoomClient({
               </span>
             </div>
             <h3 className="font-semibold text-gray-900 text-sm leading-snug truncate">{p.title}</h3>
-            <p className="text-xs text-gray-500 mt-0.5">{p.proposerName}{p.proposerUnitKerja ? ` · ${p.proposerUnitKerja}` : ''}</p>
+            <p className="text-xs text-gray-500 mt-0.5">
+              {p.proposerName ? `${p.proposerName}${p.proposerUnitKerja ? ` · ${p.proposerUnitKerja}` : ''}` : null}
+              {p.curatorName && (
+                <span className="text-indigo-600 font-medium">
+                  {p.proposerName ? ' · ' : ''}Kurator: <strong className="text-indigo-700">{p.curatorName}</strong>
+                </span>
+              )}
+            </p>
           </div>
         </div>
 
@@ -520,8 +528,13 @@ export default function FgdRoomClient({
                             </a>
                           )}
                         </div>
-                        <p className="text-gray-500 mt-1 text-sm">{activeProposal.proposerName}
-                          {activeProposal.proposerUnitKerja && ` · ${activeProposal.proposerUnitKerja}`}
+                        <p className="text-gray-500 mt-1 text-sm">
+                          {activeProposal.proposerName ? `${activeProposal.proposerName}${activeProposal.proposerUnitKerja ? ` · ${activeProposal.proposerUnitKerja}` : ''}` : null}
+                          {activeProposal.curatorName && (
+                            <span className="text-indigo-600 font-medium ml-2">
+                              {activeProposal.proposerName ? '· ' : ''}Kurator: <strong className="text-indigo-700">{activeProposal.curatorName}</strong>
+                            </span>
+                          )}
                         </p>
                       </div>
                       {activeProposal.aiCidaTotal !== null && (

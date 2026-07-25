@@ -90,8 +90,11 @@ export default async function FgdRoomPage({ params }: { params: Promise<{ sessio
       p.external_sub_id as "subId",
       p.link_proposal as "linkProposal",
       ROW_NUMBER() OVER (PARTITION BY p.category, p.region_center ORDER BY p.id ASC) as "rowNumber",
-      sr.verdict
+      sr.verdict,
+      u.name as "curatorName"
     FROM proposals p
+    LEFT JOIN curator_assignments ca ON ca.proposal_id = p.id
+    LEFT JOIN users u ON u.id = ca.curator_id
     LEFT JOIN screening_results sr ON sr.proposal_id = p.id
     WHERE p.competition_id = ${fgd.competitionId}
       AND (p.status IS NULL OR p.status != 'gugur')
@@ -116,6 +119,7 @@ export default async function FgdRoomPage({ params }: { params: Promise<{ sessio
     linkProposal: string | null;
     rowNumber: number;
     verdict: string;
+    curatorName?: string | null;
     aiAnalysis?: any;
     additionalDocuments?: any[];
   }>;
