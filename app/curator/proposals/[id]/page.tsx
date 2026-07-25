@@ -125,7 +125,7 @@ export default async function ProposalDetailPage({
 
   // Fetch curator notes for coordinator/admin read-only view
   let curatorNotesData: { notes: string | null; recommendation: string | null; curatorName: string | null } | null = null;
-  if ((isCoordinator || isViewer || session.roles.includes('admin')) && !isCurator) {
+  if ((isCoordinator || isViewer || session.roles.includes('admin')) && !shouldMask) {
     const [srRow] = await db
       .select({
         notes: screeningResults.notes,
@@ -142,7 +142,7 @@ export default async function ProposalDetailPage({
 
   // Fetch assigned curator name (even if not yet screened) for Coordinator/Admin
   let assignedCuratorName: string | null = null;
-  if ((isCoordinator || session.roles.includes('admin')) && !isCurator) {
+  if ((isCoordinator || session.roles.includes('admin')) && !shouldMask) {
     // Use curatorNotesData name if already fetched, else query from assignments
     if (curatorNotesData?.curatorName) {
       assignedCuratorName = curatorNotesData.curatorName;
@@ -502,7 +502,7 @@ export default async function ProposalDetailPage({
           </div>
 
           {/* Catatan Kurator — read-only for Coordinator/Admin */}
-          {(isCoordinator || session.roles.includes('admin')) && !isCurator && (
+          {(isCoordinator || session.roles.includes('admin')) && !shouldMask && (
             <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
               <h3 className="font-bold text-gray-900 mb-3 flex items-center gap-2">
                 <span>📝</span> Catatan Kurator
