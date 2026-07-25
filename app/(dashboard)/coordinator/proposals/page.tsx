@@ -1,6 +1,6 @@
 import { requireRole } from '@/lib/auth/helpers';
 import { db } from '@/lib/db';
-import { proposals, users, curatorAssignments } from '@/lib/db/schema';
+import { proposals, users, curatorAssignments, screeningResults } from '@/lib/db/schema';
 import { eq, and, sql } from 'drizzle-orm';
 import { getActiveCompetition } from '@/app/actions/competitions';
 import CoordinatorBoard from './CoordinatorBoard';
@@ -23,9 +23,7 @@ export default async function ProposalsPage() {
 
 
 
-  // Fetch all proposals and left join with curatorAssignments (assigned/in_review/completed)
-  // Since assignments are 1:1 per batch, we can join directly or aggregate.
-  // Assuming 1 active batch per competition for simplicity.
+  // Fetch all proposals and left join with curatorAssignments and screeningResults
   const rows = await db
     .select({
       id: proposals.id,
@@ -40,6 +38,7 @@ export default async function ProposalsPage() {
       nomorUrut: proposals.nomorUrut,
       linkResubmitProposal: proposals.linkResubmitProposal,
       assignmentStatus: curatorAssignments.status,
+      screeningVerdict: screeningResults.verdict,
     })
     .from(proposals)
     .leftJoin(
@@ -47,6 +46,7 @@ export default async function ProposalsPage() {
       eq(proposals.id, curatorAssignments.proposalId)
     )
     .leftJoin(users, eq(curatorAssignments.curatorId, users.id))
+    .leftJoin(screeningResults, eq(proposals.id, screeningResults.proposalId))
     .where(eq(proposals.competitionId, activeComp.id));
 
   const mappedProposals = rows.map(r => {
@@ -64,6 +64,7 @@ export default async function ProposalsPage() {
       curatorName: isViewer ? undefined : r.curatorName,
       proposalRowNumber: r.nomorUrut || 0,
       hasResubmission: !!r.linkResubmitProposal,
+      screeningVerdict: r.screeningVerdict || null,
     };
   });
 

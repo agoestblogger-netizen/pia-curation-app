@@ -17,6 +17,7 @@ interface ProposalCard {
   proposalRowNumber: number;
   hasResubmission?: boolean;
   isScreened?: boolean;
+  screeningVerdict?: string | null;
 }
 
 const CATEGORY_MAP: Record<string, { label: string, short: string, bg: string }> = {
@@ -42,6 +43,7 @@ export default function CoordinatorBoard({
   const [isPending, startTransition] = useTransition();
   const [searchQuery, setSearchQuery] = useState('');
   const [curatorFilter, setCuratorFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
   const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>({
     'PUSAT': true
   });
@@ -50,6 +52,14 @@ export default function CoordinatorBoard({
   const availableCurators = Array.from(
     new Set(proposals.map(p => p.curatorName).filter(Boolean) as string[])
   ).sort((a, b) => a.localeCompare(b));
+
+  const statusCounts = {
+    lolos: proposals.filter(p => p.isScreened && p.screeningVerdict === 'lolos').length,
+    duplication: proposals.filter(p => p.isScreened && p.screeningVerdict === 'duplication').length,
+    mapped: proposals.filter(p => p.isScreened && p.screeningVerdict === 'mapped').length,
+    non_compliance: proposals.filter(p => p.isScreened && p.screeningVerdict === 'non_compliance').length,
+    low_impact: proposals.filter(p => p.isScreened && p.screeningVerdict === 'low_impact').length,
+  };
 
   const toggleCategory = (cat: string) => {
     setExpandedCategories(prev => ({ ...prev, [cat]: !prev[cat] }));
@@ -65,7 +75,8 @@ export default function CoordinatorBoard({
     const matchesTab = activeTab === 'assigned' ? !p.isScreened : activeTab === 'review' ? p.isScreened : true;
     const matchesSearch = p.title.toLowerCase().includes(searchQuery.toLowerCase()) || p.proposerName.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesCurator = activeTab === 'review' && curatorFilter ? p.curatorName === curatorFilter : true;
-    return matchesTab && matchesSearch && matchesCurator;
+    const matchesStatus = activeTab === 'review' && statusFilter ? p.screeningVerdict === statusFilter : true;
+    return matchesTab && matchesSearch && matchesCurator && matchesStatus;
   });
 
   // Group by category
@@ -218,20 +229,40 @@ export default function CoordinatorBoard({
           />
         </div>
         
-        {/* Curator Filter (Only inside "Selesai Discreening" tab for Admin & Coordinator) */}
+        {/* Screening Status Filter & Curator Filter (Only inside "Selesai Discreening" tab for Admin & Coordinator) */}
         {activeTab === 'review' && !isViewer && (
-          <div className="w-full sm:w-auto shrink-0 flex items-center bg-white rounded-lg border border-gray-300 p-1 shadow-sm h-full">
-            <span className="px-3 text-sm font-semibold text-gray-600 border-r border-gray-200 hidden sm:inline-block">Filter Kurator:</span>
-            <select 
-              className="bg-transparent border-0 text-sm font-medium focus:ring-0 text-gray-900 py-2 pl-3 pr-8 w-full cursor-pointer outline-none"
-              value={curatorFilter}
-              onChange={(e) => setCuratorFilter(e.target.value)}
-            >
-              <option value="">Semua Kurator ({availableCurators.length})</option>
-              {availableCurators.map(name => (
-                <option key={name} value={name}>{name}</option>
-              ))}
-            </select>
+          <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto shrink-0">
+            {/* Status Screening Filter */}
+            <div className="w-full sm:w-auto shrink-0 flex items-center bg-white rounded-lg border border-gray-300 p-1 shadow-sm h-full">
+              <span className="px-3 text-sm font-semibold text-gray-600 border-r border-gray-200 hidden sm:inline-block">Status:</span>
+              <select 
+                className="bg-transparent border-0 text-sm font-medium focus:ring-0 text-gray-900 py-2 pl-3 pr-8 w-full cursor-pointer outline-none"
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+              >
+                <option value="">Semua Status ({proposals.filter(p => p.isScreened).length})</option>
+                <option value="lolos">Lolos ({statusCounts.lolos})</option>
+                <option value="duplication">Duplication ({statusCounts.duplication})</option>
+                <option value="mapped">Mapped ({statusCounts.mapped})</option>
+                <option value="non_compliance">Non-Compliance ({statusCounts.non_compliance})</option>
+                <option value="low_impact">Low Impact ({statusCounts.low_impact})</option>
+              </select>
+            </div>
+
+            {/* Curator Filter */}
+            <div className="w-full sm:w-auto shrink-0 flex items-center bg-white rounded-lg border border-gray-300 p-1 shadow-sm h-full">
+              <span className="px-3 text-sm font-semibold text-gray-600 border-r border-gray-200 hidden sm:inline-block">Kurator:</span>
+              <select 
+                className="bg-transparent border-0 text-sm font-medium focus:ring-0 text-gray-900 py-2 pl-3 pr-8 w-full cursor-pointer outline-none"
+                value={curatorFilter}
+                onChange={(e) => setCuratorFilter(e.target.value)}
+              >
+                <option value="">Semua Kurator ({availableCurators.length})</option>
+                {availableCurators.map(name => (
+                  <option key={name} value={name}>{name}</option>
+                ))}
+              </select>
+            </div>
           </div>
         )}
       </div>
