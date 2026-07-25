@@ -140,6 +140,23 @@ export default async function ProposalDetailPage({
     curatorNotesData = srRow ?? null;
   }
 
+  // Fetch assigned curator name (even if not yet screened) for Coordinator/Admin
+  let assignedCuratorName: string | null = null;
+  if ((isCoordinator || session.roles.includes('admin')) && !isCurator) {
+    // Use curatorNotesData name if already fetched, else query from assignments
+    if (curatorNotesData?.curatorName) {
+      assignedCuratorName = curatorNotesData.curatorName;
+    } else {
+      const [caRow] = await db
+        .select({ curatorName: users.name })
+        .from(curatorAssignments)
+        .innerJoin(users, eq(curatorAssignments.curatorId, users.id))
+        .where(eq(curatorAssignments.proposalId, proposalId))
+        .limit(1);
+      assignedCuratorName = caRow?.curatorName ?? null;
+    }
+  }
+
   const renderAiScore = (label: string, score: number | null) => (
     <div className="flex justify-between items-center py-2 border-b border-gray-100 last:border-0">
       <span className="text-sm text-gray-600">{label}</span>
@@ -234,9 +251,18 @@ export default async function ProposalDetailPage({
               <span className="text-sm text-gray-500 font-mono ml-auto">ID: {proposal.externalSubId || proposal.externalId}</span>
             </div>
             
-            <h1 className="text-2xl font-bold text-gray-900 mb-6 leading-tight">
+            <h1 className="text-2xl font-bold text-gray-900 mb-3 leading-tight">
               {proposal.title}
             </h1>
+
+            {assignedCuratorName && (
+              <div className="mb-5">
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200">
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
+                  Dikurasi oleh: {assignedCuratorName}
+                </span>
+              </div>
+            )}
 
             {/* Ringkasan Submission Header */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 border-b border-gray-200 pb-2">
