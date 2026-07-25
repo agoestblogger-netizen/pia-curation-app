@@ -16,8 +16,7 @@ export function maskProposalIdentity<T extends Record<string, any>>(proposal: T)
     'proposerDivision',
     'proposerDepartment',
     'groupName',      // Group (mis. "Kantor Pusat") bisa mengidentifikasi pengusul
-    'teamMembers',
-    'curatorName'
+    'teamMembers'
   ];
 
   for (const field of fieldsToMask) {

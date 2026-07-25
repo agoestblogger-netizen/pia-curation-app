@@ -93,11 +93,12 @@ export default async function FgdRoomPage({ params }: { params: Promise<{ sessio
       sr.verdict,
       sr.notes as "curatorNotes",
       sr.recommendation as "curatorRecommendation",
-      u.name as "curatorName"
+      COALESCE(u_sr.name, u_ca.name) as "curatorName"
     FROM proposals p
-    LEFT JOIN curator_assignments ca ON ca.proposal_id = p.id
-    LEFT JOIN users u ON u.id = ca.curator_id
     LEFT JOIN screening_results sr ON sr.proposal_id = p.id
+    LEFT JOIN users u_sr ON u_sr.id = sr.curator_id
+    LEFT JOIN curator_assignments ca ON ca.proposal_id = p.id
+    LEFT JOIN users u_ca ON u_ca.id = ca.curator_id
     WHERE p.competition_id = ${fgd.competitionId}
       AND (p.status IS NULL OR p.status != 'gugur')
       AND ${queryCondition}
