@@ -45,6 +45,8 @@ type Proposal = {
   rowNumber: number;
   verdict: string;
   curatorName?: string | null;
+  curatorNotes?: string | null;
+  curatorRecommendation?: string | null;
   aiAnalysis?: any;
   additionalDocuments?: any[];
 };
@@ -542,6 +544,39 @@ export default function FgdRoomClient({
                           <div className="text-xs text-gray-400 font-medium">Skor AI</div>
                           <div className="text-2xl font-black text-indigo-700">{activeProposal.aiCidaTotal.toFixed(1)}</div>
                         </div>
+                      )}
+                    </div>
+
+                    {/* CATATAN KURATOR SECTION */}
+                    <div className="bg-amber-50/60 border border-amber-200 p-4 rounded-lg mb-6 shadow-xs">
+                      <div className="flex items-center justify-between mb-2">
+                        <h4 className="font-bold text-amber-900 text-xs uppercase tracking-wider flex items-center gap-1.5">
+                          <span>📝</span> Catatan Kurator (Screening)
+                        </h4>
+                        {activeProposal.verdict && (
+                          <span className={`px-2 py-0.5 rounded text-xs font-bold border ${VERDICT_COLORS[activeProposal.verdict] ?? 'bg-gray-100 text-gray-700'}`}>
+                            {VERDICT_LABELS[activeProposal.verdict] ?? activeProposal.verdict}
+                          </span>
+                        )}
+                      </div>
+                      {activeProposal.curatorNotes || activeProposal.curatorRecommendation ? (
+                        <div className="space-y-2 text-xs text-amber-950">
+                          {activeProposal.curatorNotes && (
+                            <p className="whitespace-pre-wrap leading-relaxed font-medium">
+                              {activeProposal.curatorNotes}
+                            </p>
+                          )}
+                          {activeProposal.curatorRecommendation && (
+                            <div className="pt-2 border-t border-amber-200/60 text-amber-900">
+                              <strong className="font-semibold">Rekomendasi: </strong>
+                              <span>{activeProposal.curatorRecommendation}</span>
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <p className="text-xs text-amber-700/80 italic">
+                          Tidak ada catatan dari kurator saat screening.
+                        </p>
                       )}
                     </div>
 

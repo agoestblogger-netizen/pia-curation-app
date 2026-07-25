@@ -91,6 +91,8 @@ export default async function FgdRoomPage({ params }: { params: Promise<{ sessio
       p.link_proposal as "linkProposal",
       ROW_NUMBER() OVER (PARTITION BY p.category, p.region_center ORDER BY p.id ASC) as "rowNumber",
       sr.verdict,
+      sr.notes as "curatorNotes",
+      sr.recommendation as "curatorRecommendation",
       u.name as "curatorName"
     FROM proposals p
     LEFT JOIN curator_assignments ca ON ca.proposal_id = p.id
@@ -120,6 +122,8 @@ export default async function FgdRoomPage({ params }: { params: Promise<{ sessio
     rowNumber: number;
     verdict: string;
     curatorName?: string | null;
+    curatorNotes?: string | null;
+    curatorRecommendation?: string | null;
     aiAnalysis?: any;
     additionalDocuments?: any[];
   }>;
