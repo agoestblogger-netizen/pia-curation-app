@@ -225,6 +225,8 @@ export default function FgdRoomClient({
   for (const p of proposals) {
     const key = p.category === 'PUSAT' ? 'Kantor Pusat' 
       : p.category === 'WILAYAH' ? (p.regionCenter ?? 'Wilayah') 
+      : p.category === 'BC' ? 'Business Case'
+      : p.category === 'BI' ? 'Breakthrough Innovation'
       : p.category;
     if (!groupedProposals[key]) groupedProposals[key] = [];
     groupedProposals[key].push(p);
