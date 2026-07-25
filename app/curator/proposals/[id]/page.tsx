@@ -1,6 +1,6 @@
 import { getSession } from '@/lib/auth/session';
 import { db } from '@/lib/db';
-import { proposals, curatorAssignments, screeningResults } from '@/lib/db/schema';
+import { proposals, curatorAssignments, screeningResults, users } from '@/lib/db/schema';
 import { eq, and, sql, inArray } from 'drizzle-orm';
 import { notFound, redirect } from 'next/navigation';
 import Link from 'next/link';
@@ -121,6 +121,23 @@ export default async function ProposalDetailPage({
         existingResult = { verdict: res.verdict, notes: res.notes || '' };
       }
     }
+  }
+
+  // Fetch curator notes for coordinator/admin read-only view
+  let curatorNotesData: { notes: string | null; recommendation: string | null; curatorName: string | null } | null = null;
+  if ((isCoordinator || isViewer || session.roles.includes('admin')) && !isCurator) {
+    const [srRow] = await db
+      .select({
+        notes: screeningResults.notes,
+        recommendation: screeningResults.recommendation,
+        curatorName: users.name,
+      })
+      .from(screeningResults)
+      .innerJoin(curatorAssignments, eq(screeningResults.assignmentId, curatorAssignments.id))
+      .innerJoin(users, eq(curatorAssignments.curatorId, users.id))
+      .where(eq(screeningResults.proposalId, proposalId))
+      .limit(1);
+    curatorNotesData = srRow ?? null;
   }
 
   const renderAiScore = (label: string, score: number | null) => (
@@ -457,6 +474,32 @@ export default async function ProposalDetailPage({
               Skor AI CIDA ditampilkan sebagai referensi awal, bukan penentu mutlak lolos/tidaknya proposal.
             </div>
           </div>
+
+          {/* Catatan Kurator — read-only for Coordinator/Admin */}
+          {(isCoordinator || session.roles.includes('admin')) && !isCurator && (
+            <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+              <h3 className="font-bold text-gray-900 mb-3 flex items-center gap-2">
+                <span>📝</span> Catatan Kurator
+                {curatorNotesData?.curatorName && (
+                  <span className="text-xs font-normal text-gray-500 ml-1">— {curatorNotesData.curatorName}</span>
+                )}
+              </h3>
+              {curatorNotesData?.notes || curatorNotesData?.recommendation ? (
+                <div className="space-y-2 text-sm text-gray-800">
+                  {curatorNotesData.notes && (
+                    <p className="leading-relaxed">{curatorNotesData.notes}</p>
+                  )}
+                  {curatorNotesData.recommendation && (
+                    <p className="text-xs text-indigo-700 font-semibold bg-indigo-50 border border-indigo-100 px-2.5 py-1.5 rounded">
+                      Rekomendasi: {curatorNotesData.recommendation}
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <p className="text-sm text-gray-400 italic">Tidak ada catatan dari kurator.</p>
+              )}
+            </div>
+          )}
 
           {assignment && isCurator ? (
             <div className="space-y-6">
