@@ -39,6 +39,8 @@ export default async function ProposalsPage() {
       linkResubmitProposal: proposals.linkResubmitProposal,
       assignmentStatus: curatorAssignments.status,
       screeningVerdict: screeningResults.verdict,
+      curatorNotes: screeningResults.notes,
+      curatorRecommendation: screeningResults.recommendation,
     })
     .from(proposals)
     .leftJoin(
@@ -62,6 +64,8 @@ export default async function ProposalsPage() {
       isScreened,
       aiScore: r.aiScore !== null ? Number(r.aiScore).toFixed(2) : 'N/A',
       curatorName: isViewer ? undefined : r.curatorName,
+      curatorNotes: isViewer ? undefined : r.curatorNotes,
+      curatorRecommendation: isViewer ? undefined : r.curatorRecommendation,
       proposalRowNumber: r.nomorUrut || 0,
       hasResubmission: !!r.linkResubmitProposal,
       screeningVerdict: r.screeningVerdict || null,

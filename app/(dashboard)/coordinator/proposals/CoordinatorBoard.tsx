@@ -14,6 +14,8 @@ interface ProposalCard {
   status: string; // 'imported', 'assigned', 'in_review', 'completed'
   aiScore: string;
   curatorName?: string | null;
+  curatorNotes?: string | null;
+  curatorRecommendation?: string | null;
   proposalRowNumber: number;
   hasResubmission?: boolean;
   isScreened?: boolean;
@@ -155,6 +157,19 @@ export default function CoordinatorBoard({
                   </span>
                 )}
               </div>
+
+              {!isViewer && (p.curatorNotes || p.curatorRecommendation) && (
+                <div className="mt-1.5 text-xs bg-amber-50/90 border border-amber-200 text-amber-950 px-2.5 py-1.5 rounded-md flex items-start gap-1.5 max-w-2xl">
+                  <span className="flex-shrink-0 mt-0.5">📝</span>
+                  <div className="line-clamp-2 leading-relaxed">
+                    <strong className="font-semibold text-amber-900">Catatan Kurator: </strong>
+                    <span>{p.curatorNotes}</span>
+                    {p.curatorRecommendation && (
+                      <span className="ml-1.5 text-amber-800 font-medium">· Rekomendasi: {p.curatorRecommendation}</span>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Right action / Arrow */}
