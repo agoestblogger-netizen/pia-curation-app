@@ -6,6 +6,7 @@ import { submitFgdCommentAction, submitFgdVoteAction, lockFgdSessionAction, rele
 import { generateFgdAiAnalysis } from '@/app/actions/aiAnalysis';
 import { uploadFgdAdditionalDocument } from '@/app/actions/uploadDocument';
 import { deleteFgdAdditionalDocument } from '@/app/actions/deleteDocument';
+import ProposalDocumentButtons from '@/app/components/ProposalDocumentButtons';
 
 // 5 warna per verdict — sesuai SCREENING_VERDICT_COLORS
 const VERDICT_COLORS: Record<string, string> = {
@@ -42,6 +43,8 @@ type Proposal = {
   aiCidaTotal: number | null;
   summary: string | null;
   linkProposal: string | null;
+  linkResubmitProposal?: string | null;
+  linkSuratOrisinalitas?: string | null;
   rowNumber: number;
   verdict: string;
   curatorName?: string | null;
@@ -519,16 +522,11 @@ export default function FgdRoomClient({
                         </span>
                         <div className="flex items-center space-x-3 mt-1">
                           <h2 className="text-xl font-bold text-gray-900 leading-tight">{activeProposal.title}</h2>
-                          {activeProposal.linkProposal && (
-                            <a
-                              href={activeProposal.linkProposal}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="inline-flex items-center px-2.5 py-1 rounded bg-blue-50 text-blue-700 text-xs font-semibold hover:bg-blue-100 transition whitespace-nowrap"
-                            >
-                              Buka Dokumen Sumber ↗
-                            </a>
-                          )}
+                          <ProposalDocumentButtons
+                            linkProposal={activeProposal.linkProposal}
+                            linkResubmitProposal={activeProposal.linkResubmitProposal}
+                            linkSuratOrisinalitas={activeProposal.linkSuratOrisinalitas}
+                          />
                         </div>
                         <p className="text-gray-500 mt-1 text-sm">
                           {activeProposal.proposerName ? `${activeProposal.proposerName}${activeProposal.proposerUnitKerja ? ` · ${activeProposal.proposerUnitKerja}` : ''}` : null}
