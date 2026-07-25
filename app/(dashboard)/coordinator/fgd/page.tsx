@@ -8,11 +8,11 @@ import FgdListClient from './FgdListClient';
 
 export default async function FgdPage() {
   const session = await getSession();
-  if (!session || !session.roles.some(r => ['coordinator', 'curator', 'promoter', 'viewer'].includes(r))) {
+  if (!session || !session.roles.some(r => ['coordinator', 'curator', 'promoter', 'viewer', 'admin'].includes(r))) {
     return <div>Unauthorized</div>;
   }
   
-  const isCoordinator = session.roles.includes('coordinator');
+  const isCoordinator = session.roles.includes('coordinator') || session.roles.includes('admin');
 
   const activeComp = await getActiveCompetition();
   if (!activeComp) {
