@@ -1,7 +1,7 @@
 'use server';
 
 import { db } from '@/lib/db';
-import { proposals, competitions, users, curatorAssignments, screeningResults } from '@/lib/db/schema';
+import { proposals, competitions, users, curatorAssignments, screeningResults, fgdSessions } from '@/lib/db/schema';
 import { requireRole } from '@/lib/auth/helpers';
 import { eq, and, inArray, count } from 'drizzle-orm';
 import { KANWIL_CITIES } from '@/lib/constants';
@@ -301,6 +301,21 @@ export async function lockRegionalGroupAction(
     }).where(inArray(proposals.id, nonFinalistIds));
   }
 
+  // Also lock any matching regional FGD sessions for this group
+  const regionCenterVal = isKanpus ? 'Kantor Pusat' : dbRegion;
+  await db.update(fgdSessions).set({
+    status: 'locked',
+    lockedAt: new Date(),
+    lockedBy: session.userId,
+    updatedAt: new Date(),
+  }).where(
+    and(
+      eq(fgdSessions.competitionId, competitionId),
+      eq(fgdSessions.scope, 'regional'),
+      eq(fgdSessions.regionCenter, regionCenterVal)
+    )
+  );
+
   await createAuditLog({
     action: 'lock_regional_group',
     entity: 'competition',
@@ -309,6 +324,7 @@ export async function lockRegionalGroupAction(
   });
 
   revalidatePath('/coordinator/finalization');
+  revalidatePath('/coordinator/fgd');
   return { success: true, finalistCount: finalistIds.length, takeoutCount: nonFinalistIds.length };
 }
 
@@ -375,6 +391,21 @@ export async function reopenRegionalGroupAction(
     )
   );
 
+  // Also unlock any matching regional FGD sessions for this group
+  const regionCenterVal = isKanpus ? 'Kantor Pusat' : dbRegion;
+  await db.update(fgdSessions).set({
+    status: 'active',
+    lockedAt: null,
+    lockedBy: null,
+    updatedAt: new Date(),
+  }).where(
+    and(
+      eq(fgdSessions.competitionId, competitionId),
+      eq(fgdSessions.scope, 'regional'),
+      eq(fgdSessions.regionCenter, regionCenterVal)
+    )
+  );
+
   await createAuditLog({
     action: 'reopen_regional_group',
     entity: 'competition',
@@ -383,5 +414,6 @@ export async function reopenRegionalGroupAction(
   });
 
   revalidatePath('/coordinator/finalization');
+  revalidatePath('/coordinator/fgd');
   return { success: true };
 }
