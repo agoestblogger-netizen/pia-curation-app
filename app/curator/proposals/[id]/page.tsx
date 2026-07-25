@@ -458,7 +458,7 @@ export default async function ProposalDetailPage({
             </div>
           </div>
 
-          {assignment ? (
+          {assignment && isCurator ? (
             <div className="space-y-6">
               {proposal.linkSuratOrisinalitas && (
                 <div className="bg-amber-50 p-5 rounded-xl border border-amber-200 shadow-sm">
