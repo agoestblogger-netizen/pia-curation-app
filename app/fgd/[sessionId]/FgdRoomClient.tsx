@@ -86,6 +86,9 @@ export default function FgdRoomClient({
 
   // Local state for comments so new entries appear immediately without full refresh
   const [localComments, setLocalComments] = useState<Comment[]>(comments);
+
+  // Local state for votes so voting updates appear in real-time across all views
+  const [localVotes, setLocalVotes] = useState<Vote[]>(votes);
   // Keep localComments in sync if server-side comments prop changes (e.g. after router.refresh)
   const commentsRef = comments;
   // sync on mount only — subsequent updates via local state mutations
@@ -293,6 +296,72 @@ export default function FgdRoomClient({
       supabase.removeChannel(channel);
     };
   }, [activeTab, activeProposalIdx, proposals, fgd.id, session]);
+
+  // ── Realtime Supabase Subscription for fgd_votes (Session Scope) ─────────────
+  useEffect(() => {
+    if (!fgd.id) return;
+
+    const channelName = `fgd_votes_realtime_${fgd.id}`;
+    const channel = supabase
+      .channel(channelName)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'fgd_votes',
+          filter: `session_id=eq.${fgd.id}`,
+        },
+        (payload) => {
+          if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
+            const newVote = payload.new as {
+              id: number;
+              session_id: number;
+              proposal_id: number;
+              curator_id: number;
+              vote: string;
+            };
+
+            setLocalVotes((prev) => {
+              const existingIndex = prev.findIndex(
+                (v) => v.proposalId === newVote.proposal_id && v.curatorId === newVote.curator_id
+              );
+
+              if (existingIndex >= 0) {
+                const updated = [...prev];
+                updated[existingIndex] = {
+                  id: newVote.id,
+                  proposalId: newVote.proposal_id,
+                  curatorId: newVote.curator_id,
+                  vote: newVote.vote,
+                };
+                return updated;
+              }
+
+              return [
+                ...prev,
+                {
+                  id: newVote.id,
+                  proposalId: newVote.proposal_id,
+                  curatorId: newVote.curator_id,
+                  vote: newVote.vote,
+                },
+              ];
+            });
+          } else if (payload.eventType === 'DELETE') {
+            const oldVote = payload.old as { id: number; proposal_id?: number; curator_id?: number };
+            setLocalVotes((prev) =>
+              prev.filter((v) => v.id !== oldVote.id && !(v.proposalId === oldVote.proposal_id && v.curatorId === oldVote.curator_id))
+            );
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [fgd.id]);
   
   const [commentText, setCommentText] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -326,10 +395,10 @@ export default function FgdRoomClient({
   const refresh = () => startRefresh(() => router.refresh());
 
   const voteCount = (proposalId: number, type: string) =>
-    votes.filter(v => v.proposalId === proposalId && v.vote === type).length;
+    localVotes.filter(v => v.proposalId === proposalId && v.vote === type).length;
 
   const myVote = (proposalId: number): string | null =>
-    votes.find(v => v.proposalId === proposalId && v.curatorId === session.userId)?.vote ?? null;
+    localVotes.find(v => v.proposalId === proposalId && v.curatorId === session.userId)?.vote ?? null;
 
   const sortedByVotes = [...proposals].sort(
     (a, b) => voteCount(b.id, 'nominate') - voteCount(a.id, 'nominate')
@@ -368,6 +437,22 @@ export default function FgdRoomClient({
   async function handleVote(proposalId: number, voteType: string) {
     if (fgd.status === 'locked' || isVoting) return;
     setIsVoting(true);
+
+    // Optimistic update of localVotes
+    setLocalVotes(prev => {
+      if (voteType === 'cancel') {
+        return prev.filter(v => !(v.proposalId === proposalId && v.curatorId === session.userId));
+      } else {
+        const existingIndex = prev.findIndex(v => v.proposalId === proposalId && v.curatorId === session.userId);
+        if (existingIndex >= 0) {
+          const updated = [...prev];
+          updated[existingIndex] = { ...updated[existingIndex], vote: voteType };
+          return updated;
+        } else {
+          return [...prev, { id: Date.now(), proposalId, curatorId: session.userId, vote: voteType }];
+        }
+      }
+    });
     
     // Tembakkan confetti jika user berhasil memberikan vote "nominate"
     if (voteType === 'nominate' && myVote(proposalId) !== 'nominate') {
@@ -383,7 +468,6 @@ export default function FgdRoomClient({
 
     await submitFgdVoteAction(fgd.id, proposalId, voteType as any);
     setIsVoting(false);
-    refresh();
   }
 
   async function handleComment(e: React.FormEvent) {
@@ -492,6 +576,8 @@ export default function FgdRoomClient({
     const nomCount = voteCount(p.id, 'nominate');
     const notCount = voteCount(p.id, 'not_nominate');
     const totalVotes = nomCount + notCount;
+    const isNominateLeading = nomCount > notCount;
+
     return (
       <div
         key={p.id}
@@ -511,6 +597,16 @@ export default function FgdRoomClient({
               <span className={`px-1.5 py-0.5 rounded text-xs font-semibold border ${VERDICT_COLORS[p.verdict] ?? 'bg-gray-100 text-gray-700'}`}>
                 {VERDICT_LABELS[p.verdict] ?? p.verdict}
               </span>
+              {/* Auto-check sementara jika vote Dipilih > Tidak Dipilih */}
+              {isNominateLeading && (
+                <span 
+                  className="bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded-full text-xs font-bold flex items-center gap-1 shadow-2xs" 
+                  title="Hasil voting sementara: Mayoritas Dipilih"
+                >
+                  <span>✅</span>
+                  <span className="text-[11px] font-extrabold">{nomCount} vs {notCount}</span>
+                </span>
+              )}
             </div>
             <h3 className="font-semibold text-gray-900 text-sm leading-snug truncate">{p.title}</h3>
             <p className="text-xs text-gray-500 mt-0.5">
@@ -739,12 +835,31 @@ export default function FgdRoomClient({
                           )}
                         </p>
                       </div>
-                      {activeProposal.aiCidaTotal !== null && (
-                        <div className="text-right flex-shrink-0 ml-4">
-                          <div className="text-xs text-gray-400 font-medium">Skor AI</div>
-                          <div className="text-2xl font-black text-indigo-700">{activeProposal.aiCidaTotal.toFixed(1)}</div>
+                      <div className="flex items-center gap-3 flex-shrink-0 ml-4">
+                        {/* 2 Ikon Real-time Counter Voting */}
+                        <div className="flex items-center gap-3 bg-gray-50 border border-gray-200 px-3.5 py-1.5 rounded-lg shadow-2xs">
+                          <div className="flex flex-col items-center">
+                            <span className="text-base leading-none" title="Dipilih (Nominasikan)">✅</span>
+                            <span className="text-xs font-extrabold text-emerald-700 mt-1">
+                              {voteCount(activeProposal.id, 'nominate')}
+                            </span>
+                          </div>
+                          <div className="h-6 w-px bg-gray-200" />
+                          <div className="flex flex-col items-center">
+                            <span className="text-base leading-none" title="Tidak Dipilih">❌</span>
+                            <span className="text-xs font-extrabold text-rose-600 mt-1">
+                              {voteCount(activeProposal.id, 'not_nominate')}
+                            </span>
+                          </div>
                         </div>
-                      )}
+
+                        {activeProposal.aiCidaTotal !== null && (
+                          <div className="text-right">
+                            <div className="text-xs text-gray-400 font-medium">Skor AI</div>
+                            <div className="text-2xl font-black text-indigo-700">{activeProposal.aiCidaTotal.toFixed(1)}</div>
+                          </div>
+                        )}
+                      </div>
                     </div>
 
                     {/* TOMBOL DOKUMEN (Sejajar di atas Rangkuman Proposal) */}
