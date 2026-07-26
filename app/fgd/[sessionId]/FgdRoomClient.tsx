@@ -7,6 +7,7 @@ import { generateFgdAiAnalysis } from '@/app/actions/aiAnalysis';
 import { uploadFgdAdditionalDocument } from '@/app/actions/uploadDocument';
 import { deleteFgdAdditionalDocument } from '@/app/actions/deleteDocument';
 import ProposalDocumentButtons from '@/app/components/ProposalDocumentButtons';
+import { supabase } from '@/lib/supabase/client';
 
 // 5 warna per verdict — sesuai SCREENING_VERDICT_COLORS
 const VERDICT_COLORS: Record<string, string> = {
@@ -199,6 +200,99 @@ export default function FgdRoomClient({
       }
     }
   }, [activeTab, activeProposalIdx, localAiAnalyses, isGeneratingAi, proposals]);
+
+  // ── Realtime Supabase Subscription for fgd_comments ───────────────────────
+  useEffect(() => {
+    if (activeTab !== 'detail' || activeProposalIdx === null) return;
+    const activeId = proposals[activeProposalIdx]?.id;
+    if (!activeId) return;
+
+    const channelName = `fgd_comments_realtime_${fgd.id}_${activeId}`;
+    const channel = supabase
+      .channel(channelName)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'fgd_comments',
+          filter: `session_id=eq.${fgd.id}`,
+        },
+        (payload) => {
+          const newComment = payload.new as {
+            id: number;
+            session_id: number;
+            proposal_id: number;
+            curator_id: number;
+            content: string;
+            comment_type: string | null;
+            created_at: string;
+          };
+
+          // Strict proposal_id scope check
+          if (newComment.proposal_id !== activeId) return;
+
+          setLocalComments((prev) => {
+            // Dedup 1: Exact ID check
+            if (prev.some((c) => c.id === newComment.id)) return prev;
+
+            // Dedup 2: Optimistic UI check from same user with same content
+            const isOptimisticDuplicate = prev.some(
+              (c) =>
+                c.proposalId === newComment.proposal_id &&
+                c.curatorId === newComment.curator_id &&
+                c.content.trim() === newComment.content.trim() &&
+                Math.abs(new Date(c.createdAt).getTime() - new Date(newComment.created_at).getTime()) < 10000
+            );
+
+            if (isOptimisticDuplicate) {
+              return prev.map((c) =>
+                c.proposalId === newComment.proposal_id &&
+                c.curatorId === newComment.curator_id &&
+                c.content.trim() === newComment.content.trim()
+                  ? {
+                      id: newComment.id,
+                      proposalId: newComment.proposal_id,
+                      curatorId: newComment.curator_id,
+                      content: newComment.content,
+                      createdAt: newComment.created_at,
+                      curatorName: c.curatorName,
+                      commentType: newComment.comment_type,
+                    }
+                  : c
+              );
+            }
+
+            // Look up author name if available
+            let curatorName: string | null = null;
+            const existingAuthor = prev.find((c) => c.curatorId === newComment.curator_id);
+            if (existingAuthor?.curatorName) {
+              curatorName = existingAuthor.curatorName;
+            } else if (newComment.curator_id === session?.userId) {
+              curatorName = session?.name ?? null;
+            }
+
+            return [
+              ...prev,
+              {
+                id: newComment.id,
+                proposalId: newComment.proposal_id,
+                curatorId: newComment.curator_id,
+                content: newComment.content,
+                createdAt: newComment.created_at,
+                curatorName,
+                commentType: newComment.comment_type,
+              },
+            ];
+          });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [activeTab, activeProposalIdx, proposals, fgd.id, session]);
   
   const [commentText, setCommentText] = useState('');
   const [submitting, setSubmitting] = useState(false);
