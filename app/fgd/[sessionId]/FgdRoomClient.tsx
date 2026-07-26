@@ -202,7 +202,7 @@ export default function FgdRoomClient({
   // Expand/collapse state for verdict groups in multi-status view
   const [expandedVerdicts, setExpandedVerdicts] = useState<Record<string, boolean>>(() => {
     const initial: Record<string, boolean> = {};
-    for (const v of Object.keys(VERDICT_LABELS)) initial[v] = true; // default all expanded
+    for (const v of Object.keys(VERDICT_LABELS)) initial[v] = false; // default all collapsed
     return initial;
   });
 
