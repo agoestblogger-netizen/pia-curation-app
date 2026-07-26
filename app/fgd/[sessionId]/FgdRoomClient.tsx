@@ -83,6 +83,13 @@ export default function FgdRoomClient({
     return map;
   });
 
+  // Local state for comments so new entries appear immediately without full refresh
+  const [localComments, setLocalComments] = useState<Comment[]>(comments);
+  // Keep localComments in sync if server-side comments prop changes (e.g. after router.refresh)
+  const commentsRef = comments;
+  // sync on mount only — subsequent updates via local state mutations
+  // (intentionally not a useEffect to avoid overwriting optimistic updates)
+
   const [localAdditionalDocs, setLocalAdditionalDocs] = useState<Record<number, any[]>>(() => {
     const map: Record<number, any[]> = {};
     for (const p of proposals) {
@@ -289,10 +296,24 @@ export default function FgdRoomClient({
     e.preventDefault();
     if (!commentText.trim() || !activeProposal || fgd.status === 'locked') return;
     setSubmitting(true);
-    await submitFgdCommentAction(fgd.id, activeProposal.id, commentText);
+    const res = await submitFgdCommentAction(fgd.id, activeProposal.id, commentText);
+    // Optimistically append to local comments
+    if (!('error' in res)) {
+      setLocalComments(prev => [
+        ...prev,
+        {
+          id: res.commentId ?? Date.now(),
+          proposalId: activeProposal.id,
+          curatorId: session.userId,
+          content: commentText,
+          createdAt: new Date().toISOString(),
+          curatorName: session.name ?? null,
+          commentType: null,
+        }
+      ]);
+    }
     setCommentText('');
     setSubmitting(false);
-    refresh();
   }
 
   function toggleFinalSelection(id: number) {
@@ -339,11 +360,36 @@ export default function FgdRoomClient({
   function openDetail(idx: number) {
     setActiveProposalIdx(idx);
     setActiveTab('detail');
-    // Inject curator note as comment thread entry (idempotent — server-side dedup guards against doubles)
+    // Inject curator note as permanent comment entry (idempotent — server-side dedup guards against doubles)
     const p = proposals[idx];
     if (p && (p.curatorNotes || p.curatorRecommendation) && !injectedNotes.has(p.id)) {
       setInjectedNotes(prev => new Set(prev).add(p.id));
-      insertCuratorNoteAsCommentAction(fgd.id, p.id).then(() => refresh());
+      insertCuratorNoteAsCommentAction(fgd.id, p.id).then((res) => {
+        // If not skipped (i.e. was newly inserted), append to local comments immediately
+        if (res && !('error' in res) && !res.skipped) {
+          // Build a synthetic comment entry to show immediately
+          const verdictLabel: Record<string, string> = {
+            lolos: 'Lolos', duplication: 'Duplikasi', mapped: 'Mapped',
+            non_compliance: 'Non-Compliance', low_impact: 'Low Impact',
+          };
+          const lines: string[] = [];
+          if (p.verdict) lines.push(`[${verdictLabel[p.verdict] ?? p.verdict}]`);
+          if (p.curatorNotes) lines.push(p.curatorNotes);
+          if (p.curatorRecommendation) lines.push(`Rekomendasi: ${p.curatorRecommendation}`);
+          setLocalComments(prev => [
+            ...prev,
+            {
+              id: Date.now(),
+              proposalId: p.id,
+              curatorId: 0,
+              content: lines.join('\n'),
+              createdAt: new Date().toISOString(),
+              curatorName: p.curatorName ?? null,
+              commentType: 'curator_note',
+            }
+          ]);
+        }
+      });
     }
   }
 
@@ -856,12 +902,12 @@ export default function FgdRoomClient({
 
                     {/* Chat Thread */}
                     <div className="flex-1 overflow-y-auto mb-4 space-y-3 pr-1">
-                      {comments.filter(c => c.proposalId === activeProposal.id).length === 0 ? (
+                      {localComments.filter(c => c.proposalId === activeProposal.id).length === 0 ? (
                         <p className="text-gray-400 text-sm italic text-center mt-10">
                           Belum ada catatan diskusi untuk proposal ini.
                         </p>
                       ) : (
-                        comments
+                          localComments
                           .filter(c => c.proposalId === activeProposal.id)
                           .map(c => {
                             const isCuratorNote = c.commentType === 'curator_note';
