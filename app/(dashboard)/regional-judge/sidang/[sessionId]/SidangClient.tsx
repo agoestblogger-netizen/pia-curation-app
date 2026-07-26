@@ -411,6 +411,64 @@ export default function SidangClient({
         </div>
       </div>
 
+      {/* Catatan Juri per Proposal */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 space-y-4">
+        <div>
+          <h2 className="text-lg font-bold text-gray-900">Catatan Kualitatif Juri Regional</h2>
+          <p className="text-sm text-gray-500 mt-1">
+            Catatan pertimbangan yang dituliskan oleh masing-masing Juri saat menilai proposal.
+          </p>
+        </div>
+
+        <div className="space-y-4">
+          {proposalStats.map((p, pIdx) => {
+            const hasAnyNotes = judgesList.some(j => p.judgeScores[j.id]?.notes);
+
+            return (
+              <div key={p.id} className="border border-gray-200 rounded-lg p-4 bg-gray-50/50 space-y-3">
+                <div className="flex items-center justify-between border-b border-gray-200 pb-2">
+                  <div className="font-bold text-gray-900 text-sm">
+                    #{pIdx + 1}. {p.title}
+                  </div>
+                  <div className="text-xs text-gray-500 font-medium">
+                    {p.proposerName} ({p.proposerOrg || p.category})
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {judgesList.map(j => {
+                    const js = p.judgeScores[j.id];
+                    const note = js?.notes;
+
+                    return (
+                      <div key={j.id} className="p-3 rounded-lg bg-white border border-gray-200 text-xs space-y-1 shadow-xs">
+                        <div className="font-bold text-gray-800 flex items-center justify-between">
+                          <span>{j.name}</span>
+                          {note ? (
+                            <span className="text-[10px] text-green-700 font-semibold bg-green-50 border border-green-200 px-2 py-0.5 rounded-full">Tersedia Catatan</span>
+                          ) : (
+                            <span className="text-[10px] text-gray-400 font-normal italic">Tanpa catatan</span>
+                          )}
+                        </div>
+                        {note ? (
+                          <p className="text-gray-700 whitespace-pre-wrap leading-relaxed border-t border-gray-100 pt-1.5 mt-1 font-medium">
+                            {note}
+                          </p>
+                        ) : (
+                          <p className="text-gray-400 italic border-t border-gray-100 pt-1.5 mt-1">
+                            Tidak ada catatan dari juri ini.
+                          </p>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
       {/* Modal Kalibrasi Skor 4 Parameter */}
       {editingCell && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-xs z-50 flex items-center justify-center p-4">

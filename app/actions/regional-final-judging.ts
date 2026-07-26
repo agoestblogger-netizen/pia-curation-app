@@ -276,7 +276,8 @@ export async function getRegionalFinalProposals(sessionId: number) {
 export async function submitRegionalAssessmentAction(
   sessionId: number,
   proposalId: number,
-  scores: { problemFit: number, dampak: number, kelayakan: number, professional: number }
+  scores: { problemFit: number, dampak: number, kelayakan: number, professional: number },
+  notes?: string
 ) {
   const userSession = await requireRole('regional');
   
@@ -309,6 +310,17 @@ export async function submitRegionalAssessmentAction(
     if (val < 0 || val > 100) return { error: 'Skor harus berada di antara 0 dan 100' };
   }
   
+  const updateData: any = {
+    paramProblemFit: scores.problemFit,
+    paramDampak: scores.dampak,
+    paramKelayakan: scores.kelayakan,
+    paramProfessional: scores.professional,
+    submittedAt: new Date(),
+  };
+  if (notes !== undefined) {
+    updateData.notes = notes;
+  }
+
   await db.insert(regionalFinalAssessments).values({
     sessionId,
     proposalId,
@@ -317,23 +329,73 @@ export async function submitRegionalAssessmentAction(
     paramDampak: scores.dampak,
     paramKelayakan: scores.kelayakan,
     paramProfessional: scores.professional,
+    notes: notes ?? null,
   }).onConflictDoUpdate({
     target: [regionalFinalAssessments.sessionId, regionalFinalAssessments.proposalId, regionalFinalAssessments.judgeUserId],
-    set: {
-      paramProblemFit: scores.problemFit,
-      paramDampak: scores.dampak,
-      paramKelayakan: scores.kelayakan,
-      paramProfessional: scores.professional,
-      submittedAt: new Date(),
-    }
+    set: updateData
   });
-  
-  // Check if all judges have submitted for all proposals
-  // To avoid complex DB queries in this transaction, we can just let PIC manually check, or we can check here to trigger 'penilaian_selesai'
   
   revalidatePath(`/regional-judge/assess/${sessionId}`);
   revalidatePath(`/regional-judge/sidang/${sessionId}`);
   revalidatePath('/regional-judge', 'layout');
+  return { success: true };
+}
+
+export async function saveRegionalJudgeNotesAction(
+  sessionId: number,
+  proposalId: number,
+  notes: string
+) {
+  const userSession = await requireRole('regional');
+
+  // Verify assignment
+  const [judgeAssignment] = await db
+    .select({ userId: regionalFinalJudges.userId, isFinalized: regionalFinalJudges.isFinalized })
+    .from(regionalFinalJudges)
+    .where(and(
+      eq(regionalFinalJudges.sessionId, sessionId),
+      eq(regionalFinalJudges.userId, userSession.userId)
+    ))
+    .limit(1);
+
+  if (!judgeAssignment) {
+    return { error: 'Akses ditolak: Anda bukan Juri untuk sesi ini.' };
+  }
+
+  if (judgeAssignment.isFinalized) {
+    return { error: 'Penilaian Anda sudah difinalisasi dan tidak dapat diubah lagi.' };
+  }
+
+  const [existing] = await db.select().from(regionalFinalAssessments)
+    .where(and(
+      eq(regionalFinalAssessments.sessionId, sessionId),
+      eq(regionalFinalAssessments.proposalId, proposalId),
+      eq(regionalFinalAssessments.judgeUserId, userSession.userId)
+    ));
+
+  if (existing) {
+    await db.update(regionalFinalAssessments)
+      .set({
+        notes,
+        submittedAt: new Date(),
+      })
+      .where(eq(regionalFinalAssessments.id, existing.id));
+  } else {
+    await db.insert(regionalFinalAssessments)
+      .values({
+        sessionId,
+        proposalId,
+        judgeUserId: userSession.userId,
+        paramProblemFit: 0,
+        paramDampak: 0,
+        paramKelayakan: 0,
+        paramProfessional: 0,
+        notes,
+      });
+  }
+
+  revalidatePath(`/regional-judge/assess/${sessionId}`);
+  revalidatePath(`/regional-judge/sidang/${sessionId}`);
   return { success: true };
 }
 

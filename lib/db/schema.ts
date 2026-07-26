@@ -554,6 +554,7 @@ export const regionalFinalAssessments = pgTable('regional_final_assessments', {
   paramDampak: doublePrecision('param_dampak').notNull(),
   paramKelayakan: doublePrecision('param_kelayakan').notNull(),
   paramProfessional: doublePrecision('param_professional').notNull(),
+  notes: text('notes'),
   submittedAt: timestamp('submitted_at', { withTimezone: true }).notNull().defaultNow(),
 }, (table) => [
   uniqueIndex('regional_final_assessment_unique').on(table.sessionId, table.proposalId, table.judgeUserId),

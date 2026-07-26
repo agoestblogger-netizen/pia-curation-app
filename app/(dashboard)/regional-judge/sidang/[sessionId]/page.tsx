@@ -75,6 +75,7 @@ export default async function SidangPenetapanPage({ params }: { params: Promise<
       kelayakan: number;
       professional: number;
       avgScore: number;
+      notes?: string | null;
     } | null> = {};
 
     judgesList.forEach(j => {
@@ -86,7 +87,8 @@ export default async function SidangPenetapanPage({ params }: { params: Promise<
           dampak: a.paramDampak,
           kelayakan: a.paramKelayakan,
           professional: a.paramProfessional,
-          avgScore: avg
+          avgScore: avg,
+          notes: a.notes || null,
         };
         totalAvgSum += avg;
       } else {
