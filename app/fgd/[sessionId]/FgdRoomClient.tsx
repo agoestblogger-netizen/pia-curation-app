@@ -199,6 +199,13 @@ export default function FgdRoomClient({
   const [releasing, setReleasing] = useState<Record<number, boolean>>({});
   const [selectedForFinal, setSelectedForFinal] = useState<number[]>([]);
 
+  // Expand/collapse state for verdict groups in multi-status view
+  const [expandedVerdicts, setExpandedVerdicts] = useState<Record<string, boolean>>(() => {
+    const initial: Record<string, boolean> = {};
+    for (const v of Object.keys(VERDICT_LABELS)) initial[v] = true; // default all expanded
+    return initial;
+  });
+
   const [confirmModal, setConfirmModal] = useState<{
     isOpen: boolean;
     title: string;
@@ -226,7 +233,7 @@ export default function FgdRoomClient({
 
   const activeProposal = activeProposalIdx !== null ? proposals[activeProposalIdx] : null;
 
-  // ─── Group proposals for 'grouped' view mode ──────────────────────────────
+  // ─── Group proposals for 'grouped' view mode (by category) ────────────────
   const groupedProposals: Record<string, Proposal[]> = {};
   for (const p of proposals) {
     const key = p.category === 'PUSAT' ? 'Kantor Pusat' 
@@ -236,6 +243,21 @@ export default function FgdRoomClient({
       : p.category;
     if (!groupedProposals[key]) groupedProposals[key] = [];
     groupedProposals[key].push(p);
+  }
+
+  // ─── Multi-status verdict grouping ────────────────────────────────────────
+  const fgdFilterStatuses = Array.isArray(fgd.filterStatuses) && fgd.filterStatuses.length > 0
+    ? (fgd.filterStatuses as string[])
+    : ['lolos'];
+  const isMultiStatus = fgdFilterStatuses.length > 1;
+
+  // Build verdict groups in canonical order (lolos → duplication → mapped → non_compliance → low_impact)
+  const verdictGroupedProposals: Record<string, Proposal[]> = {};
+  if (isMultiStatus) {
+    for (const verdict of Object.keys(VERDICT_LABELS)) {
+      const group = proposals.filter(p => p.verdict === verdict);
+      if (group.length > 0) verdictGroupedProposals[verdict] = group;
+    }
   }
 
   // ─── Actions ──────────────────────────────────────────────────────────────
@@ -433,8 +455,46 @@ export default function FgdRoomClient({
                 <p className="font-medium">Tidak ada proposal yang sesuai filter.</p>
                 <p className="text-sm mt-1">Coba ubah filter status di pengaturan sesi FGD.</p>
               </div>
+            ) : isMultiStatus ? (
+              // ── MULTI-STATUS: Group by screening verdict with expand/collapse ──
+              <div className="space-y-4">
+                {Object.entries(verdictGroupedProposals).map(([verdict, groupProps]) => {
+                  const isExpanded = expandedVerdicts[verdict] !== false;
+                  const verdictLabel = VERDICT_LABELS[verdict] ?? verdict;
+                  const verdictColor = VERDICT_COLORS[verdict] ?? 'bg-gray-100 text-gray-700 border-gray-200';
+                  return (
+                    <div key={verdict} className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+                      <button
+                        onClick={() => setExpandedVerdicts(prev => ({ ...prev, [verdict]: !isExpanded }))}
+                        className="w-full bg-gray-50 px-4 py-3 border-b border-gray-200 flex items-center justify-between hover:bg-gray-100 transition text-left"
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <span className={`px-2.5 py-0.5 rounded text-xs font-bold border ${verdictColor}`}>
+                            {verdictLabel}
+                          </span>
+                          <span className="text-sm font-semibold text-gray-700">{groupProps.length} proposal</span>
+                        </div>
+                        <svg
+                          className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}
+                          fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                        >
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </button>
+                      {isExpanded && (
+                        <div className="divide-y divide-gray-100">
+                          {groupProps.map((p) => {
+                            const idx = proposals.findIndex(x => x.id === p.id);
+                            return <ProposalRow key={p.id} p={p} idx={idx} />;
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
             ) : fgd.viewMode === 'grouped' ? (
-              // ── GROUPED MODE ──
+              // ── CATEGORY GROUPED MODE (single-status, grouped scope) ──
               <div className="space-y-6">
                 {Object.entries(groupedProposals).map(([groupName, groupProps]) => (
                   <div key={groupName} className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
@@ -452,7 +512,7 @@ export default function FgdRoomClient({
                 ))}
               </div>
             ) : (
-              // ── MIXED / FLAT MODE ──
+              // ── FLAT MODE (single-status, flat scope) ──
               <div className="bg-white rounded-lg shadow-sm border border-gray-200 divide-y divide-gray-100">
                 {proposals.map((p, idx) => (
                   <ProposalRow key={p.id} p={p} idx={idx} />
