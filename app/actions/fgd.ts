@@ -5,7 +5,7 @@ import {
   fgdSessions, fgdComments, fgdVotes, proposals, auditLogs,
   screeningResults, users, curatorAssignments
 } from '@/lib/db/schema';
-import { eq, and, inArray } from 'drizzle-orm';
+import { eq, and, inArray, ne, desc, isNotNull } from 'drizzle-orm';
 import { getSession } from '@/lib/auth/session';
 import { requireRole } from '@/lib/auth/helpers';
 import { revalidatePath } from 'next/cache';
@@ -162,6 +162,103 @@ export async function insertCuratorNoteAsCommentAction(
 
   revalidatePath(`/fgd/${sessionId}`);
   return { success: true, skipped: false };
+}
+
+/**
+ * Copy/sync komentar & catatan kurator (fgd_comments) dari sesi FGD sebelumnya
+ * untuk proposal yang sama ketika proposal masuk ke sesi FGD baru.
+ * Mencegah duplikasi dengan mengecek kombinasi (proposalId, curatorId, content).
+ * Vote (fgd_votes) TIDAK ikut di-copy.
+ */
+export async function syncPreviousFgdCommentsForSession(sessionId: number) {
+  try {
+    const [sessionData] = await db
+      .select({ 
+        competitionId: fgdSessions.competitionId, 
+        scope: fgdSessions.scope, 
+        regionCenter: fgdSessions.regionCenter, 
+        filterStatuses: fgdSessions.filterStatuses, 
+        fgdType: fgdSessions.fgdType 
+      })
+      .from(fgdSessions)
+      .where(eq(fgdSessions.id, sessionId))
+      .limit(1);
+
+    if (!sessionData) return;
+
+    const targetStatuses = Array.isArray(sessionData.filterStatuses) && sessionData.filterStatuses.length > 0
+      ? (sessionData.filterStatuses as string[])
+      : ['lolos'];
+
+    let propQuery = db.select({ id: proposals.id }).from(proposals)
+      .where(
+        and(
+          eq(proposals.competitionId, sessionData.competitionId),
+          inArray(proposals.status, targetStatuses)
+        )
+      );
+
+    const propRows = await propQuery;
+    if (propRows.length === 0) return;
+    const proposalIds = propRows.map(p => p.id);
+
+    // Get previous comments for these proposals in OTHER sessions
+    const previousComments = await db
+      .select({
+        proposalId: fgdComments.proposalId,
+        curatorId: fgdComments.curatorId,
+        content: fgdComments.content,
+        commentType: fgdComments.commentType,
+        createdAt: fgdComments.createdAt,
+      })
+      .from(fgdComments)
+      .where(
+        and(
+          inArray(fgdComments.proposalId, proposalIds),
+          ne(fgdComments.sessionId, sessionId)
+        )
+      )
+      .orderBy(fgdComments.createdAt);
+
+    if (previousComments.length === 0) return;
+
+    // Get current comments in target session
+    const currentComments = await db
+      .select({
+        proposalId: fgdComments.proposalId,
+        curatorId: fgdComments.curatorId,
+        content: fgdComments.content,
+      })
+      .from(fgdComments)
+      .where(eq(fgdComments.sessionId, sessionId));
+
+    const currentCommentKeys = new Set<string>();
+    for (const curr of currentComments) {
+      currentCommentKeys.add(`${curr.proposalId}_${curr.curatorId}_${curr.content.trim()}`);
+    }
+
+    const toInsert = [];
+    for (const prev of previousComments) {
+      const key = `${prev.proposalId}_${prev.curatorId}_${prev.content.trim()}`;
+      if (!currentCommentKeys.has(key)) {
+        currentCommentKeys.add(key);
+        toInsert.push({
+          sessionId,
+          proposalId: prev.proposalId,
+          curatorId: prev.curatorId,
+          content: prev.content,
+          commentType: prev.commentType,
+          createdAt: prev.createdAt,
+        });
+      }
+    }
+
+    if (toInsert.length > 0) {
+      await db.insert(fgdComments).values(toInsert);
+    }
+  } catch (err) {
+    console.error('Error in syncPreviousFgdCommentsForSession:', err);
+  }
 }
 
 /**

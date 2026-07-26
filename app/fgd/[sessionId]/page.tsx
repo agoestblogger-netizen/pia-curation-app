@@ -4,6 +4,7 @@ import {
   fgdSessions, fgdVotes, fgdComments, users, proposalAiAnalyses, fgdAdditionalDocuments
 } from '@/lib/db/schema';
 import { eq, sql, inArray } from 'drizzle-orm';
+import { syncPreviousFgdCommentsForSession } from '@/app/actions/fgd';
 import { maskProposalIdentity } from '@/lib/utils/blindReview';
 import FgdRoomClient from './FgdRoomClient';
 import Link from 'next/link';
@@ -159,6 +160,9 @@ export default async function FgdRoomPage({ params }: { params: Promise<{ sessio
       .from(fgdAdditionalDocuments)
       .where(inArray(fgdAdditionalDocuments.proposalId, proposalIds));
   }
+
+  // Auto-sync previous fgd_comments for proposals in this session
+  await syncPreviousFgdCommentsForSession(sId);
 
   const votesPromise = db
     .select({
