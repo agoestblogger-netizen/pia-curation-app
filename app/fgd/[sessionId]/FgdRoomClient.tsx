@@ -599,7 +599,7 @@ export default function FgdRoomClient({
                 <div className="bg-white border-b border-gray-200 px-4 py-2.5 flex items-center justify-between shadow-sm flex-shrink-0">
                   <button
                     disabled={activeProposalIdx === 0}
-                    onClick={() => setActiveProposalIdx(activeProposalIdx! - 1)}
+                    onClick={() => openDetail(activeProposalIdx! - 1)}
                     className="px-3 py-1.5 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded disabled:opacity-30 transition"
                   >
                     ← Sebelumnya
@@ -619,7 +619,7 @@ export default function FgdRoomClient({
                   </div>
                   <button
                     disabled={activeProposalIdx === proposals.length - 1}
-                    onClick={() => setActiveProposalIdx(activeProposalIdx! + 1)}
+                    onClick={() => openDetail(activeProposalIdx! + 1)}
                     className="px-3 py-1.5 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded disabled:opacity-30 transition"
                   >
                     Selanjutnya →
