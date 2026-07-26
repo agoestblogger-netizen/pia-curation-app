@@ -2,7 +2,8 @@
 
 import { db } from '@/lib/db';
 import { 
-  fgdSessions, fgdComments, fgdVotes, proposals, auditLogs
+  fgdSessions, fgdComments, fgdVotes, proposals, auditLogs,
+  screeningResults, users, curatorAssignments
 } from '@/lib/db/schema';
 import { eq, and, inArray } from 'drizzle-orm';
 import { getSession } from '@/lib/auth/session';
@@ -94,6 +95,73 @@ export async function submitFgdCommentAction(sessionId: number, proposalId: numb
 
   revalidatePath(`/fgd/${sessionId}`);
   return { success: true, commentId: comment.id };
+}
+
+/**
+ * Insert catatan kurator (dari screening) sebagai entri permanen di thread Ruang Diskusi FGD.
+ * Hanya diinsert SEKALI per proposal+session (idempoten — aman dipanggil berkali-kali).
+ * Dipanggil client-side saat proposal pertama kali dibuka di tab Diskusi & Voting.
+ */
+export async function insertCuratorNoteAsCommentAction(
+  sessionId: number,
+  proposalId: number
+) {
+  const session = await getSession();
+  if (!session) return { error: 'Unauthorized' };
+
+  // 1. Cek apakah sudah ada entry curator_note untuk proposal+session ini (dedup guard)
+  const existing = await db
+    .select({ id: fgdComments.id })
+    .from(fgdComments)
+    .where(
+      and(
+        eq(fgdComments.sessionId, sessionId),
+        eq(fgdComments.proposalId, proposalId),
+        eq(fgdComments.commentType, 'curator_note')
+      )
+    )
+    .limit(1);
+
+  if (existing.length > 0) return { success: true, skipped: true };
+
+  // 2. Fetch catatan kurator + nama kurator dari screening_results
+  const [sr] = await db
+    .select({
+      notes: screeningResults.notes,
+      recommendation: screeningResults.recommendation,
+      verdict: screeningResults.verdict,
+      curatorId: screeningResults.curatorId,
+    })
+    .from(screeningResults)
+    .where(eq(screeningResults.proposalId, proposalId))
+    .limit(1);
+
+  // Jika tidak ada catatan kurator, skip
+  if (!sr || (!sr.notes && !sr.recommendation)) return { success: true, skipped: true };
+  if (!sr.curatorId) return { success: true, skipped: true };
+
+  // 3. Build konten entri — gabungkan notes + rekomendasi dalam satu teks
+  const verdictLabel: Record<string, string> = {
+    lolos: 'Lolos', duplication: 'Duplikasi', mapped: 'Mapped',
+    non_compliance: 'Non-Compliance', low_impact: 'Low Impact',
+  };
+  const lines: string[] = [];
+  if (sr.verdict) lines.push(`[${verdictLabel[sr.verdict] ?? sr.verdict}]`);
+  if (sr.notes) lines.push(sr.notes);
+  if (sr.recommendation) lines.push(`Rekomendasi: ${sr.recommendation}`);
+  const content = lines.join('\n');
+
+  // 4. Insert sebagai comment dengan type curator_note, curatorId dari screening
+  await db.insert(fgdComments).values({
+    sessionId,
+    proposalId,
+    curatorId: sr.curatorId,
+    content,
+    commentType: 'curator_note',
+  });
+
+  revalidatePath(`/fgd/${sessionId}`);
+  return { success: true, skipped: false };
 }
 
 /**

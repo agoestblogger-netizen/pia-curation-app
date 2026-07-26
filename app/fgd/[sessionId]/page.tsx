@@ -178,6 +178,7 @@ export default async function FgdRoomPage({ params }: { params: Promise<{ sessio
       content: fgdComments.content,
       createdAt: fgdComments.createdAt,
       curatorName: users.name,
+      commentType: fgdComments.commentType,
     })
     .from(fgdComments)
     .leftJoin(users, eq(fgdComments.curatorId, users.id))

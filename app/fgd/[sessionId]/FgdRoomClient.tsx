@@ -2,7 +2,7 @@
 
 import { useState, useTransition, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { submitFgdCommentAction, submitFgdVoteAction, lockFgdSessionAction, releaseSingleFgdProposalAction } from '@/app/actions/fgd';
+import { submitFgdCommentAction, submitFgdVoteAction, lockFgdSessionAction, releaseSingleFgdProposalAction, insertCuratorNoteAsCommentAction } from '@/app/actions/fgd';
 import { generateFgdAiAnalysis } from '@/app/actions/aiAnalysis';
 import { uploadFgdAdditionalDocument } from '@/app/actions/uploadDocument';
 import { deleteFgdAdditionalDocument } from '@/app/actions/deleteDocument';
@@ -55,7 +55,7 @@ type Proposal = {
 };
 
 type Vote = { id: number; proposalId: number; curatorId: number; vote: string };
-type Comment = { id: number; proposalId: number; curatorId: number; content: string; createdAt: string; curatorName: string | null };
+type Comment = { id: number; proposalId: number; curatorId: number; content: string; createdAt: string; curatorName: string | null; commentType?: string | null };
 
 export default function FgdRoomClient({ 
   session, fgd, proposals, votes, comments, readOnly = false
@@ -206,6 +206,9 @@ export default function FgdRoomClient({
     return initial;
   });
 
+  // Track proposals already injected as curator_note comment (client-side dedup)
+  const [injectedNotes, setInjectedNotes] = useState<Set<number>>(new Set());
+
   const [confirmModal, setConfirmModal] = useState<{
     isOpen: boolean;
     title: string;
@@ -336,6 +339,12 @@ export default function FgdRoomClient({
   function openDetail(idx: number) {
     setActiveProposalIdx(idx);
     setActiveTab('detail');
+    // Inject curator note as comment thread entry (idempotent — server-side dedup guards against doubles)
+    const p = proposals[idx];
+    if (p && (p.curatorNotes || p.curatorRecommendation) && !injectedNotes.has(p.id)) {
+      setInjectedNotes(prev => new Set(prev).add(p.id));
+      insertCuratorNoteAsCommentAction(fgd.id, p.id).then(() => refresh());
+    }
   }
 
   // ─── Proposal Card ────────────────────────────────────────────────────────
@@ -663,39 +672,6 @@ export default function FgdRoomClient({
                             </div>
                           )}
 
-                          {/* Catatan Kurator (di atas Cek Duplikasi) */}
-                          <div className="bg-amber-50/60 border border-amber-200 p-4 rounded-lg shadow-xs my-3">
-                            <div className="flex items-center justify-between mb-2">
-                              <h4 className="font-bold text-amber-900 text-xs uppercase tracking-wider flex items-center gap-1.5">
-                                <span>📝</span> Catatan Kurator{activeProposal.curatorName ? ` — ${activeProposal.curatorName}` : ''}
-                              </h4>
-                              {activeProposal.verdict && (
-                                <span className={`px-2 py-0.5 rounded text-xs font-bold border ${VERDICT_COLORS[activeProposal.verdict] ?? 'bg-gray-100 text-gray-700'}`}>
-                                  {VERDICT_LABELS[activeProposal.verdict] ?? activeProposal.verdict}
-                                </span>
-                              )}
-                            </div>
-                            {activeProposal.curatorNotes || activeProposal.curatorRecommendation ? (
-                              <div className="space-y-2 text-xs text-amber-950">
-                                {activeProposal.curatorNotes && (
-                                  <p className="whitespace-pre-wrap leading-relaxed font-medium">
-                                    {activeProposal.curatorNotes}
-                                  </p>
-                                )}
-                                {activeProposal.curatorRecommendation && (
-                                  <div className="pt-2 border-t border-amber-200/60 text-amber-900">
-                                    <strong className="font-semibold">Rekomendasi: </strong>
-                                    <span>{activeProposal.curatorRecommendation}</span>
-                                  </div>
-                                )}
-                              </div>
-                            ) : (
-                              <p className="text-xs text-amber-700/80 italic">
-                                Tidak ada catatan dari kurator saat screening.
-                              </p>
-                            )}
-                          </div>
-
                           {/* 4. Duplication Check */}
                           {localAiAnalyses[activeProposal.id].duplicationCheck && (
                             <div className="bg-gray-100 border border-gray-300 p-3 rounded flex items-start">
@@ -714,38 +690,6 @@ export default function FgdRoomClient({
                               {activeProposal.summary}
                             </p>
                           )}
-                          {/* Catatan Kurator Fallback */}
-                          <div className="bg-amber-50/60 border border-amber-200 p-4 rounded-lg shadow-xs my-3">
-                            <div className="flex items-center justify-between mb-2">
-                              <h4 className="font-bold text-amber-900 text-xs uppercase tracking-wider flex items-center gap-1.5">
-                                <span>📝</span> Catatan Kurator{activeProposal.curatorName ? ` — ${activeProposal.curatorName}` : ''}
-                              </h4>
-                              {activeProposal.verdict && (
-                                <span className={`px-2 py-0.5 rounded text-xs font-bold border ${VERDICT_COLORS[activeProposal.verdict] ?? 'bg-gray-100 text-gray-700'}`}>
-                                  {VERDICT_LABELS[activeProposal.verdict] ?? activeProposal.verdict}
-                                </span>
-                              )}
-                            </div>
-                            {activeProposal.curatorNotes || activeProposal.curatorRecommendation ? (
-                              <div className="space-y-2 text-xs text-amber-950">
-                                {activeProposal.curatorNotes && (
-                                  <p className="whitespace-pre-wrap leading-relaxed font-medium">
-                                    {activeProposal.curatorNotes}
-                                  </p>
-                                )}
-                                {activeProposal.curatorRecommendation && (
-                                  <div className="pt-2 border-t border-amber-200/60 text-amber-900">
-                                    <strong className="font-semibold">Rekomendasi: </strong>
-                                    <span>{activeProposal.curatorRecommendation}</span>
-                                  </div>
-                                )}
-                              </div>
-                            ) : (
-                              <p className="text-xs text-amber-700/80 italic">
-                                Tidak ada catatan dari kurator saat screening.
-                              </p>
-                            )}
-                          </div>
                           <p className="text-gray-500 text-sm">
                             Memproses rangkuman proposal, klaim kunci, dan potensi duplikasi...
                           </p>
@@ -919,17 +863,40 @@ export default function FgdRoomClient({
                       ) : (
                         comments
                           .filter(c => c.proposalId === activeProposal.id)
-                          .map(c => (
-                            <div key={c.id} className="bg-white p-3 rounded-lg shadow-sm border border-gray-200">
-                              <div className="flex justify-between items-center mb-1">
-                                <span className="font-semibold text-xs text-gray-900">{c.curatorName ?? 'Anonim'}</span>
-                                <span className="text-xs text-gray-400">
-                                  {new Date(c.createdAt).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
-                                </span>
+                          .map(c => {
+                            const isCuratorNote = c.commentType === 'curator_note';
+                            return (
+                              <div
+                                key={c.id}
+                                className={`p-3 rounded-lg shadow-sm border ${
+                                  isCuratorNote
+                                    ? 'bg-amber-50 border-amber-200'
+                                    : 'bg-white border-gray-200'
+                                }`}
+                              >
+                                <div className="flex justify-between items-center mb-1">
+                                  <div className="flex items-center gap-1.5">
+                                    <span className={`font-semibold text-xs ${
+                                      isCuratorNote ? 'text-amber-900' : 'text-gray-900'
+                                    }`}>
+                                      {c.curatorName ?? 'Anonim'}
+                                    </span>
+                                    {isCuratorNote && (
+                                      <span className="text-xs font-semibold px-1.5 py-0.5 rounded bg-amber-200 text-amber-800">
+                                        Catatan Kurator
+                                      </span>
+                                    )}
+                                  </div>
+                                  <span className="text-xs text-gray-400">
+                                    {new Date(c.createdAt).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
+                                  </span>
+                                </div>
+                                <p className={`text-sm whitespace-pre-wrap ${
+                                  isCuratorNote ? 'text-amber-950' : 'text-gray-700'
+                                }`}>{c.content}</p>
                               </div>
-                              <p className="text-sm text-gray-700 whitespace-pre-wrap">{c.content}</p>
-                            </div>
-                          ))
+                            );
+                          })
                       )}
                     </div>
 

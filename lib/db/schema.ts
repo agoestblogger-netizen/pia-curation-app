@@ -490,6 +490,7 @@ export const fgdComments = pgTable('fgd_comments', {
   proposalId: integer('proposal_id').notNull().references(() => proposals.id),
   curatorId: integer('curator_id').notNull().references(() => users.id),
   content: text('content').notNull(),
+  commentType: text('comment_type'), // null = regular discussion, 'curator_note' = injected from screening
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
