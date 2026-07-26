@@ -1,7 +1,7 @@
 import { requireRole } from '@/lib/auth/helpers';
 import { db } from '@/lib/db';
 import { proposals, regionalFinalAssessments, regionalFinalSessions, regionalFinalJudges } from '@/lib/db/schema';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, ne, isNotNull, desc } from 'drizzle-orm';
 import { notFound, redirect } from 'next/navigation';
 import Link from 'next/link';
 import RegionalAssessClient from './RegionalAssessClient';
@@ -103,13 +103,47 @@ export default async function AssessPage({
   const proposal = regionalProposals.find(p => p.id === proposalId);
   if (!proposal) return notFound();
 
-  // Get existing assessment
-  const [existing] = await db.select().from(regionalFinalAssessments)
+  // Get existing assessment in current session
+  let [existing] = await db.select().from(regionalFinalAssessments)
     .where(and(
       eq(regionalFinalAssessments.sessionId, sessionId),
       eq(regionalFinalAssessments.proposalId, proposalId),
       eq(regionalFinalAssessments.judgeUserId, session.userId)
     ));
+
+  // If current assessment has no notes, check for previous notes by same judge for same proposal in other sessions
+  if (!existing || !existing.notes || existing.notes.trim() === '') {
+    const [prevWithNote] = await db.select({ notes: regionalFinalAssessments.notes })
+      .from(regionalFinalAssessments)
+      .where(and(
+        eq(regionalFinalAssessments.proposalId, proposalId),
+        eq(regionalFinalAssessments.judgeUserId, session.userId),
+        ne(regionalFinalAssessments.sessionId, sessionId),
+        isNotNull(regionalFinalAssessments.notes),
+        ne(regionalFinalAssessments.notes, '')
+      ))
+      .orderBy(desc(regionalFinalAssessments.submittedAt))
+      .limit(1);
+
+    if (prevWithNote?.notes) {
+      if (!existing) {
+        existing = {
+          id: 0,
+          sessionId,
+          proposalId,
+          judgeUserId: session.userId,
+          paramProblemFit: 0,
+          paramDampak: 0,
+          paramKelayakan: 0,
+          paramProfessional: 0,
+          notes: prevWithNote.notes,
+          submittedAt: new Date()
+        } as any;
+      } else {
+        existing.notes = prevWithNote.notes;
+      }
+    }
+  }
 
   const [judgeAssignment] = await db.select({ isFinalized: regionalFinalJudges.isFinalized })
     .from(regionalFinalJudges)

@@ -13,7 +13,7 @@ import {
   curatorAssignments
 } from '@/lib/db/schema';
 import { requireRole } from '@/lib/auth/helpers';
-import { eq, and, inArray, sql, arrayContains } from 'drizzle-orm';
+import { eq, and, inArray, sql, arrayContains, ne, isNotNull, desc } from 'drizzle-orm';
 import { KANWIL_CITIES } from '@/lib/constants';
 import { revalidatePath } from 'next/cache';
 import { createAuditLog } from '@/lib/audit';
@@ -162,6 +162,11 @@ export async function assignRegionalJudgesAction(sessionId: number, userIds: num
     after: { userIds, picUserId }
   });
 
+  // Sync previous notes for assigned judges and proposals in this session
+  if (userIds.length > 0) {
+    await syncPreviousJudgeNotesForSession(sessionId, userIds);
+  }
+
   revalidatePath('/admin/regional-final');
   revalidatePath('/curator/regional-final');
   revalidatePath('/regional-judge', 'layout');
@@ -207,6 +212,11 @@ export async function updateRegionalSessionStatusAction(sessionId: number, statu
     status,
     updatedAt: new Date(),
   }).where(eq(regionalFinalSessions.id, sessionId));
+
+  // Sync previous notes when opening session for assessment
+  if (status === 'penilaian_dibuka') {
+    await syncPreviousJudgeNotesForSession(sessionId);
+  }
 
   revalidatePath('/curator/regional-final');
   revalidatePath('/regional-judge', 'layout');
@@ -729,4 +739,105 @@ export async function finalizeSidangSessionAction(sessionId: number) {
   revalidatePath('/regional-dashboard');
   revalidatePath('/regional-judge', 'layout');
   return { success: true };
+}
+
+/**
+ * Copy catatan Juri (notes) dari sesi regional sebelumnya untuk pasangan (proposalId + judgeUserId)
+ * jika Juri yang sama menilai Proposal yang sama di sesi baru.
+ * Skor (paramProblemFit, dst) TIDAK ikut di-copy.
+ */
+export async function syncPreviousJudgeNotesForSession(sessionId: number, userIds?: number[]) {
+  try {
+    const proposalsInSession = await getRegionalFinalProposals(sessionId);
+    if (proposalsInSession.length === 0) return;
+
+    const proposalIds = proposalsInSession.map(p => p.id);
+
+    let judgeIds = userIds;
+    if (!judgeIds || judgeIds.length === 0) {
+      const judges = await db
+        .select({ userId: regionalFinalJudges.userId })
+        .from(regionalFinalJudges)
+        .where(eq(regionalFinalJudges.sessionId, sessionId));
+      judgeIds = judges.map(j => j.userId);
+    }
+
+    if (judgeIds.length === 0) return;
+
+    const previousAssessments = await db
+      .select({
+        proposalId: regionalFinalAssessments.proposalId,
+        judgeUserId: regionalFinalAssessments.judgeUserId,
+        notes: regionalFinalAssessments.notes,
+        submittedAt: regionalFinalAssessments.submittedAt,
+      })
+      .from(regionalFinalAssessments)
+      .where(
+        and(
+          inArray(regionalFinalAssessments.proposalId, proposalIds),
+          inArray(regionalFinalAssessments.judgeUserId, judgeIds),
+          ne(regionalFinalAssessments.sessionId, sessionId),
+          isNotNull(regionalFinalAssessments.notes),
+          ne(regionalFinalAssessments.notes, '')
+        )
+      )
+      .orderBy(desc(regionalFinalAssessments.submittedAt));
+
+    if (previousAssessments.length === 0) return;
+
+    const latestNotesMap = new Map<string, string>();
+    for (const prev of previousAssessments) {
+      const key = `${prev.proposalId}_${prev.judgeUserId}`;
+      if (!latestNotesMap.has(key) && prev.notes && prev.notes.trim() !== '') {
+        latestNotesMap.set(key, prev.notes);
+      }
+    }
+
+    if (latestNotesMap.size === 0) return;
+
+    const currentAssessments = await db
+      .select({
+        id: regionalFinalAssessments.id,
+        proposalId: regionalFinalAssessments.proposalId,
+        judgeUserId: regionalFinalAssessments.judgeUserId,
+        notes: regionalFinalAssessments.notes,
+      })
+      .from(regionalFinalAssessments)
+      .where(eq(regionalFinalAssessments.sessionId, sessionId));
+
+    const currentMap = new Map<string, { id: number; notes: string | null }>();
+    for (const curr of currentAssessments) {
+      currentMap.set(`${curr.proposalId}_${curr.judgeUserId}`, curr);
+    }
+
+    for (const [key, oldNote] of latestNotesMap.entries()) {
+      const [propIdStr, judgeIdStr] = key.split('_');
+      const propId = parseInt(propIdStr, 10);
+      const judgeId = parseInt(judgeIdStr, 10);
+
+      const existingInCurr = currentMap.get(key);
+
+      if (existingInCurr) {
+        if (!existingInCurr.notes || existingInCurr.notes.trim() === '') {
+          await db
+            .update(regionalFinalAssessments)
+            .set({ notes: oldNote })
+            .where(eq(regionalFinalAssessments.id, existingInCurr.id));
+        }
+      } else {
+        await db.insert(regionalFinalAssessments).values({
+          sessionId,
+          proposalId: propId,
+          judgeUserId: judgeId,
+          paramProblemFit: 0,
+          paramDampak: 0,
+          paramKelayakan: 0,
+          paramProfessional: 0,
+          notes: oldNote,
+        });
+      }
+    }
+  } catch (err) {
+    console.error('Error in syncPreviousJudgeNotesForSession:', err);
+  }
 }
