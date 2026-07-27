@@ -102,6 +102,12 @@ export default function CuratorBoard({ proposals, duplicates = [] }: { proposals
                   Resubmission
                 </span>
               )}
+              {p.status === 'in_review' && (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-bold bg-amber-50 text-amber-700 border border-amber-200 whitespace-nowrap" title="Sudah pernah diisi draft tetapi belum disubmit">
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+                  Draft (Belum Submit)
+                </span>
+              )}
             </div>
             <div className="text-xs text-gray-600 font-semibold mb-2">
               {p.division || p.regionCenter || 'Operasional'}
@@ -113,8 +119,14 @@ export default function CuratorBoard({ proposals, duplicates = [] }: { proposals
 
           {/* Right action / Arrow */}
           <div className="flex-shrink-0 ml-auto pl-4 self-center flex flex-col items-end space-y-2">
-            <Link href={`/curator/proposals/${p.id}`} className="hidden md:inline-block px-3 py-1 bg-green-100 text-green-800 text-xs font-bold rounded-md border border-green-200 hover:bg-green-200">
-              {p.status === 'completed' ? 'Lihat Detail' : 'Lakukan Screening'}
+            <Link href={`/curator/proposals/${p.id}`} className={`hidden md:inline-block px-3 py-1 text-xs font-bold rounded-md border transition-colors ${
+              p.status === 'completed' 
+                ? 'bg-emerald-100 text-emerald-800 border-emerald-200 hover:bg-emerald-200' 
+                : p.status === 'in_review'
+                ? 'bg-amber-100 text-amber-800 border-amber-200 hover:bg-amber-200'
+                : 'bg-green-100 text-green-800 border-green-200 hover:bg-green-200'
+            }`}>
+              {p.status === 'completed' ? 'Lihat Detail' : p.status === 'in_review' ? 'Lanjutkan Draft' : 'Lakukan Screening'}
             </Link>
             <svg className="w-5 h-5 text-gray-300 group-hover:text-gray-500 transition-colors md:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" /></svg>
           </div>
@@ -123,33 +135,54 @@ export default function CuratorBoard({ proposals, duplicates = [] }: { proposals
     </div>
   );
 
+  // Count completed proposals (HANYA status === 'completed')
+  const completedCount = proposals.filter(p => p.status === 'completed').length;
+  const pendingCount = proposals.filter(p => p.status !== 'completed').length;
+
   return (
     <div>
       {/* Tabs */}
       <div className="flex space-x-1 mb-8 border border-gray-200 rounded-full w-max bg-white p-1 shadow-sm">
         <button 
           onClick={() => setActiveTab('assigned')}
-          className={`px-6 py-2 rounded-full text-sm font-semibold transition-colors ${
+          className={`px-6 py-2 rounded-full text-sm font-semibold transition-colors flex items-center gap-2 ${
             activeTab === 'assigned' ? 'bg-[#0A4736] text-white' : 'text-gray-500 hover:text-gray-900'
           }`}
         >
-          Belum Discreening
+          <span>Belum Discreening</span>
+          <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${
+            activeTab === 'assigned' ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-600'
+          }`}>
+            {pendingCount}
+          </span>
         </button>
         <button 
           onClick={() => setActiveTab('review')}
-          className={`px-6 py-2 rounded-full text-sm font-semibold transition-colors ${
+          className={`px-6 py-2 rounded-full text-sm font-semibold transition-colors flex items-center gap-2 ${
             activeTab === 'review' ? 'bg-[#0A4736] text-white' : 'text-gray-500 hover:text-gray-900'
           }`}
         >
-          Selesai Discreening
+          <span>Selesai Discreening</span>
+          <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${
+            activeTab === 'review' ? 'bg-white/20 text-white' : 'bg-emerald-100 text-emerald-800'
+          }`}>
+            {completedCount}
+          </span>
         </button>
         <button 
           onClick={() => setActiveTab('duplicates')}
-          className={`px-6 py-2 rounded-full text-sm font-semibold transition-colors ${
+          className={`px-6 py-2 rounded-full text-sm font-semibold transition-colors flex items-center gap-2 ${
             activeTab === 'duplicates' ? 'bg-red-600 text-white' : 'text-gray-500 hover:text-gray-900'
           }`}
         >
-          Potensi Duplikat
+          <span>Potensi Duplikat</span>
+          {duplicates.length > 0 && (
+            <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${
+              activeTab === 'duplicates' ? 'bg-white/20 text-white' : 'bg-red-100 text-red-700'
+            }`}>
+              {duplicates.length}
+            </span>
+          )}
         </button>
       </div>
 
