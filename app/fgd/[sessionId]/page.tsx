@@ -94,7 +94,6 @@ export default async function FgdRoomPage({ params }: { params: Promise<{ sessio
       p.link_surat_orisinalitas as "linkSuratOrisinalitas",
       p.resubmit_document_text as "resubmitDocumentText",
       p.resubmit_ai_analysis as "resubmitAiAnalysis",
-      p.cached_resubmit_pdf_urls as "cachedResubmitPdfUrls",
       ROW_NUMBER() OVER (PARTITION BY p.category, p.region_center ORDER BY p.id ASC) as "rowNumber",
       sr.verdict,
       sr.notes as "curatorNotes",
