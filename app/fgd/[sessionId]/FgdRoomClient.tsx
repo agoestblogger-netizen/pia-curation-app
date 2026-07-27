@@ -413,6 +413,36 @@ export default function FgdRoomClient({
   const [locking, setLocking] = useState(false);
   const [releasing, setReleasing] = useState<Record<number, boolean>>({});
   const [selectedForFinal, setSelectedForFinal] = useState<number[]>([]);
+  const [manuallyToggled, setManuallyToggled] = useState<Set<number>>(new Set());
+
+  // Auto-check proposals where nominateCount > notNominateCount (unless manually toggled by coordinator)
+  useEffect(() => {
+    if (fgd.status === 'locked') return;
+
+    setSelectedForFinal((prev) => {
+      const next = new Set(prev);
+      let hasChange = false;
+
+      proposals.forEach((p) => {
+        if (manuallyToggled.has(p.id)) return;
+
+        const nomCount = localVotes.filter((v) => v.proposalId === p.id && v.vote === 'nominate').length;
+        const notCount = localVotes.filter((v) => v.proposalId === p.id && v.vote === 'not_nominate').length;
+        const shouldBeChecked = nomCount > notCount;
+
+        const isChecked = next.has(p.id);
+        if (shouldBeChecked && !isChecked) {
+          next.add(p.id);
+          hasChange = true;
+        } else if (!shouldBeChecked && isChecked) {
+          next.delete(p.id);
+          hasChange = true;
+        }
+      });
+
+      return hasChange ? Array.from(next) : prev;
+    });
+  }, [localVotes, proposals, fgd.status, manuallyToggled]);
 
   // Expand/collapse state for verdict groups in multi-status view
   const [expandedVerdicts, setExpandedVerdicts] = useState<Record<string, boolean>>(() => {
@@ -537,8 +567,9 @@ export default function FgdRoomClient({
   }
 
   function toggleFinalSelection(id: number) {
-    setSelectedForFinal(prev =>
-      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+    setManuallyToggled((prev) => new Set(prev).add(id));
+    setSelectedForFinal((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
     );
   }
 
