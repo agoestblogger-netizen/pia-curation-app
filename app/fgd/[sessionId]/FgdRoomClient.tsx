@@ -477,12 +477,15 @@ export default function FgdRoomClient({
     });
   }, [localVotes, proposals, fgd.status, manuallyToggled]);
 
-  // Expand/collapse state for verdict groups in multi-status view
+  // Expand/collapse state for verdict groups in multi-status view (default: all expanded)
   const [expandedVerdicts, setExpandedVerdicts] = useState<Record<string, boolean>>(() => {
     const initial: Record<string, boolean> = {};
-    for (const v of Object.keys(VERDICT_LABELS)) initial[v] = false; // default all collapsed
+    for (const v of Object.keys(VERDICT_LABELS)) initial[v] = true; // default all expanded
     return initial;
   });
+
+  // Expand/collapse state for category groups in single-status grouped view (default: all expanded)
+  const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>({});
 
   const [confirmModal, setConfirmModal] = useState<{
     isOpen: boolean;
@@ -849,7 +852,8 @@ export default function FgdRoomClient({
               // ── MULTI-STATUS: Group by screening verdict with expand/collapse ──
               <div className="space-y-4">
                 {Object.entries(verdictGroupedProposals).map(([verdict, groupProps]) => {
-                  const isExpanded = expandedVerdicts[verdict] !== false;
+                  const isFilterActive = searchQuery.trim() !== '' || curatorFilter !== '';
+                  const isExpanded = isFilterActive || expandedVerdicts[verdict] !== false;
                   const verdictLabel = VERDICT_LABELS[verdict] ?? verdict;
                   const verdictColor = VERDICT_COLORS[verdict] ?? 'bg-gray-100 text-gray-700 border-gray-200';
                   return (
@@ -886,20 +890,37 @@ export default function FgdRoomClient({
             ) : fgd.viewMode === 'grouped' ? (
               // ── CATEGORY GROUPED MODE (single-status, grouped scope) ──
               <div className="space-y-6">
-                {Object.entries(groupedProposals).map(([groupName, groupProps]) => (
-                  <div key={groupName} className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-                    <div className="bg-gray-50 px-4 py-2.5 border-b border-gray-200 flex items-center justify-between">
-                      <h3 className="font-bold text-gray-800 text-sm">{groupName}</h3>
-                      <span className="text-xs text-gray-500 font-medium">{groupProps.length} proposal</span>
+                {Object.entries(groupedProposals).map(([groupName, groupProps]) => {
+                  const isFilterActive = searchQuery.trim() !== '' || curatorFilter !== '';
+                  const isExpanded = isFilterActive || expandedCategories[groupName] !== false;
+                  return (
+                    <div key={groupName} className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+                      <button
+                        onClick={() => setExpandedCategories(prev => ({ ...prev, [groupName]: !isExpanded }))}
+                        className="w-full bg-gray-50 px-4 py-2.5 border-b border-gray-200 flex items-center justify-between hover:bg-gray-100 transition text-left"
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <h3 className="font-bold text-gray-800 text-sm">{groupName}</h3>
+                          <span className="text-xs text-gray-500 font-medium">{groupProps.length} proposal</span>
+                        </div>
+                        <svg
+                          className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}
+                          fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                        >
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </button>
+                      {isExpanded && (
+                        <div className="divide-y divide-gray-100">
+                          {groupProps.map((p) => {
+                            const idx = proposals.findIndex(x => x.id === p.id);
+                            return <ProposalRow key={p.id} p={p} idx={idx} />;
+                          })}
+                        </div>
+                      )}
                     </div>
-                    <div className="divide-y divide-gray-100">
-                      {groupProps.map((p) => {
-                        const idx = proposals.findIndex(x => x.id === p.id);
-                        return <ProposalRow key={p.id} p={p} idx={idx} />;
-                      })}
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             ) : (
               // ── FLAT MODE (single-status, flat scope) ──
