@@ -1374,13 +1374,10 @@ export default function FgdRoomClient({
                               </div>
                             )}
 
-                            {/* 2. BAGIAN B: GAMBAR SKETSA DARI LINK GOOGLE DRIVE (HIDE FAILED IMAGES COMPLETELY) */}
+                            {/* 2. BAGIAN B: GAMBAR SKETSA DARI LINK GOOGLE DRIVE (WITH GRACEFUL ONERROR FALLBACK) */}
                             {(() => {
                               const driveItems = extractGoogleDriveImageUrls(activeProposal.resubmitDocumentText || activeProposal.linkResubmitProposal);
-                              // Filter out any image URLs that triggered load errors so they are completely hidden
-                              const validItems = driveItems.filter(item => !imageLoadErrors[item.cdnUrl]);
-                              if (validItems.length === 0) return null;
-
+                              if (driveItems.length === 0) return null;
                               return (
                                 <div className="space-y-2 pt-2 border-t border-slate-200">
                                   <h5 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center space-x-1.5">
@@ -1388,21 +1385,40 @@ export default function FgdRoomClient({
                                     <span>Gambar Sketsa / Diagram Inovasi (dari Google Drive)</span>
                                   </h5>
                                   <div className="grid grid-cols-1 gap-4 pt-1">
-                                    {validItems.map((item, idx) => (
-                                      <div key={item.cdnUrl} className="bg-slate-50 p-3 rounded-lg border border-slate-200 text-center">
-                                        <img 
-                                          src={item.cdnUrl} 
-                                          alt={`Sketsa Resubmission #${idx + 1}`}
-                                          className="max-w-full h-auto mx-auto rounded border border-slate-300 shadow-xs"
-                                          loading="lazy"
-                                          referrerPolicy="no-referrer"
-                                          onError={() => setImageLoadErrors(prev => ({ ...prev, [item.cdnUrl]: true }))}
-                                        />
-                                        <div className="text-[11px] text-slate-500 mt-2 font-medium">
-                                          Sketsa / Diagram Resubmission #{idx + 1}
+                                    {driveItems.map((item, idx) => {
+                                      const hasError = imageLoadErrors[item.cdnUrl];
+                                      return (
+                                        <div key={idx} className="bg-slate-50 p-3 rounded-lg border border-slate-200 text-center">
+                                          {!hasError ? (
+                                            <>
+                                              <img 
+                                                src={item.cdnUrl} 
+                                                alt={`Sketsa Resubmission #${idx + 1}`}
+                                                className="max-w-full h-auto mx-auto rounded border border-slate-300 shadow-xs"
+                                                loading="lazy"
+                                                referrerPolicy="no-referrer"
+                                                onError={() => setImageLoadErrors(prev => ({ ...prev, [item.cdnUrl]: true }))}
+                                              />
+                                              <div className="text-[11px] text-slate-500 mt-2 font-medium">
+                                                Sketsa / Diagram Resubmission #{idx + 1}
+                                              </div>
+                                            </>
+                                          ) : (
+                                            <div className="p-3.5 bg-amber-50/70 border border-amber-200 rounded-md text-slate-700 text-xs flex flex-col md:flex-row items-center justify-between gap-2">
+                                              <span className="text-amber-900 font-medium">⚠️ Gambar sketsa tidak dapat dimuat langsung (Link Private / Memerlukan Akses)</span>
+                                              <a
+                                                href={item.originalUrl}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="px-3 py-1 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs rounded transition flex-shrink-0"
+                                              >
+                                                🔗 Buka Gambar di Google Drive
+                                              </a>
+                                            </div>
+                                          )}
                                         </div>
-                                      </div>
-                                    ))}
+                                      );
+                                    })}
                                   </div>
                                 </div>
                               );
