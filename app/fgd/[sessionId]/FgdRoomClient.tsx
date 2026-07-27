@@ -56,25 +56,6 @@ function extractSupportingImageUrls(text: string | null | undefined): { original
   return results;
 }
 
-// Helper function to transform raw PDF URLs into inline embeddable iframe URLs
-function getEmbeddablePdfUrl(url: string | null | undefined): string {
-  if (!url) return '';
-  
-  // 1. Google Drive PDF URLs -> convert to official /preview embed format
-  const driveMatch = url.match(/drive\.google\.com\/(?:file\/d\/|open\?id=)([a-zA-Z0-9_-]+)/i);
-  if (driveMatch && driveMatch[1]) {
-    return `https://drive.google.com/file/d/${driveMatch[1]}/preview`;
-  }
-
-  // 2. Vercel Blob URLs -> direct display
-  if (url.includes('public.blob.vercel-storage.com')) {
-    return url;
-  }
-
-  // 3. Contabo Storage S3 or external PDFs -> Google Docs PDF Viewer Embed Proxy (bypasses octet-stream headers)
-  return `https://docs.google.com/gview?url=${encodeURIComponent(url)}&embedded=true`;
-}
-
 // 5 warna per verdict — sesuai SCREENING_VERDICT_COLORS
 const VERDICT_COLORS: Record<string, string> = {
   lolos: 'bg-green-100 text-green-800 border-green-200',
@@ -1407,77 +1388,7 @@ export default function FgdRoomClient({
                               </div>
                             )}
 
-                            {/* 1. BAGIAN UTAMA (DI ATAS): EMBED DOKUMEN PDF RESUBMISSION UTUH */}
-                            {(() => {
-                              const pdfItems = localResubmitPdfs[activeProposal.id] || (activeProposal.linkResubmitProposal ? [{
-                                title: 'Dokumen Resubmission Utama',
-                                originalUrl: activeProposal.linkResubmitProposal,
-                                isFallbackOnly: false
-                              }] : []);
-
-                              if (pdfItems.length === 0) return null;
-
-                              return (
-                                <div className="space-y-6 pt-1">
-                                  {pdfItems.map((pdfItem, idx) => {
-                                    const embedSrc = pdfItem.embedUrl || getEmbeddablePdfUrl(pdfItem.blobUrl || pdfItem.originalUrl);
-                                    return (
-                                      <div key={pdfItem.originalUrl + idx} className="space-y-2">
-                                        <div className="flex items-center justify-between">
-                                          <h5 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center space-x-1.5">
-                                            <span>📄</span>
-                                            <span>{pdfItem.title}</span>
-                                            {pdfItem.sizeMb && (
-                                              <span className="text-[10px] bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded font-normal lowercase">
-                                                ({pdfItem.sizeMb} MB)
-                                              </span>
-                                            )}
-                                          </h5>
-                                          {/* Downgraded secondary link icon */}
-                                          <a
-                                            href={pdfItem.blobUrl || pdfItem.originalUrl}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="text-slate-400 hover:text-indigo-600 transition p-1 text-xs flex items-center space-x-1"
-                                            title="Buka di Tab Baru"
-                                          >
-                                            <span className="text-[11px]">Buka Tab Baru</span>
-                                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
-                                          </a>
-                                        </div>
-
-                                        {!pdfItem.isFallbackOnly ? (
-                                          <div className="w-full bg-slate-900 rounded-lg overflow-hidden border border-slate-300 shadow-xs">
-                                            <iframe
-                                              src={embedSrc}
-                                              className="w-full h-[600px] bg-white border-0"
-                                              title={pdfItem.title}
-                                              loading="lazy"
-                                            />
-                                          </div>
-                                        ) : (
-                                          <div className="p-4 bg-amber-50/80 border border-amber-200 rounded-md text-xs text-slate-700 flex flex-col md:flex-row items-center justify-between gap-3">
-                                            <span className="font-medium text-amber-950">
-                                              📄 Dokumen PDF ini berukuran {pdfItem.sizeMb ? `>30MB (${pdfItem.sizeMb}MB)` : 'besar/perlu akses langsung'}. Tampilan embed inline di-skip untuk menjaga performa.
-                                            </span>
-                                            <a
-                                              href={pdfItem.originalUrl}
-                                              target="_blank"
-                                              rel="noopener noreferrer"
-                                              className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs rounded transition flex-shrink-0 shadow-2xs"
-                                            >
-                                              🔗 Unduh / Buka Dokumen PDF
-                                            </a>
-                                          </div>
-                                        )}
-                                      </div>
-                                    );
-                                  })}
-                                </div>
-                              );
-                            })()}
-
-                            {/* 2. BAGIAN PENDUKUNG (DI BAWAH): GAMBAR SKETSA DARI GOOGLE DRIVE / CONTABO STORAGE */}
+                            {/* 1. BAGIAN B: GAMBAR SKETSA DARI GOOGLE DRIVE / CONTABO STORAGE */}
                             {(() => {
                               const imageItems = extractSupportingImageUrls(activeProposal.resubmitDocumentText || activeProposal.linkResubmitProposal);
                               // Filter out any image URLs that triggered load errors so they are completely hidden
@@ -1485,7 +1396,7 @@ export default function FgdRoomClient({
                               if (validItems.length === 0) return null;
 
                               return (
-                                <div className="space-y-2 pt-4 border-t border-slate-200">
+                                <div className="space-y-2 pt-2">
                                   <h5 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center space-x-1.5">
                                     <span>🖼️</span>
                                     <span>Gambar Sketsa / Diagram Inovasi</span>
@@ -1507,6 +1418,71 @@ export default function FgdRoomClient({
                                       </div>
                                     ))}
                                   </div>
+                                </div>
+                              );
+                            })()}
+
+                            {/* 2. BAGIAN C: EMBED DOKUMEN PDF RESUBMISSION UTUH */}
+                            {(() => {
+                              const pdfItems = localResubmitPdfs[activeProposal.id] || (activeProposal.linkResubmitProposal ? [{
+                                title: 'Dokumen Resubmission Utama',
+                                originalUrl: activeProposal.linkResubmitProposal,
+                                isFallbackOnly: false
+                              }] : []);
+
+                              if (pdfItems.length === 0) return null;
+
+                              return (
+                                <div className="space-y-6 pt-3 border-t border-slate-200">
+                                  {pdfItems.map((pdfItem, idx) => (
+                                    <div key={pdfItem.originalUrl + idx} className="space-y-2">
+                                      <div className="flex items-center justify-between">
+                                        <h5 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center space-x-1.5">
+                                          <span>📄</span>
+                                          <span>{pdfItem.title}</span>
+                                          {pdfItem.sizeMb && (
+                                            <span className="text-[10px] bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded font-normal lowercase">
+                                              ({pdfItem.sizeMb} MB)
+                                            </span>
+                                          )}
+                                        </h5>
+                                        <a
+                                          href={pdfItem.blobUrl || pdfItem.originalUrl}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="text-xs font-semibold text-indigo-600 hover:text-indigo-800 flex items-center space-x-1"
+                                        >
+                                          <span>Buka di Tab Baru</span>
+                                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+                                        </a>
+                                      </div>
+
+                                      {!pdfItem.isFallbackOnly ? (
+                                        <div className="w-full bg-slate-900 rounded-lg overflow-hidden border border-slate-300 shadow-xs">
+                                          <iframe
+                                            src={pdfItem.blobUrl || pdfItem.originalUrl}
+                                            className="w-full h-[580px] bg-white border-0"
+                                            title={pdfItem.title}
+                                            loading="lazy"
+                                          />
+                                        </div>
+                                      ) : (
+                                        <div className="p-4 bg-amber-50/80 border border-amber-200 rounded-md text-xs text-slate-700 flex flex-col md:flex-row items-center justify-between gap-3">
+                                          <span className="font-medium text-amber-950">
+                                            📄 Dokumen PDF ini berukuran {pdfItem.sizeMb ? `>30MB (${pdfItem.sizeMb}MB)` : 'besar/perlu akses langsung'}. Tampilan embed inline di-skip untuk menjaga performa.
+                                          </span>
+                                          <a
+                                            href={pdfItem.originalUrl}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="px-3.5 py-1.5 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-md transition flex-shrink-0 shadow-2xs"
+                                          >
+                                            🔗 Unduh / Buka Dokumen PDF
+                                          </a>
+                                        </div>
+                                      )}
+                                    </div>
+                                  ))}
                                 </div>
                               );
                             })()}
