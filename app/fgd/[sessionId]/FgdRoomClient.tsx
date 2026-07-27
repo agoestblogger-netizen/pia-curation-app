@@ -284,7 +284,29 @@ export default function FgdRoomClient({
             // Dedup 1: Exact ID check
             if (prev.some((c) => c.id === newComment.id)) return prev;
 
-            // Dedup 2: Optimistic UI check from same user with same content
+            // Dedup 2: Curator note check (replace synthetic curator_note entry)
+            if (newComment.comment_type === 'curator_note') {
+              const hasCuratorNote = prev.some(
+                (c) => c.proposalId === newComment.proposal_id && c.commentType === 'curator_note'
+              );
+              if (hasCuratorNote) {
+                return prev.map((c) =>
+                  c.proposalId === newComment.proposal_id && c.commentType === 'curator_note'
+                    ? {
+                        id: newComment.id,
+                        proposalId: newComment.proposal_id,
+                        curatorId: newComment.curator_id,
+                        content: newComment.content,
+                        createdAt: newComment.created_at,
+                        curatorName: c.curatorName ?? proposals.find((p) => p.id === newComment.proposal_id)?.curatorName ?? null,
+                        commentType: newComment.comment_type,
+                      }
+                    : c
+                );
+              }
+            }
+
+            // Dedup 3: Optimistic UI check from same user with same content
             const isOptimisticDuplicate = prev.some(
               (c) =>
                 c.proposalId === newComment.proposal_id &&
@@ -1233,48 +1255,64 @@ export default function FgdRoomClient({
 
                     {/* Chat Thread */}
                     <div className="flex-1 overflow-y-auto mb-4 space-y-3 pr-1">
-                      {localComments.filter(c => c.proposalId === activeProposal.id).length === 0 ? (
-                        <p className="text-gray-400 text-sm italic text-center mt-10">
-                          Belum ada catatan diskusi untuk proposal ini.
-                        </p>
-                      ) : (
-                          localComments
-                          .filter(c => c.proposalId === activeProposal.id)
-                          .map(c => {
-                            const isCuratorNote = c.commentType === 'curator_note';
-                            return (
-                              <div
-                                key={c.id}
-                                className={`p-3 rounded-lg shadow-sm border ${
-                                  isCuratorNote
-                                    ? 'bg-amber-50 border-amber-200'
-                                    : 'bg-white border-gray-200'
-                                }`}
-                              >
-                                <div className="flex justify-between items-center mb-1">
-                                  <div className="flex items-center gap-1.5">
-                                    <span className={`font-semibold text-xs ${
-                                      isCuratorNote ? 'text-amber-900' : 'text-gray-900'
-                                    }`}>
-                                      {c.curatorName ?? 'Anonim'}
-                                    </span>
-                                    {isCuratorNote && (
-                                      <span className="text-xs font-semibold px-1.5 py-0.5 rounded bg-amber-200 text-amber-800">
-                                        Catatan Kurator
-                                      </span>
-                                    )}
-                                  </div>
-                                  <span className="text-xs text-gray-400">
-                                    {new Date(c.createdAt).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
+                      {(() => {
+                        const rawComments = localComments.filter(c => c.proposalId === activeProposal.id);
+                        const seenIds = new Set<number>();
+                        const seenCuratorNotes = new Set<number>();
+                        const dedupedComments = rawComments.filter((c) => {
+                          if (c.id && seenIds.has(c.id)) return false;
+                          if (c.id) seenIds.add(c.id);
+
+                          if (c.commentType === 'curator_note') {
+                            if (seenCuratorNotes.has(c.proposalId)) return false;
+                            seenCuratorNotes.add(c.proposalId);
+                          }
+                          return true;
+                        });
+
+                        if (dedupedComments.length === 0) {
+                          return (
+                            <p className="text-gray-400 text-sm italic text-center mt-10">
+                              Belum ada catatan diskusi untuk proposal ini.
+                            </p>
+                          );
+                        }
+
+                        return dedupedComments.map((c) => {
+                          const isCuratorNote = c.commentType === 'curator_note';
+                          return (
+                            <div
+                              key={c.id}
+                              className={`p-3 rounded-lg shadow-sm border ${
+                                isCuratorNote
+                                  ? 'bg-amber-50 border-amber-200'
+                                  : 'bg-white border-gray-200'
+                              }`}
+                            >
+                              <div className="flex justify-between items-center mb-1">
+                                <div className="flex items-center gap-1.5">
+                                  <span className={`font-semibold text-xs ${
+                                    isCuratorNote ? 'text-amber-900' : 'text-gray-900'
+                                  }`}>
+                                    {c.curatorName ?? 'Anonim'}
                                   </span>
+                                  {isCuratorNote && (
+                                    <span className="text-xs font-semibold px-1.5 py-0.5 rounded bg-amber-200 text-amber-800">
+                                      Catatan Kurator
+                                    </span>
+                                  )}
                                 </div>
-                                <p className={`text-sm whitespace-pre-wrap ${
-                                  isCuratorNote ? 'text-amber-950' : 'text-gray-700'
-                                }`}>{c.content}</p>
+                                <span className="text-xs text-gray-400">
+                                  {new Date(c.createdAt).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
+                                </span>
                               </div>
-                            );
-                          })
-                      )}
+                              <p className={`text-sm whitespace-pre-wrap ${
+                                isCuratorNote ? 'text-amber-950' : 'text-gray-700'
+                              }`}>{c.content}</p>
+                            </div>
+                          );
+                        });
+                      })()}
                     </div>
 
                     {/* Input */}

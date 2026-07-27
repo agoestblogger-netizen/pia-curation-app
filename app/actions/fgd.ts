@@ -152,13 +152,20 @@ export async function insertCuratorNoteAsCommentAction(
   const content = lines.join('\n');
 
   // 4. Insert sebagai comment dengan type curator_note, curatorId dari screening
-  await db.insert(fgdComments).values({
-    sessionId,
-    proposalId,
-    curatorId: sr.curatorId,
-    content,
-    commentType: 'curator_note',
-  });
+  try {
+    await db.insert(fgdComments).values({
+      sessionId,
+      proposalId,
+      curatorId: sr.curatorId,
+      content,
+      commentType: 'curator_note',
+    });
+  } catch (e: any) {
+    if (e?.code === '23505' || e?.message?.includes('unique') || e?.message?.includes('duplicate')) {
+      return { success: true, skipped: true, content };
+    }
+    throw e;
+  }
 
   revalidatePath(`/fgd/${sessionId}`);
   return { success: true, skipped: false, content };
