@@ -3,11 +3,30 @@
 import { useState, useTransition, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { submitFgdCommentAction, submitFgdVoteAction, lockFgdSessionAction, releaseSingleFgdProposalAction, insertCuratorNoteAsCommentAction } from '@/app/actions/fgd';
-import { generateFgdAiAnalysis } from '@/app/actions/aiAnalysis';
+import { generateFgdAiAnalysis, generateResubmissionAiAnalysis } from '@/app/actions/aiAnalysis';
 import { uploadFgdAdditionalDocument } from '@/app/actions/uploadDocument';
 import { deleteFgdAdditionalDocument } from '@/app/actions/deleteDocument';
 import ProposalDocumentButtons from '@/app/components/ProposalDocumentButtons';
 import { supabase } from '@/lib/supabase/client';
+
+// Helper function to extract Google Drive image links and convert to direct CDN display URLs
+function extractGoogleDriveImageUrls(text: string | null | undefined): string[] {
+  if (!text) return [];
+  const driveRegex = /(?:https?:\/\/)?drive\.google\.com\/(?:file\/d\/|open\?id=)([a-zA-Z0-9_-]+)/g;
+  const matches = [...text.matchAll(driveRegex)];
+  const urls: string[] = [];
+  const seen = new Set<string>();
+
+  for (const m of matches) {
+    const fileId = m[1];
+    if (fileId && !seen.has(fileId)) {
+      seen.add(fileId);
+      urls.push(`https://lh3.googleusercontent.com/d/${fileId}`);
+    }
+  }
+
+  return urls;
+}
 
 // 5 warna per verdict — sesuai SCREENING_VERDICT_COLORS
 const VERDICT_COLORS: Record<string, string> = {
@@ -46,6 +65,8 @@ type Proposal = {
   linkProposal: string | null;
   linkResubmitProposal?: string | null;
   linkSuratOrisinalitas?: string | null;
+  resubmitDocumentText?: string | null;
+  resubmitAiAnalysis?: any;
   rowNumber: number;
   verdict: string;
   curatorName?: string | null;
@@ -170,6 +191,46 @@ export default function FgdRoomClient({
     });
   }
 
+  // Local state for Resubmission AI analyses
+  const [localResubmitAiAnalyses, setLocalResubmitAiAnalyses] = useState<Record<number, any>>(() => {
+    const map: Record<number, any> = {};
+    for (const p of proposals) {
+      if (p.resubmitAiAnalysis) map[p.id] = p.resubmitAiAnalysis;
+    }
+    return map;
+  });
+
+  const [isGeneratingResubmitAi, setIsGeneratingResubmitAi] = useState<Record<number, boolean>>({});
+  const [resubmitAiError, setResubmitAiError] = useState<Record<number, string | null>>({});
+  const [expandedResubmitSections, setExpandedResubmitSections] = useState<Record<number, boolean>>({});
+
+  const handleGenerateResubmitAi = async (proposalId: number) => {
+    if (isGeneratingResubmitAi[proposalId] || localResubmitAiAnalyses[proposalId]) return;
+
+    setIsGeneratingResubmitAi(prev => ({ ...prev, [proposalId]: true }));
+    setResubmitAiError(prev => ({ ...prev, [proposalId]: null }));
+
+    try {
+      const res = await generateResubmissionAiAnalysis(proposalId);
+      if (res.error) {
+        setResubmitAiError(prev => ({ ...prev, [proposalId]: res.error as string }));
+      } else if (res.data) {
+        setLocalResubmitAiAnalyses(prev => ({ ...prev, [proposalId]: res.data }));
+      }
+    } catch (e: any) {
+      setResubmitAiError(prev => ({ ...prev, [proposalId]: e.message || 'Terjadi kesalahan sistem.' }));
+    } finally {
+      setIsGeneratingResubmitAi(prev => ({ ...prev, [proposalId]: false }));
+      // Auto-expand section ONLY ONCE when background process completes for this proposal
+      setExpandedResubmitSections(prev => {
+        if (prev[proposalId] === undefined) {
+          return { ...prev, [proposalId]: true };
+        }
+        return prev;
+      });
+    }
+  };
+
   const handleGenerateAi = async (proposalId: number) => {
     setIsGeneratingAi(prev => ({ ...prev, [proposalId]: true }));
     setAiError(prev => ({ ...prev, [proposalId]: null }));
@@ -204,6 +265,26 @@ export default function FgdRoomClient({
       }
     }
   }, [activeTab, activeProposalIdx, localAiAnalyses, isGeneratingAi, proposals]);
+
+  // Background process: Auto-generate Resubmission AI Analysis & auto-expand when proposal detail is opened
+  useEffect(() => {
+    if (activeTab === 'detail' && activeProposalIdx !== null) {
+      const activeProp = proposals[activeProposalIdx];
+      if (activeProp && activeProp.linkResubmitProposal) {
+        const activeId = activeProp.id;
+
+        if (localResubmitAiAnalyses[activeId]) {
+          // If already in DB cache / state, auto-expand if user hasn't interacted with toggle yet
+          if (expandedResubmitSections[activeId] === undefined) {
+            setExpandedResubmitSections(prev => ({ ...prev, [activeId]: true }));
+          }
+        } else if (!isGeneratingResubmitAi[activeId]) {
+          // Trigger background process
+          handleGenerateResubmitAi(activeId);
+        }
+      }
+    }
+  }, [activeTab, activeProposalIdx, proposals, localResubmitAiAnalyses, isGeneratingResubmitAi, expandedResubmitSections]);
 
   // Auto-sync curator note as permanent comment entry whenever proposal detail is opened
   useEffect(() => {
@@ -1175,6 +1256,158 @@ export default function FgdRoomClient({
                         </div>
                       )}
                     </div>
+
+                    {/* SECTION DETAIL DOKUMEN RESUBMISSION (COLLAPSIBLE WITH BACKGROUND PROCESS & AUTO-EXPAND) */}
+                    {activeProposal.linkResubmitProposal && (
+                      <div className="bg-slate-50 border border-slate-200 rounded-lg overflow-hidden mb-6 shadow-2xs">
+                        {/* Collapsible Header */}
+                        <button
+                          onClick={() => setExpandedResubmitSections(prev => ({ 
+                            ...prev, 
+                            [activeProposal.id]: !(prev[activeProposal.id] ?? false) 
+                          }))}
+                          className="w-full px-5 py-3.5 bg-slate-100/90 border-b border-slate-200 flex items-center justify-between hover:bg-slate-200/70 transition text-left"
+                        >
+                          <div className="flex items-center space-x-2.5">
+                            <span className="text-base">📄</span>
+                            <h4 className="font-bold text-slate-800 text-sm tracking-wide">
+                              Detail Dokumen Resubmission
+                            </h4>
+                            {localResubmitAiAnalyses[activeProposal.id] && (
+                              <span className="bg-emerald-100 text-emerald-800 text-[11px] font-bold px-2 py-0.5 rounded-full border border-emerald-200">
+                                ✓ AI Tersedia
+                              </span>
+                            )}
+                          </div>
+
+                          <div className="flex items-center space-x-3">
+                            {isGeneratingResubmitAi[activeProposal.id] && (
+                              <span className="text-xs text-amber-700 font-semibold flex items-center bg-amber-50 px-2.5 py-1 rounded-md border border-amber-200">
+                                <svg className="animate-spin -ml-0.5 mr-1.5 h-3.5 w-3.5 text-amber-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                Memproses Background...
+                              </span>
+                            )}
+                            <svg
+                              className={`w-4 h-4 text-slate-500 transition-transform duration-200 ${(expandedResubmitSections[activeProposal.id] ?? false) ? 'rotate-180' : ''}`}
+                              fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                            >
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                            </svg>
+                          </div>
+                        </button>
+
+                        {/* Section Content */}
+                        {(expandedResubmitSections[activeProposal.id] ?? false) && (
+                          <div className="p-5 space-y-5 bg-white">
+                            {/* Loading Indicator (if user manually opens while background process is running) */}
+                            {isGeneratingResubmitAi[activeProposal.id] && !localResubmitAiAnalyses[activeProposal.id] && (
+                              <div className="bg-amber-50 border border-amber-200 rounded-md p-4 flex items-center space-x-3 text-amber-900 text-sm font-medium">
+                                <svg className="animate-spin h-5 w-5 text-amber-600 flex-shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                <span>⚡ Memproses & menganalisis dokumen resubmission di background... Mohon tunggu sebentar.</span>
+                              </div>
+                            )}
+
+                            {/* Error State */}
+                            {resubmitAiError[activeProposal.id] && (
+                              <div className="bg-rose-50 text-rose-800 p-3.5 rounded-md border border-rose-200 text-sm">
+                                ⚠️ {resubmitAiError[activeProposal.id]}
+                              </div>
+                            )}
+
+                            {/* 1. BAGIAN A: ANALISA AI DOKUMEN RESUBMISSION */}
+                            {localResubmitAiAnalyses[activeProposal.id] && (
+                              <div className="bg-slate-50 p-4.5 rounded-lg border border-slate-200 space-y-3.5">
+                                <h5 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center space-x-1.5">
+                                  <span>🤖</span>
+                                  <span>Analisa AI Dokumen Resubmission</span>
+                                </h5>
+
+                                {/* Rangkuman Document */}
+                                {localResubmitAiAnalyses[activeProposal.id].summary && (
+                                  <div className="text-sm text-slate-800 leading-relaxed bg-white p-3 rounded border border-slate-200">
+                                    <strong className="text-slate-900 block font-semibold mb-1">Rangkuman Utama Dokumen:</strong>
+                                    {localResubmitAiAnalyses[activeProposal.id].summary}
+                                  </div>
+                                )}
+
+                                {/* Key Findings */}
+                                {localResubmitAiAnalyses[activeProposal.id].keyFindings?.length > 0 && (
+                                  <div className="space-y-1.5">
+                                    <strong className="text-xs font-bold text-slate-800 block">Temuan / Poin Penting:</strong>
+                                    <ul className="list-disc list-inside text-xs text-slate-700 space-y-1 bg-white p-3 rounded border border-slate-200">
+                                      {localResubmitAiAnalyses[activeProposal.id].keyFindings.map((finding: string, idx: number) => (
+                                        <li key={idx} className="leading-snug">{finding}</li>
+                                      ))}
+                                    </ul>
+                                  </div>
+                                )}
+
+                                {/* Methodology & Data Validity Grid */}
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+                                  {localResubmitAiAnalyses[activeProposal.id].methodology && (
+                                    <div className="bg-white p-3 rounded border border-slate-200">
+                                      <strong className="text-slate-900 block font-semibold mb-1">Metodologi & Cara Kerja:</strong>
+                                      <p className="text-slate-700 leading-snug">{localResubmitAiAnalyses[activeProposal.id].methodology}</p>
+                                    </div>
+                                  )}
+                                  {localResubmitAiAnalyses[activeProposal.id].dataValidity && (
+                                    <div className="bg-white p-3 rounded border border-slate-200">
+                                      <strong className="text-slate-900 block font-semibold mb-1">Validitas Data Pendukung:</strong>
+                                      <p className="text-slate-700 leading-snug">{localResubmitAiAnalyses[activeProposal.id].dataValidity}</p>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            )}
+
+                            {/* 2. BAGIAN B: GAMBAR SKETSA DARI LINK GOOGLE DRIVE */}
+                            {(() => {
+                              const driveUrls = extractGoogleDriveImageUrls(activeProposal.resubmitDocumentText || activeProposal.linkResubmitProposal);
+                              if (driveUrls.length === 0) return null;
+                              return (
+                                <div className="space-y-2 pt-2 border-t border-slate-200">
+                                  <h5 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center space-x-1.5">
+                                    <span>🖼️</span>
+                                    <span>Gambar Sketsa / Diagram Inovasi (dari Google Drive)</span>
+                                  </h5>
+                                  <div className="grid grid-cols-1 gap-4 pt-1">
+                                    {driveUrls.map((imgUrl, idx) => (
+                                      <div key={idx} className="bg-slate-100 p-2 rounded-lg border border-slate-200 overflow-hidden text-center">
+                                        <img 
+                                          src={imgUrl} 
+                                          alt={`Sketsa Resubmission #${idx + 1}`}
+                                          className="max-w-full h-auto mx-auto rounded border border-slate-300 shadow-sm"
+                                          loading="lazy"
+                                        />
+                                        <div className="text-[11px] text-slate-500 mt-2 font-medium">
+                                          Sketsa / Diagram Resubmission #{idx + 1}
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              );
+                            })()}
+
+                            {/* 3. BAGIAN C: EMBED / LINK DOKUMEN PDF RESUBMISSION */}
+                            <div className="pt-3 border-t border-slate-200 flex items-center justify-between">
+                              <div className="text-xs text-slate-600 font-medium flex items-center space-x-2">
+                                <span>📎 File Asli Resubmission PDF</span>
+                              </div>
+                              <a
+                                href={activeProposal.linkResubmitProposal}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-md shadow-xs transition flex items-center space-x-1.5"
+                              >
+                                <span>Buka PDF Resubmission</span>
+                                <svg className="w-3.5 h-3.5 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+                              </a>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
 
                     {/* NEW ADDITIONAL DOCUMENT AI ANALYSIS SECTION */}
                     <div className="bg-white p-5 rounded-md border border-indigo-100 shadow-sm mb-6 relative">
