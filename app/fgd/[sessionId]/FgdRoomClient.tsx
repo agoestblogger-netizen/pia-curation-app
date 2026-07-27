@@ -193,8 +193,6 @@ export default function FgdRoomClient({
   };
 
   const [activeProposalIdx, setActiveProposalIdx] = useState<number | null>(null);
-  // Track proposals already injected as curator_note comment (client-side dedup)
-  const [injectedNotes, setInjectedNotes] = useState<Set<number>>(new Set());
 
   // Auto-generate AI analysis when proposal is opened
   useEffect(() => {
@@ -206,48 +204,47 @@ export default function FgdRoomClient({
     }
   }, [activeTab, activeProposalIdx, localAiAnalyses, isGeneratingAi, proposals]);
 
-  // Auto-inject curator note as permanent comment entry whenever activeProposalIdx changes in detail view
+  // Auto-sync curator note as permanent comment entry whenever proposal detail is opened
   useEffect(() => {
     if (activeTab === 'detail' && activeProposalIdx !== null) {
       const p = proposals[activeProposalIdx];
-      if (p && !injectedNotes.has(p.id)) {
-        setInjectedNotes(prev => new Set(prev).add(p.id));
-        insertCuratorNoteAsCommentAction(fgd.id, p.id).then((res) => {
-          if (res && !('error' in res) && !res.skipped) {
-            const verdictLabel: Record<string, string> = {
-              lolos: 'Lolos', duplication: 'Duplikasi', mapped: 'Mapped',
-              non_compliance: 'Non-Compliance', low_impact: 'Low Impact',
-            };
-            const lines: string[] = [];
-            if (p.verdict) lines.push(`[${verdictLabel[p.verdict] ?? p.verdict}]`);
-            if (p.curatorNotes) lines.push(p.curatorNotes);
-            if (p.curatorRecommendation) lines.push(`Rekomendasi: ${p.curatorRecommendation}`);
-            const contentToShow = res.content || (lines.length > 0 ? lines.join('\n') : null);
+      if (!p) return;
 
-            if (contentToShow) {
-              setLocalComments(prev => {
-                if (prev.some(c => c.proposalId === p.id && c.commentType === 'curator_note')) {
-                  return prev;
-                }
-                return [
-                  ...prev,
-                  {
-                    id: Date.now(),
-                    proposalId: p.id,
-                    curatorId: 0,
-                    content: contentToShow,
-                    createdAt: new Date().toISOString(),
-                    curatorName: p.curatorName ?? null,
-                    commentType: 'curator_note',
-                  }
-                ];
-              });
-            }
+      insertCuratorNoteAsCommentAction(fgd.id, p.id).then((res) => {
+        if (res && !('error' in res)) {
+          const verdictLabel: Record<string, string> = {
+            lolos: 'Lolos', duplication: 'Duplikasi', mapped: 'Mapped',
+            non_compliance: 'Non-Compliance', low_impact: 'Low Impact',
+          };
+          const lines: string[] = [];
+          if (p.verdict) lines.push(`[${verdictLabel[p.verdict] ?? p.verdict}]`);
+          if (p.curatorNotes) lines.push(p.curatorNotes);
+          if (p.curatorRecommendation) lines.push(`Rekomendasi: ${p.curatorRecommendation}`);
+          const contentToShow = res.content || (lines.length > 0 ? lines.join('\n') : null);
+
+          if (contentToShow) {
+            setLocalComments((prev) => {
+              if (prev.some((c) => c.proposalId === p.id && c.commentType === 'curator_note')) {
+                return prev;
+              }
+              return [
+                ...prev,
+                {
+                  id: Date.now(),
+                  proposalId: p.id,
+                  curatorId: 0,
+                  content: contentToShow,
+                  createdAt: new Date().toISOString(),
+                  curatorName: p.curatorName ?? null,
+                  commentType: 'curator_note',
+                },
+              ];
+            });
           }
-        });
-      }
+        }
+      });
     }
-  }, [activeTab, activeProposalIdx, proposals, fgd.id, injectedNotes]);
+  }, [activeTab, activeProposalIdx, proposals, fgd.id]);
 
   // ── Realtime Supabase Subscription for fgd_comments ───────────────────────
   useEffect(() => {
@@ -735,7 +732,12 @@ export default function FgdRoomClient({
           return (
             <button
               key={tab}
-              onClick={() => setActiveTab(tab)}
+              onClick={() => {
+                if (tab === 'list') {
+                  setActiveProposalIdx(null);
+                }
+                setActiveTab(tab);
+              }}
               className={`p-4 text-left text-sm font-semibold border-b border-gray-100 transition ${
                 activeTab === tab
                   ? 'bg-teal-50 text-teal-700 border-l-4 border-l-teal-600'
@@ -920,7 +922,10 @@ export default function FgdRoomClient({
                   <div className="text-5xl mb-4">💬</div>
                   <p className="font-medium mb-3">Belum ada proposal yang dipilih untuk dibahas.</p>
                   <button
-                    onClick={() => setActiveTab('list')}
+                    onClick={() => {
+                      setActiveProposalIdx(null);
+                      setActiveTab('list');
+                    }}
                     className="text-teal-600 font-medium hover:underline text-sm"
                   >
                     ← Pilih dari List Proposal
