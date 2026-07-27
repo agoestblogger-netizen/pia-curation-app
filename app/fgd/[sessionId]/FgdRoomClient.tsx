@@ -2,8 +2,9 @@
 
 import { useState, useTransition, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { submitFgdCommentAction, submitFgdVoteAction, lockFgdSessionAction, releaseSingleFgdProposalAction, insertCuratorNoteAsCommentAction } from '@/app/actions/fgd';
-import { generateFgdAiAnalysis, generateResubmissionAiAnalysis } from '@/app/actions/aiAnalysis';
+import { submitFgdCommentAction, deleteFgdCommentAction, submitFgdVoteAction, lockFgdSessionAction, releaseSingleFgdProposalAction, insertCuratorNoteAsCommentAction } from '@/app/actions/fgd';
+import { generateFgdAiAnalysis } from '@/app/actions/aiAnalysis';
+import { getOrCacheResubmitPdfsAction, ResubmitPdfItem } from '@/app/actions/resubmitPdfCache';
 import { uploadFgdAdditionalDocument } from '@/app/actions/uploadDocument';
 import { deleteFgdAdditionalDocument } from '@/app/actions/deleteDocument';
 import ProposalDocumentButtons from '@/app/components/ProposalDocumentButtons';
@@ -94,6 +95,7 @@ type Proposal = {
   linkSuratOrisinalitas?: string | null;
   resubmitDocumentText?: string | null;
   resubmitAiAnalysis?: any;
+  cachedResubmitPdfUrls?: any;
   rowNumber: number;
   verdict: string;
   curatorName?: string | null;
@@ -218,38 +220,42 @@ export default function FgdRoomClient({
     });
   }
 
-  // Local state for Resubmission AI analyses
-  const [localResubmitAiAnalyses, setLocalResubmitAiAnalyses] = useState<Record<number, any>>(() => {
-    const map: Record<number, any> = {};
+  // Local state for Resubmission PDF items (cached / blob URLs)
+  const [localResubmitPdfs, setLocalResubmitPdfs] = useState<Record<number, ResubmitPdfItem[]>>(() => {
+    const map: Record<number, ResubmitPdfItem[]> = {};
     for (const p of proposals) {
-      if (p.resubmitAiAnalysis) map[p.id] = p.resubmitAiAnalysis;
+      if (p.cachedResubmitPdfUrls && Array.isArray(p.cachedResubmitPdfUrls) && p.cachedResubmitPdfUrls.length > 0) {
+        map[p.id] = p.cachedResubmitPdfUrls;
+      }
     }
     return map;
   });
 
-  const [isGeneratingResubmitAi, setIsGeneratingResubmitAi] = useState<Record<number, boolean>>({});
-  const [resubmitAiError, setResubmitAiError] = useState<Record<number, string | null>>({});
+  const [isProcessingResubmitPdf, setIsProcessingResubmitPdf] = useState<Record<number, boolean>>({});
+  const [resubmitPdfError, setResubmitPdfError] = useState<Record<number, string | null>>({});
   const [expandedResubmitSections, setExpandedResubmitSections] = useState<Record<number, boolean>>({});
   const [imageLoadErrors, setImageLoadErrors] = useState<Record<string, boolean>>({});
 
-  const handleGenerateResubmitAi = async (proposalId: number, isRetry = false) => {
-    if (!isRetry && (isGeneratingResubmitAi[proposalId] || localResubmitAiAnalyses[proposalId])) return;
+  const handleProcessResubmitPdfs = async (proposalId: number, isRetry = false) => {
+    if (!isRetry && (isProcessingResubmitPdf[proposalId] || (localResubmitPdfs[proposalId] && localResubmitPdfs[proposalId].length > 0))) {
+      return;
+    }
 
-    setIsGeneratingResubmitAi(prev => ({ ...prev, [proposalId]: true }));
-    setResubmitAiError(prev => ({ ...prev, [proposalId]: null }));
+    setIsProcessingResubmitPdf(prev => ({ ...prev, [proposalId]: true }));
+    setResubmitPdfError(prev => ({ ...prev, [proposalId]: null }));
 
     try {
-      const res = await generateResubmissionAiAnalysis(proposalId);
+      const res = await getOrCacheResubmitPdfsAction(proposalId);
       if (res.error) {
-        setResubmitAiError(prev => ({ ...prev, [proposalId]: res.error as string }));
+        setResubmitPdfError(prev => ({ ...prev, [proposalId]: res.error as string }));
       } else if (res.data) {
-        setLocalResubmitAiAnalyses(prev => ({ ...prev, [proposalId]: res.data }));
+        setLocalResubmitPdfs(prev => ({ ...prev, [proposalId]: res.data }));
       }
     } catch (e: any) {
-      setResubmitAiError(prev => ({ ...prev, [proposalId]: 'Analisa AI tidak dapat diproses saat ini.' }));
+      setResubmitPdfError(prev => ({ ...prev, [proposalId]: 'Gagal memproses dokumen PDF.' }));
     } finally {
-      setIsGeneratingResubmitAi(prev => ({ ...prev, [proposalId]: false }));
-      // Mark background process as completed & auto-expand section (whether success or graceful error)
+      setIsProcessingResubmitPdf(prev => ({ ...prev, [proposalId]: false }));
+      // Auto-expand section ONLY ONCE when background process completes for this proposal
       setExpandedResubmitSections(prev => {
         if (prev[proposalId] === undefined) {
           return { ...prev, [proposalId]: true };
@@ -257,6 +263,26 @@ export default function FgdRoomClient({
         return prev;
       });
     }
+  };
+
+  const [isDeletingComment, setIsDeletingComment] = useState<Record<number, boolean>>({});
+
+  const handleDeleteComment = async (commentId: number) => {
+    showConfirm('Hapus Komentar?', 'Apakah Anda yakin ingin menghapus komentar ini?', async () => {
+      setIsDeletingComment(prev => ({ ...prev, [commentId]: true }));
+      try {
+        const res = await deleteFgdCommentAction(commentId);
+        if (res.error) {
+          alert(res.error);
+        } else {
+          setLocalComments(prev => prev.filter(c => c.id !== commentId));
+        }
+      } catch (err: any) {
+        alert(err.message || 'Gagal menghapus komentar.');
+      } finally {
+        setIsDeletingComment(prev => ({ ...prev, [commentId]: false }));
+      }
+    });
   };
 
   const handleGenerateAi = async (proposalId: number) => {
@@ -294,25 +320,25 @@ export default function FgdRoomClient({
     }
   }, [activeTab, activeProposalIdx, localAiAnalyses, isGeneratingAi, proposals]);
 
-  // Background process: Auto-generate Resubmission AI Analysis & auto-expand when proposal detail is opened
+  // Background process: Auto-process PDF caching & auto-expand when proposal detail is opened
   useEffect(() => {
     if (activeTab === 'detail' && activeProposalIdx !== null) {
       const activeProp = proposals[activeProposalIdx];
       if (activeProp && activeProp.linkResubmitProposal) {
         const activeId = activeProp.id;
 
-        if (localResubmitAiAnalyses[activeId]) {
+        if (localResubmitPdfs[activeId] && localResubmitPdfs[activeId].length > 0) {
           // If already in DB cache / state, auto-expand if user hasn't interacted with toggle yet
           if (expandedResubmitSections[activeId] === undefined) {
             setExpandedResubmitSections(prev => ({ ...prev, [activeId]: true }));
           }
-        } else if (!isGeneratingResubmitAi[activeId]) {
-          // Trigger background process
-          handleGenerateResubmitAi(activeId);
+        } else if (!isProcessingResubmitPdf[activeId]) {
+          // Trigger background PDF processing & caching
+          handleProcessResubmitPdfs(activeId);
         }
       }
     }
-  }, [activeTab, activeProposalIdx, proposals, localResubmitAiAnalyses, isGeneratingResubmitAi, expandedResubmitSections]);
+  }, [activeTab, activeProposalIdx, proposals, localResubmitPdfs, isProcessingResubmitPdf, expandedResubmitSections]);
 
   // Auto-sync curator note as permanent comment entry whenever proposal detail is opened
   useEffect(() => {
@@ -368,100 +394,111 @@ export default function FgdRoomClient({
       .on(
         'postgres_changes',
         {
-          event: 'INSERT',
+          event: '*',
           schema: 'public',
           table: 'fgd_comments',
           filter: `session_id=eq.${fgd.id}`,
         },
         (payload) => {
-          const newComment = payload.new as {
-            id: number;
-            session_id: number;
-            proposal_id: number;
-            curator_id: number;
-            content: string;
-            comment_type: string | null;
-            created_at: string;
-          };
+          // Handle Realtime DELETE Event
+          if (payload.eventType === 'DELETE') {
+            const deletedId = (payload.old as { id: number })?.id;
+            if (deletedId) {
+              setLocalComments((prev) => prev.filter((c) => c.id !== deletedId));
+            }
+            return;
+          }
 
-          // Strict proposal_id scope check
-          if (newComment.proposal_id !== activeId) return;
+          if (payload.eventType === 'INSERT') {
+            const newComment = payload.new as {
+              id: number;
+              session_id: number;
+              proposal_id: number;
+              curator_id: number;
+              content: string;
+              comment_type: string | null;
+              created_at: string;
+            };
 
-          setLocalComments((prev) => {
-            // Dedup 1: Exact ID check
-            if (prev.some((c) => c.id === newComment.id)) return prev;
+            // Strict proposal_id scope check
+            if (newComment.proposal_id !== activeId) return;
 
-            // Dedup 2: Curator note check (replace synthetic curator_note entry)
-            if (newComment.comment_type === 'curator_note') {
-              const hasCuratorNote = prev.some(
-                (c) => c.proposalId === newComment.proposal_id && c.commentType === 'curator_note'
+            setLocalComments((prev) => {
+              // Dedup 1: Exact ID check
+              if (prev.some((c) => c.id === newComment.id)) return prev;
+
+              // Dedup 2: Curator note check (replace synthetic curator_note entry)
+              if (newComment.comment_type === 'curator_note') {
+                const hasCuratorNote = prev.some(
+                  (c) => c.proposalId === newComment.proposal_id && c.commentType === 'curator_note'
+                );
+                if (hasCuratorNote) {
+                  return prev.map((c) =>
+                    c.proposalId === newComment.proposal_id && c.commentType === 'curator_note'
+                      ? {
+                          id: newComment.id,
+                          proposalId: newComment.proposal_id,
+                          curatorId: newComment.curator_id,
+                          content: newComment.content,
+                          createdAt: newComment.created_at,
+                          curatorName: c.curatorName ?? proposals.find((p) => p.id === newComment.proposal_id)?.curatorName ?? null,
+                          commentType: newComment.comment_type,
+                        }
+                      : c
+                  );
+                }
+              }
+
+              // Dedup 3: Optimistic UI check from same user with same content
+              const isOptimisticDuplicate = prev.some(
+                (c) =>
+                  c.proposalId === newComment.proposal_id &&
+                  c.curatorId === newComment.curator_id &&
+                  c.content.trim() === newComment.content.trim() &&
+                  Math.abs(new Date(c.createdAt).getTime() - new Date(newComment.created_at).getTime()) < 10000
               );
-              if (hasCuratorNote) {
+
+              if (isOptimisticDuplicate) {
                 return prev.map((c) =>
-                  c.proposalId === newComment.proposal_id && c.commentType === 'curator_note'
+                  c.proposalId === newComment.proposal_id &&
+                  c.curatorId === newComment.curator_id &&
+                  c.content.trim() === newComment.content.trim()
                     ? {
                         id: newComment.id,
                         proposalId: newComment.proposal_id,
                         curatorId: newComment.curator_id,
                         content: newComment.content,
                         createdAt: newComment.created_at,
-                        curatorName: c.curatorName ?? proposals.find((p) => p.id === newComment.proposal_id)?.curatorName ?? null,
+                        curatorName: c.curatorName,
                         commentType: newComment.comment_type,
                       }
                     : c
                 );
               }
-            }
 
-            // Dedup 3: Optimistic UI check from same user with same content
-            const isOptimisticDuplicate = prev.some(
-              (c) =>
-                c.proposalId === newComment.proposal_id &&
-                c.curatorId === newComment.curator_id &&
-                c.content.trim() === newComment.content.trim() &&
-                Math.abs(new Date(c.createdAt).getTime() - new Date(newComment.created_at).getTime()) < 10000
-            );
+              // Normal new comment append
+              let curatorName: string | null = null;
+              const existingAuthor = prev.find((c) => c.curatorId === newComment.curator_id);
+              if (existingAuthor?.curatorName) {
+                curatorName = existingAuthor.curatorName;
+              } else if (newComment.curator_id === session?.userId) {
+                curatorName = session?.name ?? null;
+              }
 
-            if (isOptimisticDuplicate) {
-              return prev.map((c) =>
-                c.proposalId === newComment.proposal_id &&
-                c.curatorId === newComment.curator_id &&
-                c.content.trim() === newComment.content.trim()
-                  ? {
-                      id: newComment.id,
-                      proposalId: newComment.proposal_id,
-                      curatorId: newComment.curator_id,
-                      content: newComment.content,
-                      createdAt: newComment.created_at,
-                      curatorName: c.curatorName,
-                      commentType: newComment.comment_type,
-                    }
-                  : c
-              );
-            }
-
-            // Look up author name if available
-            let curatorName: string | null = null;
-            const existingAuthor = prev.find((c) => c.curatorId === newComment.curator_id);
-            if (existingAuthor?.curatorName) {
-              curatorName = existingAuthor.curatorName;
-            } else if (newComment.curator_id === session?.userId) {
-              curatorName = session?.name ?? null;
-            }
-
-            return [
-              ...prev,
-              {
-                id: newComment.id,
-                proposalId: newComment.proposal_id,
-                curatorId: newComment.curator_id,
-                content: newComment.content,
-                createdAt: newComment.created_at,
-                curatorName,
-                commentType: newComment.comment_type,
-              },
-            ];
-          });
+              return [
+                ...prev,
+                {
+                  id: newComment.id,
+                  proposalId: newComment.proposal_id,
+                  curatorId: newComment.curator_id,
+                  content: newComment.content,
+                  createdAt: newComment.created_at,
+                  curatorName,
+                  commentType: newComment.comment_type,
+                },
+              ];
+            });
+          }
         }
       )
       .subscribe();
@@ -1301,18 +1338,18 @@ export default function FgdRoomClient({
                             <h4 className="font-bold text-slate-800 text-sm tracking-wide">
                               Detail Dokumen Resubmission
                             </h4>
-                            {localResubmitAiAnalyses[activeProposal.id] && (
+                            {localResubmitPdfs[activeProposal.id] && localResubmitPdfs[activeProposal.id].length > 0 && (
                               <span className="bg-emerald-100 text-emerald-800 text-[11px] font-bold px-2 py-0.5 rounded-full border border-emerald-200">
-                                ✓ AI Tersedia
+                                ✓ PDF Ready
                               </span>
                             )}
                           </div>
 
                           <div className="flex items-center space-x-3">
-                            {isGeneratingResubmitAi[activeProposal.id] && (
-                              <span className="text-xs text-amber-700 font-semibold flex items-center bg-amber-50 px-2.5 py-1 rounded-md border border-amber-200">
-                                <svg className="animate-spin -ml-0.5 mr-1.5 h-3.5 w-3.5 text-amber-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                                Memproses Background...
+                            {isProcessingResubmitPdf[activeProposal.id] && (
+                              <span className="text-xs text-indigo-700 font-semibold flex items-center bg-indigo-50 px-2.5 py-1 rounded-md border border-indigo-200">
+                                <svg className="animate-spin -ml-0.5 mr-1.5 h-3.5 w-3.5 text-indigo-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                Memproses PDF...
                               </span>
                             )}
                             <svg
@@ -1326,24 +1363,24 @@ export default function FgdRoomClient({
 
                         {/* Section Content */}
                         {(expandedResubmitSections[activeProposal.id] ?? false) && (
-                          <div className="p-5 space-y-5 bg-white">
-                            {/* Loading Indicator (if user manually opens while background process is running) */}
-                            {isGeneratingResubmitAi[activeProposal.id] && !localResubmitAiAnalyses[activeProposal.id] && (
-                              <div className="bg-amber-50 border border-amber-200 rounded-md p-4 flex items-center space-x-3 text-amber-900 text-sm font-medium">
-                                <svg className="animate-spin h-5 w-5 text-amber-600 flex-shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                                <span>⚡ Memproses & menganalisis dokumen resubmission di background... Mohon tunggu sebentar.</span>
+                          <div className="p-5 space-y-6 bg-white">
+                            {/* Loading Indicator (if user manually opens while background caching is running) */}
+                            {isProcessingResubmitPdf[activeProposal.id] && (!localResubmitPdfs[activeProposal.id] || localResubmitPdfs[activeProposal.id].length === 0) && (
+                              <div className="bg-indigo-50 border border-indigo-200 rounded-md p-4 flex items-center space-x-3 text-indigo-950 text-sm font-medium">
+                                <svg className="animate-spin h-5 w-5 text-indigo-600 flex-shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                <span>⚡ Menyiapkan & meng-cache dokumen PDF resubmission di background... Mohon tunggu sebentar.</span>
                               </div>
                             )}
 
-                            {/* Error State for AI Analysis */}
-                            {resubmitAiError[activeProposal.id] && (
+                            {/* Error State for PDF Caching */}
+                            {resubmitPdfError[activeProposal.id] && (
                               <div className="bg-rose-50/90 text-rose-800 p-3.5 rounded-md border border-rose-200 text-xs flex items-center justify-between">
                                 <div className="flex items-center space-x-2">
                                   <span>⚠️</span>
-                                  <span>{resubmitAiError[activeProposal.id]}</span>
+                                  <span>{resubmitPdfError[activeProposal.id]}</span>
                                 </div>
                                 <button
-                                  onClick={() => handleGenerateResubmitAi(activeProposal.id, true)}
+                                  onClick={() => handleProcessResubmitPdfs(activeProposal.id, true)}
                                   className="px-2.5 py-1 bg-rose-600 hover:bg-rose-700 text-white font-bold text-[11px] rounded transition shadow-2xs"
                                 >
                                   Coba Lagi
@@ -1351,53 +1388,7 @@ export default function FgdRoomClient({
                               </div>
                             )}
 
-                            {/* 1. BAGIAN A: ANALISA AI DOKUMEN RESUBMISSION */}
-                            {localResubmitAiAnalyses[activeProposal.id] && (
-                              <div className="bg-slate-50 p-4.5 rounded-lg border border-slate-200 space-y-3.5">
-                                <h5 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center space-x-1.5">
-                                  <span>🤖</span>
-                                  <span>Analisa AI Dokumen Resubmission</span>
-                                </h5>
-
-                                {/* Rangkuman Document */}
-                                {localResubmitAiAnalyses[activeProposal.id].summary && (
-                                  <div className="text-sm text-slate-800 leading-relaxed bg-white p-3 rounded border border-slate-200">
-                                    <strong className="text-slate-900 block font-semibold mb-1">Rangkuman Utama Dokumen:</strong>
-                                    {localResubmitAiAnalyses[activeProposal.id].summary}
-                                  </div>
-                                )}
-
-                                {/* Key Findings */}
-                                {localResubmitAiAnalyses[activeProposal.id].keyFindings?.length > 0 && (
-                                  <div className="space-y-1.5">
-                                    <strong className="text-xs font-bold text-slate-800 block">Temuan / Poin Penting:</strong>
-                                    <ul className="list-disc list-inside text-xs text-slate-700 space-y-1 bg-white p-3 rounded border border-slate-200">
-                                      {localResubmitAiAnalyses[activeProposal.id].keyFindings.map((finding: string, idx: number) => (
-                                        <li key={idx} className="leading-snug">{finding}</li>
-                                      ))}
-                                    </ul>
-                                  </div>
-                                )}
-
-                                {/* Methodology & Data Validity Grid */}
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
-                                  {localResubmitAiAnalyses[activeProposal.id].methodology && (
-                                    <div className="bg-white p-3 rounded border border-slate-200">
-                                      <strong className="text-slate-900 block font-semibold mb-1">Metodologi & Cara Kerja:</strong>
-                                      <p className="text-slate-700 leading-snug">{localResubmitAiAnalyses[activeProposal.id].methodology}</p>
-                                    </div>
-                                  )}
-                                  {localResubmitAiAnalyses[activeProposal.id].dataValidity && (
-                                    <div className="bg-white p-3 rounded border border-slate-200">
-                                      <strong className="text-slate-900 block font-semibold mb-1">Validitas Data Pendukung:</strong>
-                                      <p className="text-slate-700 leading-snug">{localResubmitAiAnalyses[activeProposal.id].dataValidity}</p>
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-                            )}
-
-                            {/* 2. BAGIAN B: GAMBAR SKETSA DARI GOOGLE DRIVE / CONTABO STORAGE (HIDE FAILED IMAGES COMPLETELY) */}
+                            {/* 1. BAGIAN B: GAMBAR SKETSA DARI GOOGLE DRIVE / CONTABO STORAGE */}
                             {(() => {
                               const imageItems = extractSupportingImageUrls(activeProposal.resubmitDocumentText || activeProposal.linkResubmitProposal);
                               // Filter out any image URLs that triggered load errors so they are completely hidden
@@ -1405,7 +1396,7 @@ export default function FgdRoomClient({
                               if (validItems.length === 0) return null;
 
                               return (
-                                <div className="space-y-2 pt-2 border-t border-slate-200">
+                                <div className="space-y-2 pt-2">
                                   <h5 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center space-x-1.5">
                                     <span>🖼️</span>
                                     <span>Gambar Sketsa / Diagram Inovasi</span>
@@ -1431,23 +1422,70 @@ export default function FgdRoomClient({
                               );
                             })()}
 
-                            {/* 3. BAGIAN C: EMBED / LINK DOKUMEN PDF RESUBMISSION */}
-                            {activeProposal.linkResubmitProposal && (
-                              <div className="pt-3 border-t border-slate-200 flex items-center justify-between">
-                                <div className="text-xs text-slate-600 font-medium flex items-center space-x-2">
-                                  <span>📎 Dokumen Resubmission PDF</span>
+                            {/* 2. BAGIAN C: EMBED DOKUMEN PDF RESUBMISSION UTUH */}
+                            {(() => {
+                              const pdfItems = localResubmitPdfs[activeProposal.id] || (activeProposal.linkResubmitProposal ? [{
+                                title: 'Dokumen Resubmission Utama',
+                                originalUrl: activeProposal.linkResubmitProposal,
+                                isFallbackOnly: false
+                              }] : []);
+
+                              if (pdfItems.length === 0) return null;
+
+                              return (
+                                <div className="space-y-6 pt-3 border-t border-slate-200">
+                                  {pdfItems.map((pdfItem, idx) => (
+                                    <div key={pdfItem.originalUrl + idx} className="space-y-2">
+                                      <div className="flex items-center justify-between">
+                                        <h5 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center space-x-1.5">
+                                          <span>📄</span>
+                                          <span>{pdfItem.title}</span>
+                                          {pdfItem.sizeMb && (
+                                            <span className="text-[10px] bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded font-normal lowercase">
+                                              ({pdfItem.sizeMb} MB)
+                                            </span>
+                                          )}
+                                        </h5>
+                                        <a
+                                          href={pdfItem.blobUrl || pdfItem.originalUrl}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="text-xs font-semibold text-indigo-600 hover:text-indigo-800 flex items-center space-x-1"
+                                        >
+                                          <span>Buka di Tab Baru</span>
+                                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+                                        </a>
+                                      </div>
+
+                                      {!pdfItem.isFallbackOnly ? (
+                                        <div className="w-full bg-slate-900 rounded-lg overflow-hidden border border-slate-300 shadow-xs">
+                                          <iframe
+                                            src={pdfItem.blobUrl || pdfItem.originalUrl}
+                                            className="w-full h-[580px] bg-white border-0"
+                                            title={pdfItem.title}
+                                            loading="lazy"
+                                          />
+                                        </div>
+                                      ) : (
+                                        <div className="p-4 bg-amber-50/80 border border-amber-200 rounded-md text-xs text-slate-700 flex flex-col md:flex-row items-center justify-between gap-3">
+                                          <span className="font-medium text-amber-950">
+                                            📄 Dokumen PDF ini berukuran {pdfItem.sizeMb ? `>30MB (${pdfItem.sizeMb}MB)` : 'besar/perlu akses langsung'}. Tampilan embed inline di-skip untuk menjaga performa.
+                                          </span>
+                                          <a
+                                            href={pdfItem.originalUrl}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="px-3.5 py-1.5 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-md transition flex-shrink-0 shadow-2xs"
+                                          >
+                                            🔗 Unduh / Buka Dokumen PDF
+                                          </a>
+                                        </div>
+                                      )}
+                                    </div>
+                                  ))}
                                 </div>
-                                <a
-                                  href={activeProposal.linkResubmitProposal}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-md shadow-xs transition flex items-center space-x-1.5"
-                                >
-                                  <span>Buka Dokumen Resubmission</span>
-                                  <svg className="w-3.5 h-3.5 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
-                                </a>
-                              </div>
-                            )}
+                              );
+                            })()}
                           </div>
                         )}
                       </div>
@@ -1637,6 +1675,8 @@ export default function FgdRoomClient({
 
                         return dedupedComments.map((c) => {
                           const isCuratorNote = c.commentType === 'curator_note';
+                          const isMyComment = !isCuratorNote && (c.curatorId === session?.userId);
+
                           return (
                             <div
                               key={c.id}
@@ -1659,9 +1699,25 @@ export default function FgdRoomClient({
                                     </span>
                                   )}
                                 </div>
-                                <span className="text-xs text-gray-400">
-                                  {new Date(c.createdAt).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
-                                </span>
+                                <div className="flex items-center space-x-2">
+                                  <span className="text-xs text-gray-400">
+                                    {new Date(c.createdAt).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
+                                  </span>
+                                  {isMyComment && (
+                                    <button
+                                      onClick={() => handleDeleteComment(c.id)}
+                                      disabled={isDeletingComment[c.id]}
+                                      className="text-gray-400 hover:text-red-600 transition-colors p-0.5 rounded hover:bg-gray-100 disabled:opacity-50"
+                                      title="Hapus komentar saya"
+                                    >
+                                      {isDeletingComment[c.id] ? (
+                                        <svg className="animate-spin w-3.5 h-3.5 text-red-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                      ) : (
+                                        <span className="text-xs">🗑️</span>
+                                      )}
+                                    </button>
+                                  )}
+                                </div>
                               </div>
                               <p className={`text-sm whitespace-pre-wrap ${
                                 isCuratorNote ? 'text-amber-950' : 'text-gray-700'
