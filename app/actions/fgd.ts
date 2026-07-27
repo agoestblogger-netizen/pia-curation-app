@@ -161,7 +161,7 @@ export async function insertCuratorNoteAsCommentAction(
   });
 
   revalidatePath(`/fgd/${sessionId}`);
-  return { success: true, skipped: false };
+  return { success: true, skipped: false, content };
 }
 
 /**

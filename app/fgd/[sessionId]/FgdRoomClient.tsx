@@ -193,6 +193,8 @@ export default function FgdRoomClient({
   };
 
   const [activeProposalIdx, setActiveProposalIdx] = useState<number | null>(null);
+  // Track proposals already injected as curator_note comment (client-side dedup)
+  const [injectedNotes, setInjectedNotes] = useState<Set<number>>(new Set());
 
   // Auto-generate AI analysis when proposal is opened
   useEffect(() => {
@@ -203,6 +205,49 @@ export default function FgdRoomClient({
       }
     }
   }, [activeTab, activeProposalIdx, localAiAnalyses, isGeneratingAi, proposals]);
+
+  // Auto-inject curator note as permanent comment entry whenever activeProposalIdx changes in detail view
+  useEffect(() => {
+    if (activeTab === 'detail' && activeProposalIdx !== null) {
+      const p = proposals[activeProposalIdx];
+      if (p && !injectedNotes.has(p.id)) {
+        setInjectedNotes(prev => new Set(prev).add(p.id));
+        insertCuratorNoteAsCommentAction(fgd.id, p.id).then((res) => {
+          if (res && !('error' in res) && !res.skipped) {
+            const verdictLabel: Record<string, string> = {
+              lolos: 'Lolos', duplication: 'Duplikasi', mapped: 'Mapped',
+              non_compliance: 'Non-Compliance', low_impact: 'Low Impact',
+            };
+            const lines: string[] = [];
+            if (p.verdict) lines.push(`[${verdictLabel[p.verdict] ?? p.verdict}]`);
+            if (p.curatorNotes) lines.push(p.curatorNotes);
+            if (p.curatorRecommendation) lines.push(`Rekomendasi: ${p.curatorRecommendation}`);
+            const contentToShow = res.content || (lines.length > 0 ? lines.join('\n') : null);
+
+            if (contentToShow) {
+              setLocalComments(prev => {
+                if (prev.some(c => c.proposalId === p.id && c.commentType === 'curator_note')) {
+                  return prev;
+                }
+                return [
+                  ...prev,
+                  {
+                    id: Date.now(),
+                    proposalId: p.id,
+                    curatorId: 0,
+                    content: contentToShow,
+                    createdAt: new Date().toISOString(),
+                    curatorName: p.curatorName ?? null,
+                    commentType: 'curator_note',
+                  }
+                ];
+              });
+            }
+          }
+        });
+      }
+    }
+  }, [activeTab, activeProposalIdx, proposals, fgd.id, injectedNotes]);
 
   // ── Realtime Supabase Subscription for fgd_comments ───────────────────────
   useEffect(() => {
@@ -376,9 +421,6 @@ export default function FgdRoomClient({
     return initial;
   });
 
-  // Track proposals already injected as curator_note comment (client-side dedup)
-  const [injectedNotes, setInjectedNotes] = useState<Set<number>>(new Set());
-
   const [confirmModal, setConfirmModal] = useState<{
     isOpen: boolean;
     title: string;
@@ -538,37 +580,6 @@ export default function FgdRoomClient({
   function openDetail(idx: number) {
     setActiveProposalIdx(idx);
     setActiveTab('detail');
-    // Inject curator note as permanent comment entry (idempotent — server-side dedup guards against doubles)
-    const p = proposals[idx];
-    if (p && (p.curatorNotes || p.curatorRecommendation) && !injectedNotes.has(p.id)) {
-      setInjectedNotes(prev => new Set(prev).add(p.id));
-      insertCuratorNoteAsCommentAction(fgd.id, p.id).then((res) => {
-        // If not skipped (i.e. was newly inserted), append to local comments immediately
-        if (res && !('error' in res) && !res.skipped) {
-          // Build a synthetic comment entry to show immediately
-          const verdictLabel: Record<string, string> = {
-            lolos: 'Lolos', duplication: 'Duplikasi', mapped: 'Mapped',
-            non_compliance: 'Non-Compliance', low_impact: 'Low Impact',
-          };
-          const lines: string[] = [];
-          if (p.verdict) lines.push(`[${verdictLabel[p.verdict] ?? p.verdict}]`);
-          if (p.curatorNotes) lines.push(p.curatorNotes);
-          if (p.curatorRecommendation) lines.push(`Rekomendasi: ${p.curatorRecommendation}`);
-          setLocalComments(prev => [
-            ...prev,
-            {
-              id: Date.now(),
-              proposalId: p.id,
-              curatorId: 0,
-              content: lines.join('\n'),
-              createdAt: new Date().toISOString(),
-              curatorName: p.curatorName ?? null,
-              commentType: 'curator_note',
-            }
-          ]);
-        }
-      });
-    }
   }
 
   // ─── Proposal Card ────────────────────────────────────────────────────────
