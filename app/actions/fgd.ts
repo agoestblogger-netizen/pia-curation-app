@@ -98,44 +98,6 @@ export async function submitFgdCommentAction(sessionId: number, proposalId: numb
 }
 
 /**
- * Hapus komentar milik sendiri di ruang FGD
- */
-export async function deleteFgdCommentAction(commentId: number) {
-  const session = await getSession();
-  if (!session) return { error: 'Unauthorized' };
-
-  const [comment] = await db
-    .select()
-    .from(fgdComments)
-    .where(eq(fgdComments.id, commentId))
-    .limit(1);
-
-  if (!comment) {
-    return { error: 'Komentar tidak ditemukan.' };
-  }
-
-  if (comment.curatorId !== session.userId) {
-    return { error: 'Anda hanya dapat menghapus komentar milik Anda sendiri.' };
-  }
-
-  if (comment.commentType === 'curator_note') {
-    return { error: 'Catatan Kurator resmi dari screening tidak dapat dihapus.' };
-  }
-
-  await db.delete(fgdComments).where(eq(fgdComments.id, commentId));
-
-  await createAuditLog({
-    action: 'delete_fgd_comment',
-    entity: 'fgd_comment',
-    entityId: commentId.toString(),
-    before: { proposalId: comment.proposalId, content: comment.content },
-  });
-
-  revalidatePath(`/fgd/${comment.sessionId}`);
-  return { success: true, commentId };
-}
-
-/**
  * Insert catatan kurator (dari screening) sebagai entri permanen di thread Ruang Diskusi FGD.
  * Hanya diinsert SEKALI per proposal+session (idempoten — aman dipanggil berkali-kali).
  * Dipanggil client-side saat proposal pertama kali dibuka di tab Diskusi & Voting.
