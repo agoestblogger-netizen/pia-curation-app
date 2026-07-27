@@ -86,7 +86,7 @@ export default async function OverviewDashboard() {
       eq(proposals.status, 'gugur')
     ));
 
-  if (session?.roles?.includes('coordinator')) {
+  if (session?.roles?.some(r => r === 'coordinator' || r === 'admin' || r === 'curator')) {
     curatorsPromise = db
       .select({ id: users.id, name: users.name })
       .from(users)
@@ -428,7 +428,7 @@ export default async function OverviewDashboard() {
         </div>
       </div>
 
-      {session?.roles?.some(r => r === 'coordinator' || r === 'admin') && (
+      {session?.roles?.some(r => r === 'coordinator' || r === 'admin' || r === 'curator') && (
         <CuratorAssignmentTable curatorStats={curatorStats} />
       )}
 

@@ -410,16 +410,23 @@ export default function FgdRoomClient({
   
   const [commentText, setCommentText] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
+  const [curatorFilter, setCuratorFilter] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [locking, setLocking] = useState(false);
   const [releasing, setReleasing] = useState<Record<number, boolean>>({});
   const [selectedForFinal, setSelectedForFinal] = useState<number[]>([]);
   const [manuallyToggled, setManuallyToggled] = useState<Set<number>>(new Set());
 
-  // Filter proposals by search query on title
+  // Extract unique curator names from proposals pool in this FGD session
+  const availableCurators = Array.from(
+    new Set(proposals.map((p) => p.curatorName).filter(Boolean) as string[])
+  ).sort((a, b) => a.localeCompare(b));
+
+  // Filter proposals by free text title search AND curator name (AND condition)
   const filteredProposals = proposals.filter((p) => {
-    if (!searchQuery.trim()) return true;
-    return p.title.toLowerCase().includes(searchQuery.trim().toLowerCase());
+    const matchesSearch = !searchQuery.trim() || p.title.toLowerCase().includes(searchQuery.trim().toLowerCase());
+    const matchesCurator = !curatorFilter || p.curatorName === curatorFilter;
+    return matchesSearch && matchesCurator;
   });
 
   // Auto-check proposals where nominateCount > notNominateCount (unless manually toggled by coordinator)
@@ -742,35 +749,56 @@ export default function FgdRoomClient({
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
               <h2 className="text-lg font-bold text-gray-800">
                 Pool Proposal — {proposals.length} proposal
-                {searchQuery.trim() !== '' && (
+                {(searchQuery.trim() !== '' || curatorFilter !== '') && (
                   <span className="text-sm font-normal text-gray-500 ml-2">
                     (Ditemukan: {filteredProposals.length})
                   </span>
                 )}
               </h2>
 
-              {/* Free Text Search Box */}
-              <div className="relative w-full sm:w-80">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                  </svg>
+              {/* Search Box & Curator Filter Container */}
+              <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+                {/* Free Text Search Box */}
+                <div className="relative w-full sm:w-72">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                  </div>
+                  <input
+                    type="text"
+                    placeholder="Cari Judul Proposal..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-9 pr-8 py-2 w-full rounded-lg border border-gray-300 bg-white text-sm text-gray-900 shadow-sm focus:border-teal-500 focus:ring-teal-500 outline-none"
+                  />
+                  {searchQuery !== '' && (
+                    <button
+                      onClick={() => setSearchQuery('')}
+                      className="absolute inset-y-0 right-0 pr-3 flex items-center text-xs text-gray-400 hover:text-gray-600 font-bold"
+                      title="Bersihkan pencarian"
+                    >
+                      ✕
+                    </button>
+                  )}
                 </div>
-                <input
-                  type="text"
-                  placeholder="Cari Judul Proposal..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-9 pr-8 py-2 w-full rounded-lg border border-gray-300 bg-white text-sm text-gray-900 shadow-sm focus:border-teal-500 focus:ring-teal-500 outline-none"
-                />
-                {searchQuery !== '' && (
-                  <button
-                    onClick={() => setSearchQuery('')}
-                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-xs text-gray-400 hover:text-gray-600 font-bold"
-                    title="Bersihkan pencarian"
-                  >
-                    ✕
-                  </button>
+
+                {/* Curator Filter Dropdown */}
+                {availableCurators.length > 0 && (
+                  <div className="relative w-full sm:w-56">
+                    <select
+                      value={curatorFilter}
+                      onChange={(e) => setCuratorFilter(e.target.value)}
+                      className="w-full py-2 pl-3 pr-8 rounded-lg border border-gray-300 bg-white text-sm text-gray-900 shadow-sm focus:border-teal-500 focus:ring-teal-500 outline-none cursor-pointer"
+                    >
+                      <option value="">Semua Kurator ({availableCurators.length})</option>
+                      {availableCurators.map((name) => (
+                        <option key={name} value={name}>
+                          {name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                 )}
               </div>
             </div>
@@ -785,9 +813,13 @@ export default function FgdRoomClient({
               <div className="bg-white rounded-lg border border-gray-200 p-12 text-center text-gray-500">
                 <div className="text-4xl mb-3">🔍</div>
                 <p className="font-medium text-gray-800 mb-1">
-                  Tidak ada proposal dengan judul mengandung &ldquo;{searchQuery}&rdquo;
+                  {searchQuery && curatorFilter
+                    ? `Tidak ada proposal dengan judul "${searchQuery}" yang dikurasi oleh "${curatorFilter}"`
+                    : searchQuery
+                    ? `Tidak ada proposal dengan judul mengandung "${searchQuery}"`
+                    : `Tidak ada proposal yang dikurasi oleh "${curatorFilter}" dalam sesi FGD ini`}
                 </p>
-                <p className="text-sm text-gray-500">Coba gunakan kata kunci pencarian judul lain.</p>
+                <p className="text-sm text-gray-500">Coba ubah kata kunci pencarian judul atau filter nama kurator.</p>
               </div>
             ) : isMultiStatus ? (
               // ── MULTI-STATUS: Group by screening verdict with expand/collapse ──
