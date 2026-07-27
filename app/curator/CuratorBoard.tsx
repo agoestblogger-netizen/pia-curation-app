@@ -16,6 +16,7 @@ interface ProposalCard {
   proposalRowNumber: number;
   hasDuplicateWarning?: boolean;
   hasResubmission?: boolean;
+  screeningVerdict?: string | null;
 }
 
 const CATEGORY_MAP: Record<string, { label: string, short: string, bg: string }> = {
@@ -28,6 +29,7 @@ const CATEGORY_MAP: Record<string, { label: string, short: string, bg: string }>
 export default function CuratorBoard({ proposals, duplicates = [] }: { proposals: ProposalCard[], duplicates?: any[] }) {
   const [activeTab, setActiveTab] = useState<'assigned' | 'review' | 'duplicates'>('assigned');
   const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
   const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>({
     'PUSAT': true
   });
@@ -41,11 +43,20 @@ export default function CuratorBoard({ proposals, duplicates = [] }: { proposals
     setExpandedWilayah(prev => ({ ...prev, [region]: !prev[region] }));
   };
 
-  // Filter based on tab and search query
+  const statusCounts = {
+    lolos: proposals.filter(p => p.status === 'completed' && p.screeningVerdict === 'lolos').length,
+    duplication: proposals.filter(p => p.status === 'completed' && p.screeningVerdict === 'duplication').length,
+    mapped: proposals.filter(p => p.status === 'completed' && p.screeningVerdict === 'mapped').length,
+    non_compliance: proposals.filter(p => p.status === 'completed' && p.screeningVerdict === 'non_compliance').length,
+    low_impact: proposals.filter(p => p.status === 'completed' && p.screeningVerdict === 'low_impact').length,
+  };
+
+  // Filter based on tab, search query, and 5-status screening verdict (review tab only)
   const displayedProposals = proposals.filter(p => {
     const matchesTab = activeTab === 'assigned' ? p.status !== 'completed' : p.status === 'completed';
     const matchesSearch = p.title.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesTab && matchesSearch;
+    const matchesStatus = activeTab === 'review' && statusFilter ? p.screeningVerdict === statusFilter : true;
+    return matchesTab && matchesSearch && matchesStatus;
   });
 
   // Group by category
@@ -186,20 +197,40 @@ export default function CuratorBoard({ proposals, duplicates = [] }: { proposals
         </button>
       </div>
 
-      {/* Search Input */}
-      <div className="mb-6 relative w-full sm:max-w-md">
-        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-          <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-          </svg>
+      {/* Search Input & Screening Status Filter (Status Filter ONLY inside "Selesai Discreening" tab) */}
+      <div className="mb-6 flex flex-col sm:flex-row gap-4 items-center justify-between">
+        <div className="relative w-full sm:max-w-md">
+          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+          </div>
+          <input
+            type="text"
+            placeholder="Cari Proposal..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-10 w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-3 border text-gray-900 bg-white"
+          />
         </div>
-        <input
-          type="text"
-          placeholder="Cari Proposal..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="pl-10 w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-3 border text-gray-900 bg-white"
-        />
+
+        {activeTab === 'review' && (
+          <div className="w-full sm:w-auto shrink-0 flex items-center bg-white rounded-lg border border-gray-300 p-1 shadow-sm">
+            <span className="px-3 text-sm font-semibold text-gray-600 border-r border-gray-200 hidden sm:inline-block">Status Screening:</span>
+            <select 
+              className="bg-transparent border-0 text-sm font-medium focus:ring-0 text-gray-900 py-2 pl-3 pr-8 w-full cursor-pointer outline-none"
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+            >
+              <option value="">Semua Status ({completedCount})</option>
+              <option value="lolos">Lolos ({statusCounts.lolos})</option>
+              <option value="duplication">Duplication ({statusCounts.duplication})</option>
+              <option value="mapped">Mapped ({statusCounts.mapped})</option>
+              <option value="non_compliance">Non-Compliance ({statusCounts.non_compliance})</option>
+              <option value="low_impact">Low Impact ({statusCounts.low_impact})</option>
+            </select>
+          </div>
+        )}
       </div>
 
       <div className="space-y-4">

@@ -1,6 +1,6 @@
 import { getSession } from '@/lib/auth/session';
 import { db } from '@/lib/db';
-import { proposals, curatorAssignments, competitions, users } from '@/lib/db/schema';
+import { proposals, curatorAssignments, competitions, users, screeningResults } from '@/lib/db/schema';
 import { eq, and, sql } from 'drizzle-orm';
 import { maskProposalIdentity } from '@/lib/utils/blindReview';
 import CuratorBoard from './CuratorBoard';
@@ -41,11 +41,13 @@ export default async function CuratorDashboard() {
           regionCenter: proposals.regionCenter,
           aiCidaTotal: proposals.aiCidaTotal,
           assignmentStatus: curatorAssignments.status,
+          screeningVerdict: screeningResults.verdict,
           nomorUrut: proposals.nomorUrut,
           linkResubmitProposal: proposals.linkResubmitProposal,
         })
         .from(curatorAssignments)
         .innerJoin(proposals, eq(curatorAssignments.proposalId, proposals.id))
+        .leftJoin(screeningResults, eq(curatorAssignments.id, screeningResults.assignmentId))
         .where(and(
           eq(curatorAssignments.curatorId, session.userId),
           eq(proposals.competitionId, activeComp.id),
@@ -78,6 +80,7 @@ export default async function CuratorDashboard() {
         proposalRowNumber: a.nomorUrut || 0,
         hasResubmission: !!a.linkResubmitProposal,
       }),
+      screeningVerdict: a.screeningVerdict || null,
       hasDuplicateWarning: warningProposalIds.has(a.id)
     }));
 
