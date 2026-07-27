@@ -1396,7 +1396,6 @@ export default function FgdRoomClient({
                                                 alt={`Sketsa Resubmission #${idx + 1}`}
                                                 className="max-w-full h-auto mx-auto rounded border border-slate-300 shadow-xs"
                                                 loading="lazy"
-                                                referrerPolicy="no-referrer"
                                                 onError={() => setImageLoadErrors(prev => ({ ...prev, [item.cdnUrl]: true }))}
                                               />
                                               <div className="text-[11px] text-slate-500 mt-2 font-medium">
