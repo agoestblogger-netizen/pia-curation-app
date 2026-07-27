@@ -87,6 +87,7 @@ export const proposals = pgTable('proposals', {
   linkSuratOrisinalitas: text('link_surat_orisinalitas'),
   resubmitDocumentText: text('resubmit_document_text'),
   resubmitAiAnalysis: jsonb('resubmit_ai_analysis'),
+  cachedResubmitPdfUrls: jsonb('cached_resubmit_pdf_urls'),
   submissionDate: timestamp('submission_date', { withTimezone: true }),
   tagging: text('tagging'),
   tagging2: text('tagging2'),
