@@ -92,8 +92,6 @@ export default async function FgdRoomPage({ params }: { params: Promise<{ sessio
       p.link_proposal as "linkProposal",
       p.link_resubmit_proposal as "linkResubmitProposal",
       p.link_surat_orisinalitas as "linkSuratOrisinalitas",
-      p.resubmit_document_text as "resubmitDocumentText",
-      p.resubmit_ai_analysis as "resubmitAiAnalysis",
       ROW_NUMBER() OVER (PARTITION BY p.category, p.region_center ORDER BY p.id ASC) as "rowNumber",
       sr.verdict,
       sr.notes as "curatorNotes",
@@ -127,8 +125,6 @@ export default async function FgdRoomPage({ params }: { params: Promise<{ sessio
     linkProposal: string | null;
     linkResubmitProposal?: string | null;
     linkSuratOrisinalitas?: string | null;
-    resubmitDocumentText?: string | null;
-    resubmitAiAnalysis?: any;
     rowNumber: number;
     verdict: string;
     curatorName?: string | null;
