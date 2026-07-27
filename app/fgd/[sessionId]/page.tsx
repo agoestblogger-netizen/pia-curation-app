@@ -21,9 +21,24 @@ export default async function FgdRoomPage({ params }: { params: Promise<{ sessio
 
   const { sessionId } = await params;
   const sId = parseInt(sessionId, 10);
+  if (isNaN(sId)) {
+    console.error(`[FgdRoomPage] Invalid sessionId param received: "${sessionId}"`);
+    return <div className="p-8">ID Sesi FGD tidak valid.</div>;
+  }
 
-  const [fgd] = await db.select().from(fgdSessions).where(eq(fgdSessions.id, sId)).limit(1);
-  if (!fgd) return <div className="p-8">Sesi FGD tidak ditemukan.</div>;
+  let fgd;
+  try {
+    const res = await db.select().from(fgdSessions).where(eq(fgdSessions.id, sId)).limit(1);
+    fgd = res[0];
+  } catch (err) {
+    console.error(`[FgdRoomPage] DB error querying fgd_sessions for sId ${sId}:`, err);
+    return <div className="p-8 text-red-600">Terjadi kesalahan koneksi database saat memuat Sesi FGD. Silakan muat ulang halaman.</div>;
+  }
+
+  if (!fgd) {
+    console.warn(`[FgdRoomPage] Sesi FGD ID ${sId} not found in database.`);
+    return <div className="p-8">Sesi FGD tidak ditemukan.</div>;
+  }
 
   const isPureCurator = session.roles.includes('curator') && !session.roles.some(r => ['promoter', 'coordinator', 'admin'].includes(r));
   if (fgd.fgdType === 'promoter' && isPureCurator) {
