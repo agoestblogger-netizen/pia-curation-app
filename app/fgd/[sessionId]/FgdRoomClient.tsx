@@ -409,11 +409,18 @@ export default function FgdRoomClient({
   }, [fgd.id]);
   
   const [commentText, setCommentText] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [locking, setLocking] = useState(false);
   const [releasing, setReleasing] = useState<Record<number, boolean>>({});
   const [selectedForFinal, setSelectedForFinal] = useState<number[]>([]);
   const [manuallyToggled, setManuallyToggled] = useState<Set<number>>(new Set());
+
+  // Filter proposals by search query on title
+  const filteredProposals = proposals.filter((p) => {
+    if (!searchQuery.trim()) return true;
+    return p.title.toLowerCase().includes(searchQuery.trim().toLowerCase());
+  });
 
   // Auto-check proposals where nominateCount > notNominateCount (unless manually toggled by coordinator)
   useEffect(() => {
@@ -480,7 +487,7 @@ export default function FgdRoomClient({
 
   // ─── Group proposals for 'grouped' view mode (by category) ────────────────
   const groupedProposals: Record<string, Proposal[]> = {};
-  for (const p of proposals) {
+  for (const p of filteredProposals) {
     const key = p.category === 'PUSAT' ? 'Kantor Pusat' 
       : p.category === 'WILAYAH' ? (p.regionCenter ?? 'Wilayah') 
       : p.category === 'BC' ? 'Business Case'
@@ -500,7 +507,7 @@ export default function FgdRoomClient({
   const verdictGroupedProposals: Record<string, Proposal[]> = {};
   if (isMultiStatus) {
     for (const verdict of Object.keys(VERDICT_LABELS)) {
-      const group = proposals.filter(p => p.verdict === verdict);
+      const group = filteredProposals.filter(p => p.verdict === verdict);
       if (group.length > 0) verdictGroupedProposals[verdict] = group;
     }
   }
@@ -732,15 +739,55 @@ export default function FgdRoomClient({
         {/* ── TAB 1: List Ringkas ──────────────────────────────────────────── */}
         {activeTab === 'list' && (
           <div className="p-6 overflow-y-auto h-full">
-            <h2 className="text-lg font-bold text-gray-800 mb-4">
-              Pool Proposal — {proposals.length} proposal
-            </h2>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
+              <h2 className="text-lg font-bold text-gray-800">
+                Pool Proposal — {proposals.length} proposal
+                {searchQuery.trim() !== '' && (
+                  <span className="text-sm font-normal text-gray-500 ml-2">
+                    (Ditemukan: {filteredProposals.length})
+                  </span>
+                )}
+              </h2>
+
+              {/* Free Text Search Box */}
+              <div className="relative w-full sm:w-80">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                </div>
+                <input
+                  type="text"
+                  placeholder="Cari Judul Proposal..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-9 pr-8 py-2 w-full rounded-lg border border-gray-300 bg-white text-sm text-gray-900 shadow-sm focus:border-teal-500 focus:ring-teal-500 outline-none"
+                />
+                {searchQuery !== '' && (
+                  <button
+                    onClick={() => setSearchQuery('')}
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-xs text-gray-400 hover:text-gray-600 font-bold"
+                    title="Bersihkan pencarian"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+            </div>
 
             {proposals.length === 0 ? (
               <div className="bg-white rounded-lg border border-gray-200 p-12 text-center text-gray-500">
                 <div className="text-4xl mb-3">📭</div>
                 <p className="font-medium">Tidak ada proposal yang sesuai filter.</p>
                 <p className="text-sm mt-1">Coba ubah filter status di pengaturan sesi FGD.</p>
+              </div>
+            ) : filteredProposals.length === 0 ? (
+              <div className="bg-white rounded-lg border border-gray-200 p-12 text-center text-gray-500">
+                <div className="text-4xl mb-3">🔍</div>
+                <p className="font-medium text-gray-800 mb-1">
+                  Tidak ada proposal dengan judul mengandung &ldquo;{searchQuery}&rdquo;
+                </p>
+                <p className="text-sm text-gray-500">Coba gunakan kata kunci pencarian judul lain.</p>
               </div>
             ) : isMultiStatus ? (
               // ── MULTI-STATUS: Group by screening verdict with expand/collapse ──
@@ -801,9 +848,10 @@ export default function FgdRoomClient({
             ) : (
               // ── FLAT MODE (single-status, flat scope) ──
               <div className="bg-white rounded-lg shadow-sm border border-gray-200 divide-y divide-gray-100">
-                {proposals.map((p, idx) => (
-                  <ProposalRow key={p.id} p={p} idx={idx} />
-                ))}
+                {filteredProposals.map((p) => {
+                  const idx = proposals.findIndex(x => x.id === p.id);
+                  return <ProposalRow key={p.id} p={p} idx={idx} />;
+                })}
               </div>
             )}
           </div>
