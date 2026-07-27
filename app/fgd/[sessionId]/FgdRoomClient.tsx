@@ -9,23 +9,15 @@ import { deleteFgdAdditionalDocument } from '@/app/actions/deleteDocument';
 import ProposalDocumentButtons from '@/app/components/ProposalDocumentButtons';
 import { supabase } from '@/lib/supabase/client';
 
-// Helper function to extract supporting image links from both Google Drive and Contabo / direct image URLs
-function extractSupportingImageUrls(text: string | null | undefined): { originalUrl: string; cdnUrl: string }[] {
+// Helper function to extract Google Drive image links and convert to direct CDN display URLs
+function extractGoogleDriveImageUrls(text: string | null | undefined): { originalUrl: string; cdnUrl: string }[] {
   if (!text) return [];
-
+  const driveRegex = /https?:\/\/drive\.google\.com\/(?:file\/d\/|open\?id=)([a-zA-Z0-9_-]+)(?:[^\s"'<>]*)?/g;
+  const matches = [...text.matchAll(driveRegex)];
   const results: { originalUrl: string; cdnUrl: string }[] = [];
   const seen = new Set<string>();
 
-  // Sanitize line-breaks and whitespace in S3/Contabo URLs introduced during PDF text extraction
-  let sanitizedText = text;
-  sanitizedText = sanitizedText.replace(/(contabostorage\.com\/[^\s"<>]+)\s+([^\s"<>]+)/gi, '$1$2');
-  sanitizedText = sanitizedText.replace(/(contabostorage\.com\/[^\s"<>]+)\s+([^\s"<>]+)/gi, '$1$2');
-
-  // 1. Google Drive Image URLs
-  const driveRegex = /https?:\/\/drive\.google\.com\/(?:file\/d\/|open\?id=)([a-zA-Z0-9_-]+)(?:[^\s"'<>]*)?/gi;
-  const driveMatches = [...sanitizedText.matchAll(driveRegex)];
-
-  for (const m of driveMatches) {
+  for (const m of matches) {
     const fullMatch = m[0];
     const fileId = m[1];
     if (fileId && !seen.has(fileId)) {
@@ -33,21 +25,6 @@ function extractSupportingImageUrls(text: string | null | undefined): { original
       results.push({
         originalUrl: fullMatch,
         cdnUrl: `https://lh3.googleusercontent.com/d/${fileId}`
-      });
-    }
-  }
-
-  // 2. Direct Image URLs (Contabo Storage, S3, etc.)
-  const imageDirectRegex = /https?:\/\/[^\s"'<>]+\.(?:jpg|jpeg|png|webp|gif)(?:\?[^\s"'<>]*)?/gi;
-  const imageMatches = [...sanitizedText.matchAll(imageDirectRegex)];
-
-  for (const m of imageMatches) {
-    const fullUrl = m[0];
-    if (!seen.has(fullUrl) && !fullUrl.includes('drive.google.com')) {
-      seen.add(fullUrl);
-      results.push({
-        originalUrl: fullUrl,
-        cdnUrl: fullUrl
       });
     }
   }
@@ -1397,18 +1374,18 @@ export default function FgdRoomClient({
                               </div>
                             )}
 
-                            {/* 2. BAGIAN B: GAMBAR SKETSA DARI GOOGLE DRIVE / CONTABO STORAGE (HIDE FAILED IMAGES COMPLETELY) */}
+                            {/* 2. BAGIAN B: GAMBAR SKETSA DARI LINK GOOGLE DRIVE (HIDE FAILED IMAGES COMPLETELY) */}
                             {(() => {
-                              const imageItems = extractSupportingImageUrls(activeProposal.resubmitDocumentText || activeProposal.linkResubmitProposal);
+                              const driveItems = extractGoogleDriveImageUrls(activeProposal.resubmitDocumentText || activeProposal.linkResubmitProposal);
                               // Filter out any image URLs that triggered load errors so they are completely hidden
-                              const validItems = imageItems.filter(item => !imageLoadErrors[item.cdnUrl]);
+                              const validItems = driveItems.filter(item => !imageLoadErrors[item.cdnUrl]);
                               if (validItems.length === 0) return null;
 
                               return (
                                 <div className="space-y-2 pt-2 border-t border-slate-200">
                                   <h5 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center space-x-1.5">
                                     <span>🖼️</span>
-                                    <span>Gambar Sketsa / Diagram Inovasi</span>
+                                    <span>Gambar Sketsa / Diagram Inovasi (dari Google Drive)</span>
                                   </h5>
                                   <div className="grid grid-cols-1 gap-4 pt-1">
                                     {validItems.map((item, idx) => (
