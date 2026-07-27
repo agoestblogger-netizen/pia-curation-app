@@ -487,6 +487,9 @@ export default function FgdRoomClient({
   // Expand/collapse state for category groups in single-status grouped view (default: all expanded)
   const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>({});
 
+  // Expand/collapse state for category sub-groups inside multi-status view (default: all expanded)
+  const [expandedCategorySubgroups, setExpandedCategorySubgroups] = useState<Record<string, boolean>>({});
+
   const [confirmModal, setConfirmModal] = useState<{
     isOpen: boolean;
     title: string;
@@ -849,15 +852,29 @@ export default function FgdRoomClient({
                 <p className="text-sm text-gray-500">Coba ubah kata kunci pencarian judul atau filter nama kurator.</p>
               </div>
             ) : isMultiStatus ? (
-              // ── MULTI-STATUS: Group by screening verdict with expand/collapse ──
+              // ── MULTI-STATUS: Group by screening verdict AND sub-group by category with expand/collapse ──
               <div className="space-y-4">
                 {Object.entries(verdictGroupedProposals).map(([verdict, groupProps]) => {
                   const isFilterActive = searchQuery.trim() !== '' || curatorFilter !== '';
                   const isExpanded = isFilterActive || expandedVerdicts[verdict] !== false;
                   const verdictLabel = VERDICT_LABELS[verdict] ?? verdict;
                   const verdictColor = VERDICT_COLORS[verdict] ?? 'bg-gray-100 text-gray-700 border-gray-200';
+
+                  // Group proposals inside this verdict by category
+                  const catGroups: Record<string, Proposal[]> = {};
+                  for (const p of groupProps) {
+                    const key = p.category === 'PUSAT' ? 'Kantor Pusat' 
+                      : p.category === 'WILAYAH' ? (p.regionCenter ?? 'Wilayah') 
+                      : p.category === 'BC' ? 'Business Case'
+                      : p.category === 'BI' ? 'Breakthrough Innovation'
+                      : p.category;
+                    if (!catGroups[key]) catGroups[key] = [];
+                    catGroups[key].push(p);
+                  }
+
                   return (
                     <div key={verdict} className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+                      {/* Main Status Group Header */}
                       <button
                         onClick={() => setExpandedVerdicts(prev => ({ ...prev, [verdict]: !isExpanded }))}
                         className="w-full bg-gray-50 px-4 py-3 border-b border-gray-200 flex items-center justify-between hover:bg-gray-100 transition text-left"
@@ -875,11 +892,44 @@ export default function FgdRoomClient({
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                         </svg>
                       </button>
+
+                      {/* Category Sub-Groups inside Status Group */}
                       {isExpanded && (
-                        <div className="divide-y divide-gray-100">
-                          {groupProps.map((p) => {
-                            const idx = proposals.findIndex(x => x.id === p.id);
-                            return <ProposalRow key={p.id} p={p} idx={idx} />;
+                        <div className="p-3 bg-gray-50/40 space-y-3 divide-y-0">
+                          {Object.entries(catGroups).map(([catName, catProps]) => {
+                            const subKey = `${verdict}_${catName}`;
+                            const isSubExpanded = isFilterActive || expandedCategorySubgroups[subKey] !== false;
+                            return (
+                              <div key={catName} className="bg-white rounded-md border border-gray-200 overflow-hidden shadow-2xs">
+                                <button
+                                  onClick={() => setExpandedCategorySubgroups(prev => ({ ...prev, [subKey]: !isSubExpanded }))}
+                                  className="w-full bg-gray-100/80 px-3.5 py-2 border-b border-gray-200 flex items-center justify-between hover:bg-gray-200/70 transition text-left"
+                                >
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-xs font-bold text-gray-800 tracking-wide flex items-center gap-1.5">
+                                      📂 {catName}
+                                    </span>
+                                    <span className="text-[11px] font-semibold text-gray-600 bg-white border border-gray-200 px-2 py-0.5 rounded-full">
+                                      {catProps.length} proposal
+                                    </span>
+                                  </div>
+                                  <svg
+                                    className={`w-3.5 h-3.5 text-gray-500 transition-transform duration-200 ${isSubExpanded ? 'rotate-180' : ''}`}
+                                    fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                                  >
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                  </svg>
+                                </button>
+                                {isSubExpanded && (
+                                  <div className="divide-y divide-gray-100">
+                                    {catProps.map((p) => {
+                                      const idx = proposals.findIndex(x => x.id === p.id);
+                                      return <ProposalRow key={p.id} p={p} idx={idx} />;
+                                    })}
+                                  </div>
+                                )}
+                              </div>
+                            );
                           })}
                         </div>
                       )}
