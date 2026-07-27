@@ -1,6 +1,3 @@
-export const dynamic = 'force-dynamic';
-export const revalidate = 0;
-
 import { db } from '@/lib/db';
 import { fgdSessions, competitions } from '@/lib/db/schema';
 import { eq, desc } from 'drizzle-orm';
