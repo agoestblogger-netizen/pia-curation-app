@@ -59,7 +59,7 @@ type Vote = { id: number; proposalId: number; curatorId: number; vote: string };
 type Comment = { id: number; proposalId: number; curatorId: number; content: string; createdAt: string; curatorName: string | null; commentType?: string | null };
 
 export default function FgdRoomClient({ 
-  session, fgd, proposals, votes, comments, readOnly = false
+  session, fgd, proposals, votes, comments, readOnly = false, onlineCuratorNames = []
 }: { 
   session: any;
   fgd: any;
@@ -67,6 +67,7 @@ export default function FgdRoomClient({
   votes: Vote[];
   comments: Comment[];
   readOnly?: boolean;
+  onlineCuratorNames?: string[];
 }) {
   const router = useRouter();
   const [, startRefresh] = useTransition();
@@ -815,18 +816,21 @@ export default function FgdRoomClient({
 
                 {/* Curator Filter Dropdown */}
                 {availableCurators.length > 0 && (
-                  <div className="relative w-full sm:w-56">
+                  <div className="relative w-full sm:w-64">
                     <select
                       value={curatorFilter}
                       onChange={(e) => setCuratorFilter(e.target.value)}
-                      className="w-full py-2 pl-3 pr-8 rounded-lg border border-gray-300 bg-white text-sm text-gray-900 shadow-sm focus:border-teal-500 focus:ring-teal-500 outline-none cursor-pointer"
+                      className="w-full py-2 pl-3 pr-8 rounded-lg border border-gray-300 bg-white text-sm text-gray-900 shadow-sm focus:border-teal-500 focus:ring-teal-500 outline-none cursor-pointer font-medium"
                     >
-                      <option value="">Semua Kurator ({availableCurators.length})</option>
-                      {availableCurators.map((name) => (
-                        <option key={name} value={name}>
-                          {name}
-                        </option>
-                      ))}
+                      <option value="">Kurator Sudah Screening ({availableCurators.length})</option>
+                      {availableCurators.map((name) => {
+                        const isOnline = onlineCuratorNames.includes(name);
+                        return (
+                          <option key={name} value={name}>
+                            {isOnline ? '🟢 ' : '⚪ '}{name}
+                          </option>
+                        );
+                      })}
                     </select>
                   </div>
                 )}

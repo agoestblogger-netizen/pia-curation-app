@@ -3,7 +3,7 @@ import { db } from '@/lib/db';
 import { 
   fgdSessions, fgdVotes, fgdComments, users, proposalAiAnalyses, fgdAdditionalDocuments
 } from '@/lib/db/schema';
-import { eq, sql, inArray } from 'drizzle-orm';
+import { eq, sql, inArray, gte, and, isNotNull } from 'drizzle-orm';
 import { syncPreviousFgdCommentsForSession } from '@/app/actions/fgd';
 import { maskProposalIdentity } from '@/lib/utils/blindReview';
 import FgdRoomClient from './FgdRoomClient';
@@ -189,12 +189,27 @@ export default async function FgdRoomPage({ params }: { params: Promise<{ sessio
     .where(eq(fgdComments.sessionId, sId))
     .orderBy(fgdComments.createdAt);
 
-  const [aiAnalyses, addlDocs, votesRaw, commentsRaw] = await Promise.all([
+  const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
+  const onlineCuratorsPromise = db
+    .select({ name: users.name })
+    .from(users)
+    .where(
+      and(
+        eq(users.isActive, true),
+        isNotNull(users.lastActiveAt),
+        gte(users.lastActiveAt, fiveMinutesAgo)
+      )
+    );
+
+  const [aiAnalyses, addlDocs, votesRaw, commentsRaw, onlineCuratorsRaw] = await Promise.all([
     aiAnalysesPromise,
     addlDocsPromise,
     votesPromise,
-    commentsPromise
+    commentsPromise,
+    onlineCuratorsPromise
   ]);
+
+  const onlineCuratorNames = onlineCuratorsRaw.map(u => u.name);
 
   if (proposalIds.length > 0) {
     // Attach aiAnalysis to each proposal
@@ -269,6 +284,7 @@ export default async function FgdRoomPage({ params }: { params: Promise<{ sessio
           votes={votesRaw}
           comments={commentsRaw as any}
           readOnly={isViewerOnly}
+          onlineCuratorNames={onlineCuratorNames}
         />
       </main>
     </div>
