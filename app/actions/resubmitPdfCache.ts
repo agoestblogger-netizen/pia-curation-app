@@ -29,8 +29,8 @@ export async function getEmbeddablePdfUrl(url: string | null | undefined): Promi
     return url;
   }
 
-  // 3. Contabo Storage S3 or external PDFs -> Google Docs PDF Viewer Embed Proxy (bypasses octet-stream headers)
-  return `https://docs.google.com/gview?url=${encodeURIComponent(url)}&embedded=true`;
+  // 3. Contabo Storage S3 or external PDFs -> Internal PDF Stream Proxy (forces Content-Type: application/pdf and Content-Disposition: inline to prevent auto-download)
+  return `/api/pdf/proxy?url=${encodeURIComponent(url)}`;
 }
 
 // Helper to extract PDF URLs from proposal text and main resubmit link
