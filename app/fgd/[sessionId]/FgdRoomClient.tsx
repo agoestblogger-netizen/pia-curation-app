@@ -10,26 +10,22 @@ import ProposalDocumentButtons from '@/app/components/ProposalDocumentButtons';
 import { supabase } from '@/lib/supabase/client';
 
 // Helper function to extract Google Drive image links and convert to direct CDN display URLs
-function extractGoogleDriveImageUrls(text: string | null | undefined): { originalUrl: string; cdnUrl: string }[] {
+function extractGoogleDriveImageUrls(text: string | null | undefined): string[] {
   if (!text) return [];
-  const driveRegex = /https?:\/\/drive\.google\.com\/(?:file\/d\/|open\?id=)([a-zA-Z0-9_-]+)(?:[^\s"'<>]*)?/g;
+  const driveRegex = /(?:https?:\/\/)?drive\.google\.com\/(?:file\/d\/|open\?id=)([a-zA-Z0-9_-]+)/g;
   const matches = [...text.matchAll(driveRegex)];
-  const results: { originalUrl: string; cdnUrl: string }[] = [];
+  const urls: string[] = [];
   const seen = new Set<string>();
 
   for (const m of matches) {
-    const fullMatch = m[0];
     const fileId = m[1];
     if (fileId && !seen.has(fileId)) {
       seen.add(fileId);
-      results.push({
-        originalUrl: fullMatch,
-        cdnUrl: `https://lh3.googleusercontent.com/d/${fileId}`
-      });
+      urls.push(`https://lh3.googleusercontent.com/d/${fileId}`);
     }
   }
 
-  return results;
+  return urls;
 }
 
 // 5 warna per verdict — sesuai SCREENING_VERDICT_COLORS
@@ -207,10 +203,9 @@ export default function FgdRoomClient({
   const [isGeneratingResubmitAi, setIsGeneratingResubmitAi] = useState<Record<number, boolean>>({});
   const [resubmitAiError, setResubmitAiError] = useState<Record<number, string | null>>({});
   const [expandedResubmitSections, setExpandedResubmitSections] = useState<Record<number, boolean>>({});
-  const [imageLoadErrors, setImageLoadErrors] = useState<Record<string, boolean>>({});
 
-  const handleGenerateResubmitAi = async (proposalId: number, isRetry = false) => {
-    if (!isRetry && (isGeneratingResubmitAi[proposalId] || localResubmitAiAnalyses[proposalId])) return;
+  const handleGenerateResubmitAi = async (proposalId: number) => {
+    if (isGeneratingResubmitAi[proposalId] || localResubmitAiAnalyses[proposalId]) return;
 
     setIsGeneratingResubmitAi(prev => ({ ...prev, [proposalId]: true }));
     setResubmitAiError(prev => ({ ...prev, [proposalId]: null }));
@@ -223,10 +218,10 @@ export default function FgdRoomClient({
         setLocalResubmitAiAnalyses(prev => ({ ...prev, [proposalId]: res.data }));
       }
     } catch (e: any) {
-      setResubmitAiError(prev => ({ ...prev, [proposalId]: 'Analisa AI tidak dapat diproses saat ini.' }));
+      setResubmitAiError(prev => ({ ...prev, [proposalId]: e.message || 'Terjadi kesalahan sistem.' }));
     } finally {
       setIsGeneratingResubmitAi(prev => ({ ...prev, [proposalId]: false }));
-      // Mark background process as completed & auto-expand section (whether success or graceful error)
+      // Auto-expand section ONLY ONCE when background process completes for this proposal
       setExpandedResubmitSections(prev => {
         if (prev[proposalId] === undefined) {
           return { ...prev, [proposalId]: true };
@@ -1312,19 +1307,10 @@ export default function FgdRoomClient({
                               </div>
                             )}
 
-                            {/* Error State for AI Analysis */}
+                            {/* Error State */}
                             {resubmitAiError[activeProposal.id] && (
-                              <div className="bg-rose-50/90 text-rose-800 p-3.5 rounded-md border border-rose-200 text-xs flex items-center justify-between">
-                                <div className="flex items-center space-x-2">
-                                  <span>⚠️</span>
-                                  <span>{resubmitAiError[activeProposal.id]}</span>
-                                </div>
-                                <button
-                                  onClick={() => handleGenerateResubmitAi(activeProposal.id, true)}
-                                  className="px-2.5 py-1 bg-rose-600 hover:bg-rose-700 text-white font-bold text-[11px] rounded transition shadow-2xs"
-                                >
-                                  Coba Lagi
-                                </button>
+                              <div className="bg-rose-50 text-rose-800 p-3.5 rounded-md border border-rose-200 text-sm">
+                                ⚠️ {resubmitAiError[activeProposal.id]}
                               </div>
                             )}
 
@@ -1374,10 +1360,10 @@ export default function FgdRoomClient({
                               </div>
                             )}
 
-                            {/* 2. BAGIAN B: GAMBAR SKETSA DARI LINK GOOGLE DRIVE (WITH GRACEFUL ONERROR FALLBACK) */}
+                            {/* 2. BAGIAN B: GAMBAR SKETSA DARI LINK GOOGLE DRIVE */}
                             {(() => {
-                              const driveItems = extractGoogleDriveImageUrls(activeProposal.resubmitDocumentText || activeProposal.linkResubmitProposal);
-                              if (driveItems.length === 0) return null;
+                              const driveUrls = extractGoogleDriveImageUrls(activeProposal.resubmitDocumentText || activeProposal.linkResubmitProposal);
+                              if (driveUrls.length === 0) return null;
                               return (
                                 <div className="space-y-2 pt-2 border-t border-slate-200">
                                   <h5 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center space-x-1.5">
@@ -1385,61 +1371,39 @@ export default function FgdRoomClient({
                                     <span>Gambar Sketsa / Diagram Inovasi (dari Google Drive)</span>
                                   </h5>
                                   <div className="grid grid-cols-1 gap-4 pt-1">
-                                    {driveItems.map((item, idx) => {
-                                      const hasError = imageLoadErrors[item.cdnUrl];
-                                      return (
-                                        <div key={idx} className="bg-slate-50 p-3 rounded-lg border border-slate-200 text-center">
-                                          {!hasError ? (
-                                            <>
-                                              <img 
-                                                src={item.cdnUrl} 
-                                                alt={`Sketsa Resubmission #${idx + 1}`}
-                                                className="max-w-full h-auto mx-auto rounded border border-slate-300 shadow-xs"
-                                                loading="lazy"
-                                                onError={() => setImageLoadErrors(prev => ({ ...prev, [item.cdnUrl]: true }))}
-                                              />
-                                              <div className="text-[11px] text-slate-500 mt-2 font-medium">
-                                                Sketsa / Diagram Resubmission #{idx + 1}
-                                              </div>
-                                            </>
-                                          ) : (
-                                            <div className="p-3.5 bg-amber-50/70 border border-amber-200 rounded-md text-slate-700 text-xs flex flex-col md:flex-row items-center justify-between gap-2">
-                                              <span className="text-amber-900 font-medium">⚠️ Gambar sketsa tidak dapat dimuat langsung (Link Private / Memerlukan Akses)</span>
-                                              <a
-                                                href={item.originalUrl}
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                                className="px-3 py-1 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs rounded transition flex-shrink-0"
-                                              >
-                                                🔗 Buka Gambar di Google Drive
-                                              </a>
-                                            </div>
-                                          )}
+                                    {driveUrls.map((imgUrl, idx) => (
+                                      <div key={idx} className="bg-slate-100 p-2 rounded-lg border border-slate-200 overflow-hidden text-center">
+                                        <img 
+                                          src={imgUrl} 
+                                          alt={`Sketsa Resubmission #${idx + 1}`}
+                                          className="max-w-full h-auto mx-auto rounded border border-slate-300 shadow-sm"
+                                          loading="lazy"
+                                        />
+                                        <div className="text-[11px] text-slate-500 mt-2 font-medium">
+                                          Sketsa / Diagram Resubmission #{idx + 1}
                                         </div>
-                                      );
-                                    })}
+                                      </div>
+                                    ))}
                                   </div>
                                 </div>
                               );
                             })()}
 
                             {/* 3. BAGIAN C: EMBED / LINK DOKUMEN PDF RESUBMISSION */}
-                            {activeProposal.linkResubmitProposal && (
-                              <div className="pt-3 border-t border-slate-200 flex items-center justify-between">
-                                <div className="text-xs text-slate-600 font-medium flex items-center space-x-2">
-                                  <span>📎 Dokumen Resubmission PDF</span>
-                                </div>
-                                <a
-                                  href={activeProposal.linkResubmitProposal}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-md shadow-xs transition flex items-center space-x-1.5"
-                                >
-                                  <span>Buka Dokumen Resubmission</span>
-                                  <svg className="w-3.5 h-3.5 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
-                                </a>
+                            <div className="pt-3 border-t border-slate-200 flex items-center justify-between">
+                              <div className="text-xs text-slate-600 font-medium flex items-center space-x-2">
+                                <span>📎 File Asli Resubmission PDF</span>
                               </div>
-                            )}
+                              <a
+                                href={activeProposal.linkResubmitProposal}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-md shadow-xs transition flex items-center space-x-1.5"
+                              >
+                                <span>Buka PDF Resubmission</span>
+                                <svg className="w-3.5 h-3.5 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+                              </a>
+                            </div>
                           </div>
                         )}
                       </div>
