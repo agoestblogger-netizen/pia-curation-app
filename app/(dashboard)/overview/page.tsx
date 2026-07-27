@@ -169,9 +169,9 @@ export default async function OverviewDashboard() {
     return a.localeCompare(b);
   });
 
-  // Calculate Curator Assignment Stats (Only for Coordinator)
+  // Calculate Curator Assignment Stats (For Coordinator, Admin, & Curator)
   let curatorStats: { name: string; categoriesAssigned: string; total: number; completed: number; sisa: number }[] = [];
-  if (session?.roles?.includes('coordinator')) {
+  if (session?.roles?.some(r => r === 'coordinator' || r === 'admin' || r === 'curator')) {
 
     curatorStats = curators.map((c) => {
       const myAss = assignments.filter((a) => a.curatorId === c.id);
