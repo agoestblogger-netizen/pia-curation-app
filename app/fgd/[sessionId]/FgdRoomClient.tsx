@@ -218,7 +218,7 @@ export default function FgdRoomClient({
       const saved = localStorage.getItem('pia_split_resubmit_ratio');
       if (saved) {
         const parsed = parseInt(saved, 10);
-        if (!isNaN(parsed) && parsed >= 25 && parsed <= 75) return parsed;
+        if (!isNaN(parsed) && (parsed === 0 || (parsed >= 25 && parsed <= 75))) return parsed;
       }
     }
     return 40; // Default: 40% Panel Kiri, 60% Panel Kanan (lega untuk dokumen)
@@ -1208,11 +1208,12 @@ export default function FgdRoomClient({
 
                 {/* Outer Split-Screen Container */}
                 <div className={`flex-1 flex overflow-hidden ${isResizingSplit ? 'select-none' : ''}`}>
-                  {/* PANEL KIRI: App FGD Curation Utama (Kompak/Full berdasarkan splitRatioPercent) */}
-                  <div
-                    style={{ width: isSplitResubmitOpen ? `${splitRatioPercent}%` : '100%' }}
-                    className="h-full flex flex-col overflow-hidden transition-all duration-75"
-                  >
+                  {/* PANEL KIRI: App FGD Curation Utama (Hidden if 100% Full mode) */}
+                  {splitRatioPercent > 0 && (
+                    <div
+                      style={{ width: isSplitResubmitOpen ? `${splitRatioPercent}%` : '100%' }}
+                      className="h-full flex flex-col overflow-hidden transition-all duration-75"
+                    >
                     {/* Navigation Header */}
                   <div className="w-1/2 p-6 overflow-y-auto border-r border-gray-200 bg-white">
                     <div className="flex items-start justify-between mb-3">
@@ -1813,9 +1814,10 @@ export default function FgdRoomClient({
                     )}
                     </div>
                   </div>
+                  )}
 
-                  {/* DIVIDER RESIZER BAR (DRAGGABLE) */}
-                  {isSplitResubmitOpen && (
+                  {/* DIVIDER RESIZER BAR (DRAGGABLE - Only shown when left panel is visible) */}
+                  {isSplitResubmitOpen && splitRatioPercent > 0 && (
                     <div
                       onMouseDown={() => setIsResizingSplit(true)}
                       className="w-2.5 bg-slate-200 hover:bg-indigo-600 cursor-col-resize flex flex-col items-center justify-center relative z-20 group transition-colors shrink-0 select-none border-x border-slate-300 shadow-xs"
@@ -1842,7 +1844,7 @@ export default function FgdRoomClient({
 
                         <div className="flex items-center space-x-2 shrink-0">
                           {/* Preset Ratio Selector % */}
-                          <div className="hidden sm:flex items-center bg-slate-700 p-0.5 rounded-lg border border-slate-600 text-xs">
+                          <div className="hidden sm:flex items-center bg-slate-700 p-0.5 rounded-lg border border-slate-600 text-xs space-x-0.5">
                             {[30, 40, 50, 60, 70].map((r) => (
                               <button
                                 key={r}
@@ -1857,6 +1859,17 @@ export default function FgdRoomClient({
                                 {r}:{100 - r}
                               </button>
                             ))}
+                            <button
+                              onClick={() => handlePresetRatio(0)}
+                              className={`px-2.5 py-0.5 rounded text-[11px] font-extrabold transition ${
+                                splitRatioPercent === 0
+                                  ? 'bg-indigo-600 text-white shadow-2xs'
+                                  : 'bg-indigo-950/70 text-indigo-200 hover:text-white hover:bg-indigo-600/80 border border-indigo-500/40'
+                              }`}
+                              title="Dokumen Resubmission Full Screen 100%"
+                            >
+                              🔍 100% Full
+                            </button>
                           </div>
 
                           {/* Close Button */}
