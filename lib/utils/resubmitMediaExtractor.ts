@@ -84,7 +84,7 @@ export function extractSupportingImageUrls(text: string | null | undefined): Res
       seen.add(fileId);
       results.push({
         originalUrl: fullMatch,
-        cdnUrl: `https://lh3.googleusercontent.com/d/${fileId}`,
+        cdnUrl: `https://drive.google.com/thumbnail?id=${fileId}&sz=w2000`,
       });
     }
   }
