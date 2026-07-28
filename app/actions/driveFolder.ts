@@ -56,20 +56,42 @@ export async function getGoogleDriveFolderFilesAction(folderUrl: string, folderT
   }
 
   try {
-    const query = `'${folderId}' in parents and trashed = false`;
-    const fields = 'files(id, name, mimeType, thumbnailLink, webContentLink)';
-    const apiUrl = `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(query)}&fields=${encodeURIComponent(fields)}&key=${apiKey}&supportsAllDrives=true&includeItemsFromAllDrives=true`;
+    async function fetchFolderContent(targetFolderId: string, currentDepth = 0): Promise<any[]> {
+      if (currentDepth > 1) return []; // Unpack up to 1 nested subfolder level
 
-    const res = await fetch(apiUrl, { next: { revalidate: 3600 } });
-    if (!res.ok) {
-      const errData = await res.json().catch(() => ({}));
-      console.warn(`[Drive Folder Action] API returned HTTP ${res.status} for folder ${folderId}:`, errData.error?.message || 'File not found / restricted.');
-      folderFilesCache.set(folderId, { timestamp: Date.now(), data: fallbackResult });
-      return fallbackResult;
+      const query = `'${targetFolderId}' in parents and trashed = false`;
+      const fields = 'files(id, name, mimeType, thumbnailLink, webContentLink)';
+      const apiUrl = `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(query)}&fields=${encodeURIComponent(fields)}&key=${apiKey}&supportsAllDrives=true&includeItemsFromAllDrives=true`;
+
+      const res = await fetch(apiUrl, { next: { revalidate: 3600 } });
+      if (!res.ok) return [];
+
+      const json = await res.json();
+      const rawItems = json.files || [];
+      const unpacked: any[] = [];
+
+      for (const item of rawItems) {
+        if (item.mimeType === 'application/vnd.google-apps.folder') {
+          const subFiles = await fetchFolderContent(item.id, currentDepth + 1);
+          if (subFiles.length > 0) {
+            subFiles.forEach(sf => {
+              unpacked.push({
+                ...sf,
+                name: `${item.name} 📁 / ${sf.name}`,
+              });
+            });
+          } else {
+            // Keep subfolder item if empty or unreadable
+            unpacked.push(item);
+          }
+        } else {
+          unpacked.push(item);
+        }
+      }
+      return unpacked;
     }
 
-    const json = await res.json();
-    const rawFiles = json.files || [];
+    const rawFiles = await fetchFolderContent(folderId, 0);
 
     if (rawFiles.length === 0) {
       folderFilesCache.set(folderId, { timestamp: Date.now(), data: fallbackResult });
