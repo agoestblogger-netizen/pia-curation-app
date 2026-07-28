@@ -1941,10 +1941,10 @@ export default function FgdRoomClient({
                   {isSplitResubmitOpen && (
                     <div
                       style={{ width: `${100 - splitRatioPercent}%` }}
-                      className="h-full flex flex-col bg-slate-900 border-l border-slate-700 shadow-2xl overflow-hidden z-20 transition-all duration-75 relative"
+                      className="h-full flex flex-col bg-slate-900 border-l border-slate-700 shadow-2xl overflow-hidden z-20 transition-all duration-75 shrink-0"
                     >
-                      {/* Header Panel Kanan: Title + Preset Selector % + Close Button (STICKY LOCKED ON TOP) */}
-                      <div className="p-3.5 bg-slate-800/95 backdrop-blur-md border-b border-slate-700 flex items-center justify-between text-white shrink-0 shadow-md sticky top-0 z-50 select-none">
+                      {/* Header Panel Kanan: Title + Preset Selector % + Close Button (PERMANENT FIXED NON-SCROLLABLE HEADER) */}
+                      <div className="p-3.5 bg-slate-800 border-b border-slate-700 flex items-center justify-between text-white shrink-0 shadow-md z-30 select-none">
                         <div className="flex items-center space-x-2 truncate pr-2">
                           <span className="text-base">📄</span>
                           <h3 className="font-bold text-xs sm:text-sm text-slate-100 truncate">
@@ -1993,8 +1993,8 @@ export default function FgdRoomClient({
                         </div>
                       </div>
 
-                      {/* Body Panel Kanan: Dokumen Resubmission Utuh (PDF Utama H-750px + Drive Folders + Gambar) */}
-                      <div className="flex-1 overflow-y-auto p-5 bg-slate-100 space-y-6">
+                      {/* Body Panel Kanan: SINGLE UNIFIED SCROLL CONTAINER FOR ALL SECTIONS */}
+                      <div className="flex-1 min-h-0 overflow-y-auto p-5 bg-slate-100 space-y-6 scroll-smooth">
                         {/* 1. PALING ATAS: DOKUMEN RESUBMISSION UTAMA (EMBED PDF UTUH H-750px) */}
                         {(() => {
                           const pdfItems = localResubmitPdfs[activeProposal.id] || (activeProposal.linkResubmitProposal ? [{
