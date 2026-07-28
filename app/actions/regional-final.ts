@@ -233,7 +233,7 @@ export async function setRegionalFinalistsAction(
     after: { finalistIds, competitionId },
   });
 
-  revalidatePath('/coordinator/finalization');
+  revalidatePath('/coordinator/regional-final');
   return { success: true };
 }
 
@@ -323,7 +323,7 @@ export async function lockRegionalGroupAction(
     after: { regionKey, finalistCount: finalistIds.length, takeoutCount: nonFinalistIds.length },
   });
 
-  revalidatePath('/coordinator/finalization');
+  revalidatePath('/coordinator/regional-final');
   revalidatePath('/coordinator/fgd');
   return { success: true, finalistCount: finalistIds.length, takeoutCount: nonFinalistIds.length };
 }
@@ -386,8 +386,7 @@ export async function reopenRegionalGroupAction(
       eq(proposals.competitionId, competitionId),
       isKanpus
         ? eq(proposals.category, 'PUSAT')
-        : and(eq(proposals.category, 'WILAYAH'), eq(proposals.regionCenter, dbRegion)),
-      eq(proposals.status, 'regional_finalist')
+        : and(eq(proposals.category, 'WILAYAH'), eq(proposals.regionCenter, dbRegion))
     )
   );
 
@@ -413,7 +412,7 @@ export async function reopenRegionalGroupAction(
     after: { regionKey },
   });
 
-  revalidatePath('/coordinator/finalization');
+  revalidatePath('/coordinator/regional-final');
   revalidatePath('/coordinator/fgd');
   return { success: true };
 }
