@@ -97,8 +97,8 @@ export function extractSupportingImageUrls(text: string | null | undefined): Res
   for (const m of imageMatches) {
     const fullUrl = m[0].replace(/[.,;)]+$/, '');
 
-    // Skip drive.google.com since handled by driveRegex
-    if (!seen.has(fullUrl) && !fullUrl.includes('drive.google.com')) {
+    // Skip drive.google.com and docs.google.com
+    if (!seen.has(fullUrl) && !fullUrl.includes('drive.google.com') && !fullUrl.includes('docs.google.com')) {
       // Exclude HTML web pages or non-image URLs
       if (fullUrl.includes('/drive/folders/') || fullUrl.endsWith('.pdf')) {
         continue;
@@ -112,4 +112,74 @@ export function extractSupportingImageUrls(text: string | null | undefined): Res
   }
 
   return results;
+}
+
+export type GoogleWorkspaceItem = {
+  type: 'form' | 'sheet' | 'doc' | 'slide';
+  title: string;
+  url: string;
+  icon: string;
+  badgeBg: string;
+  badgeText: string;
+};
+
+// Helper function to extract Google Workspace links (Forms, Sheets, Docs, Slides) from text and main link
+export function extractGoogleWorkspaceUrls(text: string | null | undefined, mainUrl: string | null | undefined): GoogleWorkspaceItem[] {
+  const fullText = (text || '') + '\n' + (mainUrl || '');
+  if (!fullText.trim()) return [];
+
+  const items: GoogleWorkspaceItem[] = [];
+  const seen = new Set<string>();
+
+  const docsRegex = /https?:\/\/docs\.google\.com\/[^\s"'<>]+/gi;
+  const matches = [...fullText.matchAll(docsRegex)];
+
+  for (const m of matches) {
+    const cleanUrl = m[0].replace(/[.,;)]+$/, '');
+    if (seen.has(cleanUrl)) continue;
+
+    if (cleanUrl.includes('/forms/')) {
+      seen.add(cleanUrl);
+      items.push({
+        type: 'form',
+        title: 'Google Form (Survei / Kuesioner)',
+        url: cleanUrl,
+        icon: '📋',
+        badgeBg: 'bg-purple-50 border-purple-200 text-purple-900',
+        badgeText: 'Form Kuesioner',
+      });
+    } else if (cleanUrl.includes('/spreadsheets/')) {
+      seen.add(cleanUrl);
+      items.push({
+        type: 'sheet',
+        title: 'Google Spreadsheet (Data / Model Finansial)',
+        url: cleanUrl,
+        icon: '📊',
+        badgeBg: 'bg-emerald-50 border-emerald-200 text-emerald-900',
+        badgeText: 'Data Spreadsheet',
+      });
+    } else if (cleanUrl.includes('/document/')) {
+      seen.add(cleanUrl);
+      items.push({
+        type: 'doc',
+        title: 'Google Docs (Dokumen Teks)',
+        url: cleanUrl,
+        icon: '📝',
+        badgeBg: 'bg-blue-50 border-blue-200 text-blue-900',
+        badgeText: 'Dokumen Teks',
+      });
+    } else if (cleanUrl.includes('/presentation/')) {
+      seen.add(cleanUrl);
+      items.push({
+        type: 'slide',
+        title: 'Google Slides (Presentasi Slide)',
+        url: cleanUrl,
+        icon: '🎨',
+        badgeBg: 'bg-amber-50 border-amber-200 text-amber-900',
+        badgeText: 'Presentasi Slide',
+      });
+    }
+  }
+
+  return items;
 }

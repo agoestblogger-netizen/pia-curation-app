@@ -9,7 +9,7 @@ import { uploadFgdAdditionalDocument } from '@/app/actions/uploadDocument';
 import { deleteFgdAdditionalDocument } from '@/app/actions/deleteDocument';
 import ProposalDocumentButtons from '@/app/components/ProposalDocumentButtons';
 import { supabase } from '@/lib/supabase/client';
-import { extractDriveFolderUrls, extractSupportingImageUrls } from '@/lib/utils/resubmitMediaExtractor';
+import { extractDriveFolderUrls, extractSupportingImageUrls, extractGoogleWorkspaceUrls } from '@/lib/utils/resubmitMediaExtractor';
 import DriveFolderInlineView from '@/app/components/DriveFolderInlineView';
 
 // Helper function to transform raw PDF URLs into inline embeddable iframe URLs
@@ -1549,7 +1549,51 @@ export default function FgdRoomClient({
                               );
                             })()}
 
-                            {/* 3. BAGIAN PENDUKUNG (DI BAWAH): GAMBAR SKETSA DARI GOOGLE DRIVE / CONTABO STORAGE */}
+                            {/* 3. DOKUMEN / LINK GOOGLE WORKSPACE (FORMS, SHEETS, DOCS, SLIDES) */}
+                            {(() => {
+                              const workspaceItems = extractGoogleWorkspaceUrls(activeProposal.resubmitDocumentText, activeProposal.linkResubmitProposal);
+                              if (workspaceItems.length === 0) return null;
+
+                              return (
+                                <div className="space-y-3 pt-4 border-t border-slate-200">
+                                  <h5 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center space-x-1.5">
+                                    <span>🌐</span>
+                                    <span>Link Dokumen / Aplikasi Google Workspace Pendukung</span>
+                                  </h5>
+                                  <div className="grid grid-cols-1 gap-2.5">
+                                    {workspaceItems.map((item, wIdx) => (
+                                      <div key={item.url + wIdx} className={`p-3 rounded-lg border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 ${item.badgeBg} shadow-2xs`}>
+                                        <div className="flex items-center space-x-3">
+                                          <span className="text-xl shrink-0">{item.icon}</span>
+                                          <div>
+                                            <div className="font-bold text-xs flex items-center space-x-2">
+                                              <span>{item.title}</span>
+                                              <span className="text-[10px] px-1.5 py-0.2 rounded font-semibold bg-white/80 border border-slate-300">
+                                                {item.badgeText}
+                                              </span>
+                                            </div>
+                                            <div className="text-[11px] opacity-80 truncate max-w-md font-mono mt-0.5">
+                                              {item.url}
+                                            </div>
+                                          </div>
+                                        </div>
+                                        <a
+                                          href={item.url}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded transition flex items-center space-x-1.5 shadow-2xs shrink-0 self-end sm:self-center"
+                                        >
+                                          <span>🔗 Buka di Tab Baru</span>
+                                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+                                        </a>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              );
+                            })()}
+
+                            {/* 4. BAGIAN PENDUKUNG (DI BAWAH): GAMBAR SKETSA DARI GOOGLE DRIVE / CONTABO STORAGE */}
                             {(() => {
                               const imageItems = extractSupportingImageUrls(activeProposal.resubmitDocumentText || activeProposal.linkResubmitProposal);
                               
@@ -2038,7 +2082,51 @@ export default function FgdRoomClient({
                           );
                         })()}
 
-                        {/* 3. GAMBAR SKETSA / DIAGRAM INOVASI PENDUKUNG */}
+                        {/* 3. DOKUMEN / LINK GOOGLE WORKSPACE (FORMS, SHEETS, DOCS, SLIDES) */}
+                        {(() => {
+                          const workspaceItems = extractGoogleWorkspaceUrls(activeProposal.resubmitDocumentText, activeProposal.linkResubmitProposal);
+                          if (workspaceItems.length === 0) return null;
+
+                          return (
+                            <div className="space-y-3 pt-4 border-t border-slate-200">
+                              <h5 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center space-x-1.5">
+                                <span>🌐</span>
+                                <span>Link Dokumen / Aplikasi Google Workspace Pendukung</span>
+                              </h5>
+                              <div className="grid grid-cols-1 gap-2.5">
+                                {workspaceItems.map((item, wIdx) => (
+                                  <div key={item.url + wIdx} className={`p-3 rounded-lg border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 ${item.badgeBg} shadow-2xs`}>
+                                    <div className="flex items-center space-x-3">
+                                      <span className="text-xl shrink-0">{item.icon}</span>
+                                      <div>
+                                        <div className="font-bold text-xs flex items-center space-x-2">
+                                          <span>{item.title}</span>
+                                          <span className="text-[10px] px-1.5 py-0.2 rounded font-semibold bg-white/80 border border-slate-300">
+                                            {item.badgeText}
+                                          </span>
+                                        </div>
+                                        <div className="text-[11px] opacity-80 truncate max-w-md font-mono mt-0.5">
+                                          {item.url}
+                                        </div>
+                                      </div>
+                                    </div>
+                                    <a
+                                      href={item.url}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded transition flex items-center space-x-1.5 shadow-2xs shrink-0 self-end sm:self-center"
+                                    >
+                                      <span>🔗 Buka di Tab Baru</span>
+                                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+                                    </a>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          );
+                        })()}
+
+                        {/* 4. GAMBAR SKETSA / DIAGRAM INOVASI PENDUKUNG */}
                         {(() => {
                           const imageItems = extractSupportingImageUrls(activeProposal.resubmitDocumentText || activeProposal.linkResubmitProposal);
                           
