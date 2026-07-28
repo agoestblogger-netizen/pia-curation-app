@@ -13,7 +13,6 @@ export default function DriveFolderInlineView({
   const [folderData, setFolderData] = useState<DriveFolderResult | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [imageLoadErrors, setImageLoadErrors] = useState<Record<string, boolean>>({});
-  const [expandedPdfId, setExpandedPdfId] = useState<string | null>(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -156,57 +155,45 @@ export default function DriveFolderInlineView({
         </div>
       )}
 
-      {/* 2. PREVIEW PDF INLINE (application/pdf) */}
+      {/* 2. PREVIEW PDF INLINE (application/pdf) - DEFAULT AUTO-EMBEDDED */}
       {pdfFiles.length > 0 && (
         <div className="space-y-3 pt-2">
           <h6 className="text-[11px] font-bold text-slate-700 uppercase tracking-wider flex items-center space-x-1">
-            <span>📄 Dokumen PDF ({pdfFiles.length})</span>
+            <span>📄 Dokumen PDF Pendukung ({pdfFiles.length})</span>
           </h6>
-          <div className="space-y-3">
-            {pdfFiles.map((pdf) => {
-              const isExpanded = expandedPdfId === pdf.id;
-              return (
-                <div key={pdf.id} className="bg-white rounded-lg border border-slate-200 overflow-hidden shadow-2xs">
-                  <div className="p-3 bg-slate-100/70 border-b border-slate-200 flex items-center justify-between">
-                    <div className="flex items-center space-x-2 truncate pr-2">
-                      <span className="text-sm">📄</span>
-                      <span className="text-xs font-semibold text-slate-800 truncate" title={pdf.name}>
-                        {pdf.name}
-                      </span>
-                    </div>
-                    <div className="flex items-center space-x-2 shrink-0">
-                      <button
-                        onClick={() => setExpandedPdfId(isExpanded ? null : pdf.id)}
-                        className="px-2.5 py-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-[11px] rounded transition shadow-2xs flex items-center space-x-1"
-                      >
-                        <span>{isExpanded ? 'Tutup Preview' : '👁️ Preview PDF'}</span>
-                      </button>
-                      <a
-                        href={pdf.downloadUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="p-1 text-slate-400 hover:text-slate-700 text-xs"
-                        title="Buka / Unduh"
-                      >
-                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                        </svg>
-                      </a>
-                    </div>
+          <div className="space-y-4">
+            {pdfFiles.map((pdf) => (
+              <div key={pdf.id} className="bg-white rounded-lg border border-slate-200 overflow-hidden shadow-2xs space-y-0">
+                <div className="p-3 bg-slate-100/80 border-b border-slate-200 flex items-center justify-between">
+                  <div className="flex items-center space-x-2 truncate pr-2">
+                    <span className="text-sm">📄</span>
+                    <span className="text-xs font-bold text-slate-800 truncate" title={pdf.name}>
+                      {pdf.name}
+                    </span>
                   </div>
-                  {isExpanded && (
-                    <div className="w-full bg-slate-900 border-t border-slate-200">
-                      <iframe
-                        src={pdf.previewUrl}
-                        className="w-full h-[500px] bg-white border-0"
-                        title={pdf.name}
-                        loading="lazy"
-                      />
-                    </div>
-                  )}
+                  <a
+                    href={pdf.downloadUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-slate-500 hover:text-indigo-600 font-semibold transition px-2 py-1 text-xs flex items-center space-x-1 shrink-0 hover:bg-slate-200/60 rounded"
+                    title="Buka / Unduh di Tab Baru"
+                  >
+                    <span className="text-[11px]">Buka Tab Baru</span>
+                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                    </svg>
+                  </a>
                 </div>
-              );
-            })}
+                <div className="w-full bg-slate-900 border-t border-slate-200">
+                  <iframe
+                    src={pdf.previewUrl}
+                    className="w-full h-[480px] bg-white border-0"
+                    title={pdf.name}
+                    loading="lazy"
+                  />
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       )}
