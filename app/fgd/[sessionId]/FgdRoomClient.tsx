@@ -1208,8 +1208,8 @@ export default function FgdRoomClient({
 
                 {/* Outer Split-Screen Container */}
                 <div className={`flex-1 flex overflow-hidden ${isResizingSplit ? 'select-none' : ''}`}>
-                  {/* PANEL KIRI: App FGD Curation Utama (Hidden if 100% Full mode) */}
-                  {splitRatioPercent > 0 && (
+                  {/* PANEL KIRI: App FGD Curation Utama (Hanya disembunyikan jika split-screen aktif DAN preset 100% Full) */}
+                  {(!isSplitResubmitOpen || splitRatioPercent > 0) && (
                     <div
                       style={{ width: isSplitResubmitOpen ? `${splitRatioPercent}%` : '100%' }}
                       className="h-full flex flex-col overflow-hidden transition-all duration-75"
