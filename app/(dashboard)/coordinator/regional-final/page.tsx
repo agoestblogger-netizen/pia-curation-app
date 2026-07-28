@@ -3,6 +3,8 @@ import { getActiveCompetition } from '@/app/actions/competitions';
 import { getRegionalGroups } from '@/app/actions/regional-final';
 import RegionalFinalClient from './RegionalFinalClient';
 
+export const dynamic = 'force-dynamic';
+
 export const metadata = {
   title: 'Kunci Finalis Regional - PIA Curation',
 };
