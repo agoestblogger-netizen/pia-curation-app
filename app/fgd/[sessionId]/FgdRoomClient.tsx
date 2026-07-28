@@ -360,44 +360,74 @@ export default function FgdRoomClient({
     }
   }, [activeTab, activeProposalIdx, proposals, localResubmitPdfs, isProcessingResubmitPdf, expandedResubmitSections]);
 
-  // Auto-sync curator note as permanent comment entry whenever proposal detail is opened
+  // INSTANT & HIGH-PRIORITY: Sync curator note as permanent comment entry INSTANTLY when proposal is opened
   useEffect(() => {
     if (activeTab === 'detail' && activeProposalIdx !== null) {
       const p = proposals[activeProposalIdx];
       if (!p) return;
 
-      insertCuratorNoteAsCommentAction(fgd.id, p.id).then((res) => {
-        if (res && !('error' in res)) {
-          const verdictLabel: Record<string, string> = {
-            lolos: 'Lolos', duplication: 'Duplikasi', mapped: 'Mapped',
-            non_compliance: 'Non-Compliance', low_impact: 'Low Impact',
-          };
-          const lines: string[] = [];
-          if (p.verdict) lines.push(`[${verdictLabel[p.verdict] ?? p.verdict}]`);
-          if (p.curatorNotes) lines.push(p.curatorNotes);
-          if (p.curatorRecommendation) lines.push(`Rekomendasi: ${p.curatorRecommendation}`);
-          const contentToShow = res.content || (lines.length > 0 ? lines.join('\n') : null);
+      const verdictLabel: Record<string, string> = {
+        lolos: 'Lolos', duplication: 'Duplikasi', mapped: 'Mapped',
+        non_compliance: 'Non-Compliance', low_impact: 'Low Impact',
+      };
+      const lines: string[] = [];
+      if (p.verdict) lines.push(`[${verdictLabel[p.verdict] ?? p.verdict}]`);
+      if (p.curatorNotes) lines.push(p.curatorNotes);
+      if (p.curatorRecommendation) lines.push(`Rekomendasi: ${p.curatorRecommendation}`);
+      const fallbackContent = lines.length > 0 ? lines.join('\n') : null;
 
-          if (contentToShow) {
-            setLocalComments((prev) => {
-              if (prev.some((c) => c.proposalId === p.id && c.commentType === 'curator_note')) {
-                return prev;
-              }
-              return [
-                ...prev,
-                {
-                  id: Date.now(),
-                  proposalId: p.id,
-                  curatorId: 0,
-                  content: contentToShow,
-                  createdAt: new Date().toISOString(),
-                  curatorName: p.curatorName ?? null,
-                  commentType: 'curator_note',
-                },
-              ];
-            });
+      // 1. INSTANT LOCAL SYNC (0ms): If curator note data exists in proposal, render immediately in UI
+      if (fallbackContent) {
+        setLocalComments((prev) => {
+          if (prev.some((c) => c.proposalId === p.id && c.commentType === 'curator_note')) {
+            return prev;
           }
+          return [
+            ...prev,
+            {
+              id: Date.now(),
+              proposalId: p.id,
+              curatorId: 0,
+              content: fallbackContent,
+              commentText: fallbackContent,
+              userName: p.curatorName || 'Kurator',
+              userRole: 'curator',
+              createdAt: new Date().toISOString(),
+              curatorName: p.curatorName ?? null,
+              commentType: 'curator_note',
+            },
+          ];
+        });
+      }
+
+      // 2. BACKGROUND SERVER ACTION (Idempotent DB sync)
+      insertCuratorNoteAsCommentAction(fgd.id, p.id).then((res) => {
+        if (res && !('error' in res) && res.content) {
+          setLocalComments((prev) => {
+            const existingIdx = prev.findIndex((c) => c.proposalId === p.id && c.commentType === 'curator_note');
+            const updatedItem = {
+              id: existingIdx >= 0 ? prev[existingIdx].id : Date.now(),
+              proposalId: p.id,
+              curatorId: 0,
+              content: res.content,
+              commentText: res.content,
+              userName: p.curatorName || 'Kurator',
+              userRole: 'curator',
+              createdAt: new Date().toISOString(),
+              curatorName: p.curatorName ?? null,
+              commentType: 'curator_note',
+            };
+
+            if (existingIdx >= 0) {
+              const newArr = [...prev];
+              newArr[existingIdx] = updatedItem;
+              return newArr;
+            }
+            return [...prev, updatedItem];
+          });
         }
+      }).catch(err => {
+        console.warn('[Curator Note Sync Error]', err);
       });
     }
   }, [activeTab, activeProposalIdx, proposals, fgd.id]);
