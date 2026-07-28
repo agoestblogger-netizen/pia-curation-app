@@ -31,9 +31,16 @@ export function extractDriveFolderUrls(text: string | null | undefined, mainUrl:
 
   if (!text) return folders;
 
-  // Sanitize line-breaks and whitespace in Drive URLs introduced during PDF text extraction
+  // Sanitize line-breaks and whitespace in Drive URLs introduced during PDF text extraction, 
+  // but avoid falsely merging the URL with subsequent words (like "Dokumen") if the ID is already complete.
   let sanitizedText = text;
-  sanitizedText = sanitizedText.replace(/(drive\.google\.com\/[^\s"<>]+)\s+([^\s"<>]+)/gi, '$1$2');
+  sanitizedText = sanitizedText.replace(/(drive\.google\.com\/[^\s"<>]+)\s+([^\s"<>]+)/gi, (match, part1, part2) => {
+    const folderMatch = part1.match(/folders\/([a-zA-Z0-9_-]{20,50})/i);
+    if (folderMatch && folderMatch[1].length >= 28) {
+      return match; // Keep the space, do not merge
+    }
+    return part1 + part2;
+  });
 
   // Robust Regex to match Google Drive Folder URLs with full 20-50 char ID
   const folderRegex = /https?:\/\/drive\.google\.com\/(?:[a-zA-Z0-9_\-\/]*\/)?folders\/([a-zA-Z0-9_-]{20,50})/gi;
