@@ -211,6 +211,51 @@ export default function FgdRoomClient({
   const [expandedResubmitSections, setExpandedResubmitSections] = useState<Record<number, boolean>>({});
   const [imageLoadErrors, setImageLoadErrors] = useState<Record<string, boolean>>({});
 
+  // Split-Screen State & Ratio Settings
+  const [isSplitResubmitOpen, setIsSplitResubmitOpen] = useState(false);
+  const [splitRatioPercent, setSplitRatioPercent] = useState<number>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('pia_split_resubmit_ratio');
+      if (saved) {
+        const parsed = parseInt(saved, 10);
+        if (!isNaN(parsed) && parsed >= 25 && parsed <= 75) return parsed;
+      }
+    }
+    return 40; // Default: 40% Panel Kiri, 60% Panel Kanan (lega untuk dokumen)
+  });
+  const [isResizingSplit, setIsResizingSplit] = useState(false);
+
+  const handlePresetRatio = (ratio: number) => {
+    setSplitRatioPercent(ratio);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('pia_split_resubmit_ratio', ratio.toString());
+    }
+  };
+
+  useEffect(() => {
+    if (!isResizingSplit) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      const totalWidth = window.innerWidth;
+      const newLeftPercent = Math.max(25, Math.min(75, Math.round((e.clientX / totalWidth) * 100)));
+      setSplitRatioPercent(newLeftPercent);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('pia_split_resubmit_ratio', newLeftPercent.toString());
+      }
+    };
+
+    const handleMouseUp = () => {
+      setIsResizingSplit(false);
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isResizingSplit]);
+
   const handleProcessResubmitPdfs = async (proposalId: number, isRetry = false) => {
     if (!isRetry && (isProcessingResubmitPdf[proposalId] || (localResubmitPdfs[proposalId] && localResubmitPdfs[proposalId].length > 0))) {
       return;
@@ -1161,9 +1206,14 @@ export default function FgdRoomClient({
                   </button>
                 </div>
 
-                {/* Split View */}
-                <div className="flex-1 flex overflow-hidden">
-                  {/* LEFT: Proposal Detail */}
+                {/* Outer Split-Screen Container */}
+                <div className={`flex-1 flex overflow-hidden ${isResizingSplit ? 'select-none' : ''}`}>
+                  {/* PANEL KIRI: App FGD Curation Utama (Kompak/Full berdasarkan splitRatioPercent) */}
+                  <div
+                    style={{ width: isSplitResubmitOpen ? `${splitRatioPercent}%` : '100%' }}
+                    className="h-full flex flex-col overflow-hidden transition-all duration-75"
+                  >
+                    {/* Navigation Header */}
                   <div className="w-1/2 p-6 overflow-y-auto border-r border-gray-200 bg-white">
                     <div className="flex items-start justify-between mb-3">
                       <div>
@@ -1327,6 +1377,20 @@ export default function FgdRoomClient({
                                 Memproses PDF...
                               </span>
                             )}
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setIsSplitResubmitOpen(true);
+                                setExpandedResubmitSections(prev => ({ ...prev, [activeProposal.id]: true }));
+                              }}
+                              className="px-2.5 py-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded transition flex items-center space-x-1.5 shadow-2xs shrink-0"
+                              title="Buka Dokumen Resubmission di Panel Kanan Split-Screen"
+                            >
+                              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+                              </svg>
+                              <span>Split-Screen ⤢</span>
+                            </button>
                             <svg
                               className={`w-4 h-4 text-slate-500 transition-transform duration-200 ${(expandedResubmitSections[activeProposal.id] ?? false) ? 'rotate-180' : ''}`}
                               fill="none" stroke="currentColor" viewBox="0 0 24 24"
@@ -1747,7 +1811,189 @@ export default function FgdRoomClient({
                         </div>
                       </form>
                     )}
+                    </div>
                   </div>
+
+                  {/* DIVIDER RESIZER BAR (DRAGGABLE) */}
+                  {isSplitResubmitOpen && (
+                    <div
+                      onMouseDown={() => setIsResizingSplit(true)}
+                      className="w-2.5 bg-slate-200 hover:bg-indigo-600 cursor-col-resize flex flex-col items-center justify-center relative z-20 group transition-colors shrink-0 select-none border-x border-slate-300 shadow-xs"
+                      title="Geser mouse untuk mengubah rasio lebar panel"
+                    >
+                      <div className="w-1 h-8 bg-slate-400 group-hover:bg-white rounded-full my-auto"></div>
+                    </div>
+                  )}
+
+                  {/* PANEL KANAN: Detail Dokumen Resubmission Split-Screen Ekstra Luas */}
+                  {isSplitResubmitOpen && (
+                    <div
+                      style={{ width: `${100 - splitRatioPercent}%` }}
+                      className="h-full flex flex-col bg-slate-900 border-l border-slate-700 shadow-2xl overflow-hidden z-10 transition-all duration-75"
+                    >
+                      {/* Header Panel Kanan: Title + Preset Selector % + Close Button */}
+                      <div className="p-3.5 bg-slate-800 border-b border-slate-700 flex items-center justify-between text-white shrink-0 shadow-md">
+                        <div className="flex items-center space-x-2 truncate pr-2">
+                          <span className="text-base">📄</span>
+                          <h3 className="font-bold text-xs sm:text-sm text-slate-100 truncate">
+                            Dokumen Resubmission · <span className="text-indigo-300 font-semibold">{activeProposal.title}</span>
+                          </h3>
+                        </div>
+
+                        <div className="flex items-center space-x-2 shrink-0">
+                          {/* Preset Ratio Selector % */}
+                          <div className="hidden sm:flex items-center bg-slate-700 p-0.5 rounded-lg border border-slate-600 text-xs">
+                            {[30, 40, 50, 60, 70].map((r) => (
+                              <button
+                                key={r}
+                                onClick={() => handlePresetRatio(r)}
+                                className={`px-2 py-0.5 rounded text-[11px] font-semibold transition ${
+                                  splitRatioPercent === r
+                                    ? 'bg-indigo-600 text-white shadow-2xs'
+                                    : 'text-slate-300 hover:text-white hover:bg-slate-600'
+                                }`}
+                                title={`Rasio Lebar: ${r}% Kiri / ${100 - r}% Kanan`}
+                              >
+                                {r}:{100 - r}
+                              </button>
+                            ))}
+                          </div>
+
+                          {/* Close Button */}
+                          <button
+                            onClick={() => setIsSplitResubmitOpen(false)}
+                            className="px-2.5 py-1 bg-slate-700 hover:bg-rose-600 text-slate-200 hover:text-white rounded-lg transition text-xs font-bold flex items-center space-x-1 shadow-2xs"
+                            title="Tutup Split-Screen"
+                          >
+                            <span>✕ Tutup</span>
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Body Panel Kanan: Dokumen Resubmission Utuh (PDF Utama H-750px + Drive Folders + Gambar) */}
+                      <div className="flex-1 overflow-y-auto p-5 bg-slate-100 space-y-6">
+                        {/* 1. PALING ATAS: DOKUMEN RESUBMISSION UTAMA (EMBED PDF UTUH H-750px) */}
+                        {(() => {
+                          const pdfItems = localResubmitPdfs[activeProposal.id] || (activeProposal.linkResubmitProposal ? [{
+                            title: 'Dokumen Resubmission Utama',
+                            originalUrl: activeProposal.linkResubmitProposal,
+                            isFallbackOnly: false
+                          }] : []);
+
+                          if (pdfItems.length === 0) return null;
+
+                          return (
+                            <div className="space-y-6 pt-1">
+                              {pdfItems.map((pdfItem, idx) => {
+                                const embedSrc = pdfItem.embedUrl || getEmbeddablePdfUrl(pdfItem.blobUrl || pdfItem.originalUrl);
+                                return (
+                                  <div key={pdfItem.originalUrl + idx} className="space-y-2">
+                                    <div className="flex items-center justify-between">
+                                      <h5 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center space-x-1.5">
+                                        <span>📄</span>
+                                        <span>{pdfItem.title}</span>
+                                        {pdfItem.sizeMb && (
+                                          <span className="text-[10px] bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded font-normal lowercase">
+                                            ({pdfItem.sizeMb} MB)
+                                          </span>
+                                        )}
+                                      </h5>
+                                      <a
+                                        href={pdfItem.blobUrl || pdfItem.originalUrl}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="text-slate-400 hover:text-indigo-600 transition p-1 text-xs flex items-center space-x-1"
+                                        title="Buka di Tab Baru"
+                                      >
+                                        <span className="text-[11px]">Buka Tab Baru</span>
+                                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+                                      </a>
+                                    </div>
+
+                                    {!pdfItem.isFallbackOnly ? (
+                                      <div className="w-full bg-slate-900 rounded-lg overflow-hidden border border-slate-300 shadow-md">
+                                        <iframe
+                                          src={embedSrc}
+                                          className="w-full h-[750px] bg-white border-0"
+                                          title={pdfItem.title}
+                                          loading="lazy"
+                                        />
+                                      </div>
+                                    ) : (
+                                      <div className="p-4 bg-amber-50/80 border border-amber-200 rounded-md text-xs text-slate-700 flex flex-col md:flex-row items-center justify-between gap-3">
+                                        <span className="font-medium text-amber-950">
+                                          📄 Dokumen PDF ini berukuran {pdfItem.sizeMb ? `>30MB (${pdfItem.sizeMb}MB)` : 'besar/perlu akses langsung'}. Tampilan embed inline di-skip untuk menjaga performa.
+                                        </span>
+                                        <a
+                                          href={pdfItem.originalUrl}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs rounded transition flex-shrink-0 shadow-2xs"
+                                        >
+                                          🔗 Unduh / Buka Dokumen PDF
+                                        </a>
+                                      </div>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          );
+                        })()}
+
+                        {/* 2. DOKUMEN PENDUKUNG / FOLDER GOOGLE DRIVE INLINE VIEW (OPSI A WITH API KEY) */}
+                        {(() => {
+                          const driveFolders = extractDriveFolderUrls(activeProposal.resubmitDocumentText, activeProposal.linkResubmitProposal);
+                          if (driveFolders.length === 0) return null;
+
+                          return (
+                            <div className="space-y-4 pt-4 border-t border-slate-200">
+                              {driveFolders.map((folder, fIdx) => (
+                                <DriveFolderInlineView
+                                  key={folder.folderUrl + fIdx}
+                                  folderUrl={folder.folderUrl}
+                                  folderTitle={folder.title}
+                                />
+                              ))}
+                            </div>
+                          );
+                        })()}
+
+                        {/* 3. GAMBAR SKETSA / DIAGRAM INOVASI PENDUKUNG */}
+                        {(() => {
+                          const imageItems = extractSupportingImageUrls(activeProposal.resubmitDocumentText || activeProposal.linkResubmitProposal);
+                          const validItems = imageItems.filter(item => !imageLoadErrors[item.cdnUrl]);
+                          if (validItems.length === 0) return null;
+
+                          return (
+                            <div className="space-y-2 pt-4 border-t border-slate-200">
+                              <h5 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center space-x-1.5">
+                                <span>🖼️</span>
+                                <span>Gambar Sketsa / Diagram Inovasi</span>
+                              </h5>
+                              <div className="grid grid-cols-1 gap-4 pt-1">
+                                {validItems.map((item, idx) => (
+                                  <div key={item.cdnUrl} className="bg-slate-50 p-3 rounded-lg border border-slate-200 text-center">
+                                    <img 
+                                      src={item.cdnUrl} 
+                                      alt={`Sketsa Resubmission #${idx + 1}`}
+                                      className="max-w-full h-auto mx-auto rounded border border-slate-300 shadow-xs"
+                                      loading="lazy"
+                                      referrerPolicy="no-referrer"
+                                      onError={() => setImageLoadErrors(prev => ({ ...prev, [item.cdnUrl]: true }))}
+                                    />
+                                    <div className="text-[11px] text-slate-500 mt-2 font-medium">
+                                      Sketsa / Diagram Resubmission #{idx + 1}
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          );
+                        })()}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </>
             )}
