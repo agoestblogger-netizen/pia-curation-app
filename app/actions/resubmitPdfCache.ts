@@ -100,7 +100,14 @@ export async function getOrCacheResubmitPdfsAction(proposalId: number) {
 
     // Return cached results if present in DB (Idempotency Guard)
     if (proposal.cachedResubmitPdfUrls && Array.isArray(proposal.cachedResubmitPdfUrls) && proposal.cachedResubmitPdfUrls.length > 0) {
-      return { data: proposal.cachedResubmitPdfUrls as ResubmitPdfItem[] };
+      const items = proposal.cachedResubmitPdfUrls as ResubmitPdfItem[];
+      const updatedItems = await Promise.all(
+        items.map(async (item) => ({
+          ...item,
+          embedUrl: await getEmbeddablePdfUrl(item.blobUrl || item.originalUrl),
+        }))
+      );
+      return { data: updatedItems };
     }
 
     // Extract PDF items
