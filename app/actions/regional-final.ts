@@ -386,8 +386,7 @@ export async function reopenRegionalGroupAction(
       eq(proposals.competitionId, competitionId),
       isKanpus
         ? eq(proposals.category, 'PUSAT')
-        : and(eq(proposals.category, 'WILAYAH'), eq(proposals.regionCenter, dbRegion)),
-      eq(proposals.status, 'regional_finalist')
+        : and(eq(proposals.category, 'WILAYAH'), eq(proposals.regionCenter, dbRegion))
     )
   );
 
