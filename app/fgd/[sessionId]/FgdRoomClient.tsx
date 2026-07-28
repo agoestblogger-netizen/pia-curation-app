@@ -1352,12 +1352,12 @@ export default function FgdRoomClient({
                     {(activeProposal.linkResubmitProposal || activeProposal.resubmitDocumentText) && (
                       <div className="bg-slate-50 border border-slate-200 rounded-lg overflow-hidden mb-6 shadow-2xs">
                         {/* Collapsible Header */}
-                        <button
+                        <div
                           onClick={() => setExpandedResubmitSections(prev => ({ 
                             ...prev, 
                             [activeProposal.id]: !(prev[activeProposal.id] ?? false) 
                           }))}
-                          className="w-full px-5 py-3.5 bg-slate-100/90 border-b border-slate-200 flex items-center justify-between hover:bg-slate-200/70 transition text-left"
+                          className="w-full px-5 py-3.5 bg-slate-100/90 border-b border-slate-200 flex items-center justify-between hover:bg-slate-200/70 transition cursor-pointer text-left select-none"
                         >
                           <div className="flex items-center space-x-2.5">
                             <span className="text-base">📄</span>
@@ -1399,7 +1399,7 @@ export default function FgdRoomClient({
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                             </svg>
                           </div>
-                        </button>
+                        </div>
 
                         {/* Section Content */}
                         {(expandedResubmitSections[activeProposal.id] ?? false) && (
