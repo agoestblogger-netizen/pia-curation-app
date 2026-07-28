@@ -77,16 +77,32 @@ export function extractSupportingImageUrls(text: string | null | undefined): Res
   const results: ResubmitImageItem[] = [];
   const seen = new Set<string>();
 
-  // Sanitize line-breaks and whitespace in S3/Contabo URLs introduced during PDF text extraction
+  // Sanitize line-breaks and whitespace in Drive URLs and S3/Contabo URLs introduced during PDF text extraction
   let prevText = '';
   let sanitizedText = text;
   while (prevText !== sanitizedText) {
     prevText = sanitizedText;
+    // 1. Contabo replace
     sanitizedText = sanitizedText.replace(/(contabostorage\.com\/[^\s"<>]+)\s+([^\s"<>]+)/gi, (match, part1, part2) => {
       if (/\.(?:jpeg|jpg|png|webp|gif|pdf)$/i.test(part1)) {
         return match; // Keep space if part1 already ends with a file extension
       }
       return part1 + part2;
+    });
+    // 2. Drive file/d/ replace
+    sanitizedText = sanitizedText.replace(/(drive\.google\.com\/file\/d\/[^\s"<>]+)\s+([^\s"<>]+)/gi, (match, part1, part2) => {
+      const fileMatch = part1.match(/file\/d\/([a-zA-Z0-9_-]+)/i);
+      if (fileMatch) {
+        const id1 = fileMatch[1];
+        if (id1.length >= 33) {
+          return match;
+        }
+        const part2Clean = part2.split(/[\/?#]/)[0];
+        if (/^[a-zA-Z0-9_-]{1,10}$/.test(part2Clean) && id1.length + part2Clean.length <= 33) {
+          return part1 + part2;
+        }
+      }
+      return match;
     });
   }
 
