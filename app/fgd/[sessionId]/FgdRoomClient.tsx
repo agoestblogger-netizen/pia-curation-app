@@ -225,6 +225,17 @@ export default function FgdRoomClient({
   });
   const [isResizingSplit, setIsResizingSplit] = useState(false);
 
+  useEffect(() => {
+    if (isSplitResubmitOpen && splitRatioPercent === 0) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [isSplitResubmitOpen, splitRatioPercent]);
+
   const handlePresetRatio = (ratio: number) => {
     setSplitRatioPercent(ratio);
     if (typeof window !== 'undefined') {
@@ -1940,8 +1951,12 @@ export default function FgdRoomClient({
                   {/* PANEL KANAN: Detail Dokumen Resubmission Split-Screen Ekstra Luas */}
                   {isSplitResubmitOpen && (
                     <div
-                      style={{ width: `${100 - splitRatioPercent}%` }}
-                      className="h-full flex flex-col bg-slate-900 border-l border-slate-700 shadow-2xl overflow-hidden z-20 transition-all duration-75 shrink-0"
+                      style={{ width: splitRatioPercent === 0 ? '100%' : `${100 - splitRatioPercent}%` }}
+                      className={`${
+                        splitRatioPercent === 0 
+                          ? 'fixed inset-0 z-50 flex flex-col bg-slate-900 overflow-hidden shadow-2xl' 
+                          : 'h-full flex flex-col bg-slate-900 border-l border-slate-700 shadow-2xl overflow-hidden z-20 transition-all duration-75 shrink-0'
+                      }`}
                     >
                       {/* Header Panel Kanan: Title + Preset Selector % + Close Button (PERMANENT FIXED NON-SCROLLABLE HEADER) */}
                       <div className="p-3.5 bg-slate-800 border-b border-slate-700 flex items-center justify-between text-white shrink-0 shadow-md z-30 select-none">
