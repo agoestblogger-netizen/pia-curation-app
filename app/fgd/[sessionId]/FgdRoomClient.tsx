@@ -9,7 +9,7 @@ import { uploadFgdAdditionalDocument } from '@/app/actions/uploadDocument';
 import { deleteFgdAdditionalDocument } from '@/app/actions/deleteDocument';
 import ProposalDocumentButtons from '@/app/components/ProposalDocumentButtons';
 import { supabase } from '@/lib/supabase/client';
-import { extractDriveFolderUrls, extractSupportingImageUrls, extractGoogleWorkspaceUrls } from '@/lib/utils/resubmitMediaExtractor';
+import { extractDriveFolderUrls, extractSupportingImageUrls, extractGoogleWorkspaceUrls, extractUnhandledUrls } from '@/lib/utils/resubmitMediaExtractor';
 import DriveFolderInlineView from '@/app/components/DriveFolderInlineView';
 
 // Helper function to transform raw PDF URLs into inline embeddable iframe URLs
@@ -1617,9 +1617,8 @@ export default function FgdRoomClient({
                                 if (match && match[1]) pdfDriveFileIds.add(match[1]);
                               });
 
-                              // Filter out load errors and any Google Drive files that are actually PDFs
+                              // Filter out any Google Drive files that are actually PDFs
                               const validItems = imageItems.filter(item => {
-                                if (imageLoadErrors[item.cdnUrl]) return false;
                                 const match = (item.originalUrl || '').match(/drive\.google\.com\/(?:file\/d\/|open\?id=)([a-zA-Z0-9_-]+)/i);
                                 if (match && match[1] && pdfDriveFileIds.has(match[1])) {
                                   return false; // Exclude PDF file from static image gallery!
@@ -1641,29 +1640,95 @@ export default function FgdRoomClient({
                                     </span>
                                   </div>
                                   <div className="grid grid-cols-1 gap-4 pt-1">
-                                    {validItems.map((item, idx) => (
-                                      <div key={item.cdnUrl} className="bg-slate-50 p-4 rounded-lg border border-slate-200 text-center space-y-2">
-                                        <img 
-                                          src={item.cdnUrl} 
-                                          alt={`Sketsa Resubmission #${idx + 1}`}
-                                          className="max-w-full h-auto mx-auto rounded border border-slate-300 shadow-xs"
-                                          loading="lazy"
-                                          referrerPolicy="no-referrer"
-                                          onError={() => setImageLoadErrors(prev => ({ ...prev, [item.cdnUrl]: true }))}
-                                        />
-                                        <div className="flex flex-col sm:flex-row items-center justify-between pt-1 text-xs border-t border-slate-200 gap-2">
-                                          <span className="text-[11px] text-slate-500 font-medium">
-                                            Sketsa / Diagram Resubmission #{idx + 1}
-                                          </span>
-                                          <a
-                                            href={item.cdnUrl}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="inline-flex items-center space-x-1 text-xs font-bold text-indigo-700 hover:text-indigo-900 bg-indigo-50 hover:bg-indigo-100 px-3 py-1 rounded-md border border-indigo-200 transition shadow-2xs"
-                                          >
-                                            <span>🔍 Buka & Perbesar Gambar di Tab Baru</span>
-                                          </a>
+                                    {validItems.map((item, idx) => {
+                                      const isError = imageLoadErrors[item.cdnUrl] || imageLoadErrors[item.originalUrl];
+
+                                      if (isError) {
+                                        return (
+                                          <div key={item.cdnUrl} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-amber-50/90 rounded-xl border border-amber-200 text-amber-950 shadow-2xs gap-3">
+                                            <div className="flex items-start space-x-3">
+                                              <div className="p-2 bg-amber-100 rounded-lg text-amber-700 shrink-0 mt-0.5">
+                                                🔒
+                                              </div>
+                                              <div className="text-left">
+                                                <p className="text-xs font-bold text-amber-950">Gambar Sketsa #{idx + 1}</p>
+                                                <p className="text-[11px] text-amber-800 mt-0.5">
+                                                  🔒 Gambar Lampiran Tidak Dapat Dimuat (Kemungkinan Private atau Akses Ditolak).
+                                                </p>
+                                              </div>
+                                            </div>
+                                            <a
+                                              href={item.originalUrl}
+                                              target="_blank"
+                                              rel="noopener noreferrer"
+                                              className="inline-flex items-center justify-center space-x-1 px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white font-semibold text-xs rounded-md transition shadow-2xs shrink-0 self-start sm:self-auto"
+                                            >
+                                              <span>Coba Buka Manual ↗</span>
+                                            </a>
+                                          </div>
+                                        );
+                                      }
+
+                                      return (
+                                        <div key={item.cdnUrl} className="bg-slate-50 p-4 rounded-lg border border-slate-200 text-center space-y-2">
+                                          <img 
+                                            src={item.cdnUrl} 
+                                            alt={`Sketsa Resubmission #${idx + 1}`}
+                                            className="max-w-full h-auto mx-auto rounded border border-slate-300 shadow-xs"
+                                            loading="lazy"
+                                            referrerPolicy="no-referrer"
+                                            onError={() => setImageLoadErrors(prev => ({ ...prev, [item.cdnUrl]: true }))}
+                                          />
+                                          <div className="flex flex-col sm:flex-row items-center justify-between pt-1 text-xs border-t border-slate-200 gap-2">
+                                            <span className="text-[11px] text-slate-500 font-medium">
+                                              Sketsa / Diagram Resubmission #{idx + 1}
+                                            </span>
+                                            <a
+                                              href={item.cdnUrl}
+                                              target="_blank"
+                                              rel="noopener noreferrer"
+                                              className="inline-flex items-center space-x-1 text-xs font-bold text-indigo-700 hover:text-indigo-900 bg-indigo-50 hover:bg-indigo-100 px-3 py-1 rounded-md border border-indigo-200 transition shadow-2xs"
+                                            >
+                                              <span>🔍 Buka & Perbesar Gambar di Tab Baru</span>
+                                            </a>
+                                          </div>
                                         </div>
+                                      );
+                                    })}
+                                  </div>
+                                </div>
+                              );
+                            })()}
+
+                            {/* 5. LAMPIRAN EKSTERNAL / TAUTAN LAINNYA (UNHANDLED DOMAINS FALLBACK) */}
+                            {(() => {
+                              const unhandledItems = extractUnhandledUrls(activeProposal.resubmitDocumentText, activeProposal.linkResubmitProposal);
+                              if (unhandledItems.length === 0) return null;
+
+                              return (
+                                <div className="space-y-3 pt-4 border-t border-slate-200">
+                                  <h5 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center space-x-1.5">
+                                    <span>🔗</span>
+                                    <span>Lampiran Eksternal / Tautan Lainnya ({unhandledItems.length})</span>
+                                  </h5>
+                                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                                    {unhandledItems.map((item, uIdx) => (
+                                      <div key={item.url + uIdx} className="flex items-center justify-between p-3 bg-white rounded-lg border border-slate-200 shadow-2xs hover:bg-slate-50 transition">
+                                        <div className="flex items-center space-x-2 truncate pr-2">
+                                          <span className="text-base shrink-0">🌐</span>
+                                          <div className="truncate text-left">
+                                            <p className="text-xs font-bold text-slate-900 truncate">{item.label}</p>
+                                            <p className="text-[10px] text-slate-500 truncate">{item.domain}</p>
+                                          </div>
+                                        </div>
+                                        <a
+                                          href={item.url}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="px-2.5 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 font-semibold text-xs rounded transition shrink-0 flex items-center space-x-1"
+                                        >
+                                          <span>🔗 Buka Lampiran</span>
+                                        </a>
                                       </div>
                                     ))}
                                   </div>
