@@ -1242,7 +1242,7 @@ export default function FgdRoomClient({
                   {(!isSplitResubmitOpen || splitRatioPercent > 0) && (
                     <div
                       style={{ width: isSplitResubmitOpen ? `${splitRatioPercent}%` : '100%' }}
-                      className="h-full flex flex-col overflow-hidden transition-all duration-75"
+                      className="h-full flex flex-row overflow-hidden transition-all duration-75"
                     >
                     {/* Navigation Header */}
                   <div className="w-1/2 p-6 overflow-y-auto border-r border-gray-200 bg-white">
@@ -1738,7 +1738,7 @@ export default function FgdRoomClient({
                   </div>
 
                   {/* RIGHT: Diskusi Thread */}
-                  <div className="w-1/2 p-6 flex flex-col bg-gray-50">
+                  <div className="w-1/2 p-6 flex flex-col bg-gray-50 h-full overflow-hidden">
                     <h3 className="font-bold text-gray-800 mb-4 flex-shrink-0">Ruang Diskusi</h3>
 
                     {/* Chat Thread */}
