@@ -27,8 +27,8 @@ function getEmbeddablePdfUrl(url: string | null | undefined): string {
     return url;
   }
 
-  // 3. Contabo Storage S3 or external PDFs -> Google Docs PDF Viewer Embed Proxy (bypasses octet-stream headers)
-  return `https://docs.google.com/gview?url=${encodeURIComponent(url)}&embedded=true`;
+  // 3. Contabo Storage S3 or external PDFs -> Internal PDF Proxy Stream (Native Browser PDF Viewer with multi-page scroll support)
+  return `/api/pdf/proxy?url=${encodeURIComponent(url)}`;
 }
 
 // 5 warna per verdict — sesuai SCREENING_VERDICT_COLORS
