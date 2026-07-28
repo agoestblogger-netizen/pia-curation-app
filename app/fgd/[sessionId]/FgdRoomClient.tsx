@@ -9,7 +9,7 @@ import { uploadFgdAdditionalDocument } from '@/app/actions/uploadDocument';
 import { deleteFgdAdditionalDocument } from '@/app/actions/deleteDocument';
 import ProposalDocumentButtons from '@/app/components/ProposalDocumentButtons';
 import { supabase } from '@/lib/supabase/client';
-import { extractDriveFolderUrls, extractSupportingImageUrls, extractGoogleWorkspaceUrls, extractUnhandledUrls } from '@/lib/utils/resubmitMediaExtractor';
+import { extractDriveFolderUrls, extractSupportingImageUrls, extractGoogleWorkspaceUrls, extractUnhandledUrls, extractAllResubmitMediaAsync, ResubmitMediaPackage } from '@/lib/utils/resubmitMediaExtractor';
 import DriveFolderInlineView from '@/app/components/DriveFolderInlineView';
 
 // Helper function to transform raw PDF URLs into inline embeddable iframe URLs
@@ -211,6 +211,7 @@ export default function FgdRoomClient({
   const [expandedResubmitSections, setExpandedResubmitSections] = useState<Record<number, boolean>>({});
   const [imageLoadErrors, setImageLoadErrors] = useState<Record<string, boolean>>({});
   const [showInlineIframeUrls, setShowInlineIframeUrls] = useState<Record<string, boolean>>({});
+  const [localResolvedMedia, setLocalResolvedMedia] = useState<Record<number, ResubmitMediaPackage>>({});
 
   // Split-Screen State & Ratio Settings
   const [isSplitResubmitOpen, setIsSplitResubmitOpen] = useState(false);
@@ -725,6 +726,21 @@ export default function FgdRoomClient({
   );
 
   const activeProposal = activeProposalIdx !== null ? proposals[activeProposalIdx] : null;
+
+  useEffect(() => {
+    if (activeProposal) {
+      const pId = activeProposal.id;
+      if (!localResolvedMedia[pId]) {
+        extractAllResubmitMediaAsync(activeProposal.resubmitDocumentText, activeProposal.linkResubmitProposal)
+          .then((pkg) => {
+            setLocalResolvedMedia(prev => ({ ...prev, [pId]: pkg }));
+          })
+          .catch(err => {
+            console.error('[Resubmit Media Resolver Error]:', err);
+          });
+      }
+    }
+  }, [activeProposal]);
 
   // ─── Group proposals for 'grouped' view mode (by category) ────────────────
   const groupedProposals: Record<string, Proposal[]> = {};
@@ -1545,7 +1561,8 @@ export default function FgdRoomClient({
 
                             {/* 2. DOKUMEN PENDUKUNG / FOLDER GOOGLE DRIVE INLINE VIEW (OPSI A WITH API KEY) */}
                             {(() => {
-                              const driveFolders = extractDriveFolderUrls(activeProposal.resubmitDocumentText, activeProposal.linkResubmitProposal);
+                              const resolvedPkg = localResolvedMedia[activeProposal.id];
+                              const driveFolders = resolvedPkg ? resolvedPkg.driveFolders : extractDriveFolderUrls(activeProposal.resubmitDocumentText, activeProposal.linkResubmitProposal);
                               if (driveFolders.length === 0) return null;
 
                               return (
@@ -1563,7 +1580,8 @@ export default function FgdRoomClient({
 
                             {/* 3. DOKUMEN / LINK GOOGLE WORKSPACE (FORMS, SHEETS, DOCS, SLIDES) */}
                             {(() => {
-                              const workspaceItems = extractGoogleWorkspaceUrls(activeProposal.resubmitDocumentText, activeProposal.linkResubmitProposal);
+                              const resolvedPkg = localResolvedMedia[activeProposal.id];
+                              const workspaceItems = resolvedPkg ? resolvedPkg.workspaceItems : extractGoogleWorkspaceUrls(activeProposal.resubmitDocumentText, activeProposal.linkResubmitProposal);
                               if (workspaceItems.length === 0) return null;
 
                               return (
@@ -1607,7 +1625,8 @@ export default function FgdRoomClient({
 
                             {/* 4. BAGIAN PENDUKUNG (DI BAWAH): GAMBAR SKETSA DARI GOOGLE DRIVE / CONTABO STORAGE */}
                             {(() => {
-                              const imageItems = extractSupportingImageUrls(activeProposal.resubmitDocumentText || activeProposal.linkResubmitProposal);
+                              const resolvedPkg = localResolvedMedia[activeProposal.id];
+                              const imageItems = resolvedPkg ? resolvedPkg.images : extractSupportingImageUrls(activeProposal.resubmitDocumentText || activeProposal.linkResubmitProposal);
                               
                               // Extract PDF File IDs from localResubmitPdfs to exclude any PDF files from being displayed as static image thumbnails
                               const activePdfs = localResubmitPdfs[activeProposal.id] || [];
@@ -1731,7 +1750,8 @@ export default function FgdRoomClient({
 
                             {/* 5. LAMPIRAN EKSTERNAL / TAUTAN LAINNYA (UNHANDLED DOMAINS FALLBACK) */}
                             {(() => {
-                              const unhandledItems = extractUnhandledUrls(activeProposal.resubmitDocumentText, activeProposal.linkResubmitProposal);
+                              const resolvedPkg = localResolvedMedia[activeProposal.id];
+                              const unhandledItems = resolvedPkg ? resolvedPkg.unhandledItems : extractUnhandledUrls(activeProposal.resubmitDocumentText, activeProposal.linkResubmitProposal);
                               if (unhandledItems.length === 0) return null;
 
                               return (

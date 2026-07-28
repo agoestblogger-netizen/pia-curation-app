@@ -1,4 +1,4 @@
-import { isShortenerUrl, resolveUrl } from './urlResolver';
+import { isShortenerUrl, resolveUrl, resolveTextUrls } from './urlResolver';
 
 export type ResubmitFolderItem = {
   title: string;
@@ -320,4 +320,52 @@ export function extractGoogleWorkspaceUrls(text: string | null | undefined, main
   }
 
   return items;
+}
+
+// ASYNC EXTRACTORS (Resolves shorteners like bit.ly, s.id, shorturl.at before extraction)
+export async function extractDriveFolderUrlsAsync(text: string | null | undefined, mainUrl: string | null | undefined): Promise<ResubmitFolderItem[]> {
+  const resolvedText = await resolveTextUrls(text || '');
+  const resolvedMainUrl = mainUrl ? await resolveUrl(mainUrl) : mainUrl;
+  return extractDriveFolderUrls(resolvedText, resolvedMainUrl);
+}
+
+export async function extractSupportingImageUrlsAsync(text: string | null | undefined): Promise<ResubmitImageItem[]> {
+  const resolvedText = await resolveTextUrls(text || '');
+  return extractSupportingImageUrls(resolvedText);
+}
+
+export async function extractGoogleWorkspaceUrlsAsync(text: string | null | undefined, mainUrl: string | null | undefined): Promise<GoogleWorkspaceItem[]> {
+  const resolvedText = await resolveTextUrls(text || '');
+  const resolvedMainUrl = mainUrl ? await resolveUrl(mainUrl) : mainUrl;
+  return extractGoogleWorkspaceUrls(resolvedText, resolvedMainUrl);
+}
+
+export async function extractUnhandledUrlsAsync(text: string | null | undefined, mainUrl: string | null | undefined): Promise<ResubmitUnhandledLinkItem[]> {
+  const resolvedText = await resolveTextUrls(text || '');
+  const resolvedMainUrl = mainUrl ? await resolveUrl(mainUrl) : mainUrl;
+  return extractUnhandledUrls(resolvedText, resolvedMainUrl);
+}
+
+export type ResubmitMediaPackage = {
+  driveFolders: ResubmitFolderItem[];
+  images: ResubmitImageItem[];
+  workspaceItems: GoogleWorkspaceItem[];
+  unhandledItems: ResubmitUnhandledLinkItem[];
+};
+
+export async function extractAllResubmitMediaAsync(text: string | null | undefined, mainUrl: string | null | undefined): Promise<ResubmitMediaPackage> {
+  const resolvedText = await resolveTextUrls(text || '');
+  const resolvedMainUrl = mainUrl ? await resolveUrl(mainUrl) : mainUrl;
+
+  const driveFolders = extractDriveFolderUrls(resolvedText, resolvedMainUrl);
+  const images = extractSupportingImageUrls(resolvedText + ' ' + (resolvedMainUrl || ''));
+  const workspaceItems = extractGoogleWorkspaceUrls(resolvedText, resolvedMainUrl);
+  const unhandledItems = extractUnhandledUrls(resolvedText, resolvedMainUrl);
+
+  return {
+    driveFolders,
+    images,
+    workspaceItems,
+    unhandledItems,
+  };
 }
