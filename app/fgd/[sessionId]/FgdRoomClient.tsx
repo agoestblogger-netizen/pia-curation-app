@@ -2334,7 +2334,7 @@ export default function FgdRoomClient({
                   <a
                     href={`/api/pdf/fgd/${fgd.id}`}
                     target="_blank"
-                    rel="noreferrer"
+                    rel="noopener noreferrer"
                     className="inline-flex items-center bg-indigo-600 text-white text-sm px-4 py-2 rounded-lg hover:bg-indigo-700 transition font-medium shadow"
                   >
                     📄 Download Berita Acara PDF

@@ -29,7 +29,7 @@ export default function ProposalDocumentButtons({
         <a
           href={linkProposal}
           target="_blank"
-          rel="noreferrer"
+          rel="noopener noreferrer"
           className={`inline-flex items-center justify-center font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100 rounded border border-blue-200 transition-colors ${pyClass} ${textClass}`}
         >
           <span>Dokumen Proposal (Fase 1)</span>
@@ -44,7 +44,7 @@ export default function ProposalDocumentButtons({
         <a
           href={`/api/proxy-pdf?url=${encodeURIComponent(linkResubmitProposal)}`}
           target="_blank"
-          rel="noreferrer"
+          rel="noopener noreferrer"
           className={`inline-flex items-center justify-center font-bold text-blue-800 bg-blue-100 hover:bg-blue-200 rounded border border-blue-300 transition-colors ${pyClass} ${textClass}`}
         >
           <span>Proposal Resubmission</span>
@@ -59,7 +59,7 @@ export default function ProposalDocumentButtons({
         <a
           href={`/api/proxy-pdf?url=${encodeURIComponent(linkSuratOrisinalitas)}`}
           target="_blank"
-          rel="noreferrer"
+          rel="noopener noreferrer"
           className={`inline-flex items-center justify-center font-bold text-amber-800 bg-amber-100 hover:bg-amber-200 rounded border border-amber-300 transition-colors ${pyClass} ${textClass}`}
         >
           <span>Surat Orisinalitas</span>

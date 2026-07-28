@@ -272,7 +272,7 @@ export default async function ProposalDetailPage({
                   <a 
                     href={proposal.linkProposal} 
                     target="_blank" 
-                    rel="noreferrer"
+                    rel="noopener noreferrer"
                     className="inline-flex items-center text-xs font-semibold text-[#0A4736] hover:underline bg-green-50 px-2 py-1 rounded"
                   >
                     <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
