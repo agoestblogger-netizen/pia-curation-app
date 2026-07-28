@@ -10,6 +10,7 @@ import { deleteFgdAdditionalDocument } from '@/app/actions/deleteDocument';
 import ProposalDocumentButtons from '@/app/components/ProposalDocumentButtons';
 import { supabase } from '@/lib/supabase/client';
 import { extractDriveFolderUrls, extractSupportingImageUrls } from '@/lib/utils/resubmitMediaExtractor';
+import DriveFolderInlineView from '@/app/components/DriveFolderInlineView';
 
 // Helper function to transform raw PDF URLs into inline embeddable iframe URLs
 function getEmbeddablePdfUrl(url: string | null | undefined): string {
@@ -1338,40 +1339,19 @@ export default function FgdRoomClient({
                         {/* Section Content */}
                         {(expandedResubmitSections[activeProposal.id] ?? false) && (
                           <div className="p-5 space-y-6 bg-white">
-                            {/* GOOGLE DRIVE FOLDER CALLOUT BANNERS (PRIORITAS 1) */}
+                            {/* GOOGLE DRIVE FOLDER INLINE DISPLAY (OPSI A WITH API KEY) */}
                             {(() => {
                               const driveFolders = extractDriveFolderUrls(activeProposal.resubmitDocumentText, activeProposal.linkResubmitProposal);
                               if (driveFolders.length === 0) return null;
 
                               return (
-                                <div className="space-y-3 mb-4">
+                                <div className="space-y-4 mb-4">
                                   {driveFolders.map((folder, fIdx) => (
-                                    <div key={folder.folderUrl + fIdx} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-blue-50/90 rounded-xl border border-blue-200 text-blue-950 shadow-xs gap-3">
-                                      <div className="flex items-start space-x-3">
-                                        <div className="p-2 bg-blue-100 rounded-lg text-blue-600 shrink-0 mt-0.5">
-                                          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 002-2h-6l-2-2H5a2 2 0 002 2z" />
-                                          </svg>
-                                        </div>
-                                        <div>
-                                          <p className="text-xs font-bold text-blue-950">{folder.title}</p>
-                                          <p className="text-[11px] text-blue-700 mt-0.5">
-                                            Terdapat folder berisikan beberapa file dokumen/lampiran pendukung di Google Drive.
-                                          </p>
-                                        </div>
-                                      </div>
-                                      <a
-                                        href={folder.folderUrl}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="inline-flex items-center justify-center space-x-1.5 px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs rounded-lg transition-colors shadow-xs shrink-0 self-start sm:self-auto"
-                                      >
-                                        <span>📁 Buka Folder Google Drive</span>
-                                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                                        </svg>
-                                      </a>
-                                    </div>
+                                    <DriveFolderInlineView
+                                      key={folder.folderUrl + fIdx}
+                                      folderUrl={folder.folderUrl}
+                                      folderTitle={folder.title}
+                                    />
                                   ))}
                                 </div>
                               );
