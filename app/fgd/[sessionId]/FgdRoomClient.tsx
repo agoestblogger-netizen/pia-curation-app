@@ -1423,7 +1423,7 @@ export default function FgdRoomClient({
                               <span>Split-Screen ⤢</span>
                             </button>
                             <svg
-                              className={`w-4 h-4 text-slate-500 transition-transform duration-200 ${(expandedResubmitSections[activeProposal.id] ?? false) ? 'rotate-180' : ''}`}
+                              className={`w-4 h-4 text-slate-500 transition-transform duration-200 ${(expandedResubmitSections[activeProposal.id] ?? true) ? 'rotate-180' : ''}`}
                               fill="none" stroke="currentColor" viewBox="0 0 24 24"
                             >
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
@@ -1432,7 +1432,7 @@ export default function FgdRoomClient({
                         </div>
 
                         {/* Section Content */}
-                        {(expandedResubmitSections[activeProposal.id] ?? false) && (
+                        {(expandedResubmitSections[activeProposal.id] ?? true) && (
                           <div className="p-5 space-y-6 bg-white">
                             {/* Loading Indicator (if user manually opens while background caching is running) */}
                             {isProcessingResubmitPdf[activeProposal.id] && (!localResubmitPdfs[activeProposal.id] || localResubmitPdfs[activeProposal.id].length === 0) && (
