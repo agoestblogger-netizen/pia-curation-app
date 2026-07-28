@@ -34,6 +34,8 @@ export async function getEmbeddablePdfUrl(url: string | null | undefined): Promi
   return `/api/pdf/proxy?url=${encodeURIComponent(url)}`;
 }
 
+import { getGoogleDriveFileMetadataAction } from '@/app/actions/driveFolder';
+
 // Helper to extract PDF URLs from proposal text and main resubmit link
 export async function extractSupportingPdfUrls(text: string | null | undefined, mainPdfUrl: string | null | undefined): Promise<ResubmitPdfItem[]> {
   const items: ResubmitPdfItem[] = [];
@@ -62,6 +64,7 @@ export async function extractSupportingPdfUrls(text: string | null | undefined, 
   sanitizedText = sanitizedText.replace(/(contabostorage\.com\/[^\s"<>]+)\s+([^\s"<>]+)/gi, '$1$2');
   sanitizedText = sanitizedText.replace(/(contabostorage\.com\/[^\s"<>]+)\s+([^\s"<>]+)/gi, '$1$2');
 
+  // 1. Direct .pdf links
   const pdfRegex = /https?:\/\/[^\s"'<>]+\.pdf(?:\?[^\s"'<>]*)?/gi;
   const pdfMatches = [...sanitizedText.matchAll(pdfRegex)];
 
@@ -73,6 +76,28 @@ export async function extractSupportingPdfUrls(text: string | null | undefined, 
       items.push({
         title: `Dokumen Pendukung #${supportIndex}`,
         originalUrl: fullUrl,
+      });
+      supportIndex++;
+    }
+  }
+
+  // 2. Google Drive Single File Links (/file/d/<FILE_ID>) -> Check MIME type via Drive API
+  const driveSingleRegex = /https?:\/\/drive\.google\.com\/(?:file\/d\/|open\?id=)([a-zA-Z0-9_-]+)/gi;
+  const driveMatches = [...sanitizedText.matchAll(driveSingleRegex)];
+
+  for (const dm of driveMatches) {
+    const fileId = dm[1];
+    if (!fileId || seen.has(fileId)) continue;
+
+    const meta = await getGoogleDriveFileMetadataAction(fileId);
+    if (meta && meta.isPdf) {
+      seen.add(fileId);
+      const drivePreviewUrl = `https://drive.google.com/file/d/${fileId}/preview`;
+      seen.add(drivePreviewUrl);
+
+      items.push({
+        title: meta.name ? `Dokumen Pendukung PDF (${meta.name})` : `Dokumen Pendukung PDF #${supportIndex}`,
+        originalUrl: drivePreviewUrl,
       });
       supportIndex++;
     }

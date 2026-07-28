@@ -74,6 +74,12 @@ export function extractSupportingImageUrls(text: string | null | undefined): Res
   for (const m of driveMatches) {
     const fullMatch = m[0].replace(/[.,;)]+$/, '');
     const fileId = m[1];
+    
+    // Skip if full match explicitly indicates a .pdf file
+    if (fullMatch.toLowerCase().includes('.pdf')) {
+      continue;
+    }
+
     if (fileId && !seen.has(fileId)) {
       seen.add(fileId);
       results.push({

@@ -114,3 +114,51 @@ export async function getGoogleDriveFolderFilesAction(folderUrl: string, folderT
     return fallbackResult;
   }
 }
+
+export type DriveFileMetadata = {
+  id: string;
+  name: string;
+  mimeType: string;
+  isPdf: boolean;
+  isImage: boolean;
+};
+
+const fileMetadataCache = new Map<string, { timestamp: number; data: DriveFileMetadata }>();
+
+export async function getGoogleDriveFileMetadataAction(fileId: string): Promise<DriveFileMetadata | null> {
+  if (!fileId) return null;
+
+  const cached = fileMetadataCache.get(fileId);
+  if (cached && (Date.now() - cached.timestamp < CACHE_TTL_MS)) {
+    return cached.data;
+  }
+
+  const apiKey = process.env.GOOGLE_DRIVE_API_KEY;
+  if (!apiKey) return null;
+
+  try {
+    const url = `https://www.googleapis.com/drive/v3/files/${fileId}?fields=id,name,mimeType&key=${apiKey}&supportsAllDrives=true`;
+    const res = await fetch(url, { next: { revalidate: 3600 } });
+    if (!res.ok) return null;
+
+    const data = await res.json();
+    const mimeType = (data.mimeType || '').toLowerCase();
+    const name = (data.name || '').toLowerCase();
+
+    const isPdf = mimeType === 'application/pdf' || name.endsWith('.pdf');
+    const isImage = mimeType.startsWith('image/') || /\.(png|jpg|jpeg|webp|gif)$/i.test(name);
+
+    const result: DriveFileMetadata = {
+      id: data.id,
+      name: data.name || 'Dokumen Pendukung',
+      mimeType: data.mimeType || '',
+      isPdf,
+      isImage,
+    };
+
+    fileMetadataCache.set(fileId, { timestamp: Date.now(), data: result });
+    return result;
+  } catch (err) {
+    return null;
+  }
+}
