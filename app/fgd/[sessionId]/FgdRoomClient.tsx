@@ -2,12 +2,34 @@
 
 import { useState, useTransition, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { submitFgdCommentAction, submitFgdVoteAction, lockFgdSessionAction, releaseSingleFgdProposalAction, insertCuratorNoteAsCommentAction } from '@/app/actions/fgd';
+import { submitFgdCommentAction, deleteFgdCommentAction, submitFgdVoteAction, lockFgdSessionAction, releaseSingleFgdProposalAction, insertCuratorNoteAsCommentAction } from '@/app/actions/fgd';
 import { generateFgdAiAnalysis } from '@/app/actions/aiAnalysis';
+import { getOrCacheResubmitPdfsAction, ResubmitPdfItem } from '@/app/actions/resubmitPdfCache';
 import { uploadFgdAdditionalDocument } from '@/app/actions/uploadDocument';
 import { deleteFgdAdditionalDocument } from '@/app/actions/deleteDocument';
 import ProposalDocumentButtons from '@/app/components/ProposalDocumentButtons';
 import { supabase } from '@/lib/supabase/client';
+import { extractDriveFolderUrls, extractSupportingImageUrls, extractGoogleWorkspaceUrls } from '@/lib/utils/resubmitMediaExtractor';
+import DriveFolderInlineView from '@/app/components/DriveFolderInlineView';
+
+// Helper function to transform raw PDF URLs into inline embeddable iframe URLs
+function getEmbeddablePdfUrl(url: string | null | undefined): string {
+  if (!url) return '';
+  
+  // 1. Google Drive PDF URLs -> convert to official /preview embed format
+  const driveMatch = url.match(/drive\.google\.com\/(?:file\/d\/|open\?id=)([a-zA-Z0-9_-]+)/i);
+  if (driveMatch && driveMatch[1]) {
+    return `https://drive.google.com/file/d/${driveMatch[1]}/preview`;
+  }
+
+  // 2. Vercel Blob URLs -> direct display
+  if (url.includes('public.blob.vercel-storage.com')) {
+    return url;
+  }
+
+  // 3. Contabo Storage S3 or external PDFs -> Internal PDF Proxy Stream (Native Browser PDF Viewer with multi-page scroll support)
+  return `/api/pdf/proxy?url=${encodeURIComponent(url)}`;
+}
 
 // 5 warna per verdict — sesuai SCREENING_VERDICT_COLORS
 const VERDICT_COLORS: Record<string, string> = {
@@ -46,6 +68,9 @@ type Proposal = {
   linkProposal: string | null;
   linkResubmitProposal?: string | null;
   linkSuratOrisinalitas?: string | null;
+  resubmitDocumentText?: string | null;
+  resubmitAiAnalysis?: any;
+  cachedResubmitPdfUrls?: any;
   rowNumber: number;
   verdict: string;
   curatorName?: string | null;
@@ -170,6 +195,127 @@ export default function FgdRoomClient({
     });
   }
 
+  // Local state for Resubmission PDF items (cached / blob URLs)
+  const [localResubmitPdfs, setLocalResubmitPdfs] = useState<Record<number, ResubmitPdfItem[]>>(() => {
+    const map: Record<number, ResubmitPdfItem[]> = {};
+    for (const p of proposals) {
+      if (p.cachedResubmitPdfUrls && Array.isArray(p.cachedResubmitPdfUrls) && p.cachedResubmitPdfUrls.length > 0) {
+        map[p.id] = p.cachedResubmitPdfUrls;
+      }
+    }
+    return map;
+  });
+
+  const [isProcessingResubmitPdf, setIsProcessingResubmitPdf] = useState<Record<number, boolean>>({});
+  const [resubmitPdfError, setResubmitPdfError] = useState<Record<number, string | null>>({});
+  const [expandedResubmitSections, setExpandedResubmitSections] = useState<Record<number, boolean>>({});
+  const [imageLoadErrors, setImageLoadErrors] = useState<Record<string, boolean>>({});
+
+  // Split-Screen State & Ratio Settings
+  const [isSplitResubmitOpen, setIsSplitResubmitOpen] = useState(false);
+  const [splitRatioPercent, setSplitRatioPercent] = useState<number>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('pia_split_resubmit_ratio');
+      if (saved) {
+        const parsed = parseInt(saved, 10);
+        if (!isNaN(parsed) && (parsed === 0 || (parsed >= 25 && parsed <= 75))) return parsed;
+      }
+    }
+    return 40; // Default: 40% Panel Kiri, 60% Panel Kanan (lega untuk dokumen)
+  });
+  const [isResizingSplit, setIsResizingSplit] = useState(false);
+
+  useEffect(() => {
+    if (isSplitResubmitOpen && splitRatioPercent === 0) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [isSplitResubmitOpen, splitRatioPercent]);
+
+  const handlePresetRatio = (ratio: number) => {
+    setSplitRatioPercent(ratio);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('pia_split_resubmit_ratio', ratio.toString());
+    }
+  };
+
+  useEffect(() => {
+    if (!isResizingSplit) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      const totalWidth = window.innerWidth;
+      const newLeftPercent = Math.max(25, Math.min(75, Math.round((e.clientX / totalWidth) * 100)));
+      setSplitRatioPercent(newLeftPercent);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('pia_split_resubmit_ratio', newLeftPercent.toString());
+      }
+    };
+
+    const handleMouseUp = () => {
+      setIsResizingSplit(false);
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isResizingSplit]);
+
+  const handleProcessResubmitPdfs = async (proposalId: number, isRetry = false) => {
+    if (!isRetry && (isProcessingResubmitPdf[proposalId] || (localResubmitPdfs[proposalId] && localResubmitPdfs[proposalId].length > 0))) {
+      return;
+    }
+
+    setIsProcessingResubmitPdf(prev => ({ ...prev, [proposalId]: true }));
+    setResubmitPdfError(prev => ({ ...prev, [proposalId]: null }));
+
+    try {
+      const res = await getOrCacheResubmitPdfsAction(proposalId);
+      if (res.error) {
+        setResubmitPdfError(prev => ({ ...prev, [proposalId]: res.error as string }));
+      } else if (res.data) {
+        setLocalResubmitPdfs(prev => ({ ...prev, [proposalId]: res.data }));
+      }
+    } catch (e: any) {
+      setResubmitPdfError(prev => ({ ...prev, [proposalId]: 'Gagal memproses dokumen PDF.' }));
+    } finally {
+      setIsProcessingResubmitPdf(prev => ({ ...prev, [proposalId]: false }));
+      // Auto-expand section ONLY ONCE when background process completes for this proposal
+      setExpandedResubmitSections(prev => {
+        if (prev[proposalId] === undefined) {
+          return { ...prev, [proposalId]: true };
+        }
+        return prev;
+      });
+    }
+  };
+
+  const [isDeletingComment, setIsDeletingComment] = useState<Record<number, boolean>>({});
+
+  const handleDeleteComment = async (commentId: number) => {
+    showConfirm('Hapus Komentar?', 'Apakah Anda yakin ingin menghapus komentar ini?', async () => {
+      setIsDeletingComment(prev => ({ ...prev, [commentId]: true }));
+      try {
+        const res = await deleteFgdCommentAction(commentId);
+        if (res.error) {
+          alert(res.error);
+        } else {
+          setLocalComments(prev => prev.filter(c => c.id !== commentId));
+        }
+      } catch (err: any) {
+        alert(err.message || 'Gagal menghapus komentar.');
+      } finally {
+        setIsDeletingComment(prev => ({ ...prev, [commentId]: false }));
+      }
+    });
+  };
+
   const handleGenerateAi = async (proposalId: number) => {
     setIsGeneratingAi(prev => ({ ...prev, [proposalId]: true }));
     setAiError(prev => ({ ...prev, [proposalId]: null }));
@@ -205,44 +351,94 @@ export default function FgdRoomClient({
     }
   }, [activeTab, activeProposalIdx, localAiAnalyses, isGeneratingAi, proposals]);
 
-  // Auto-sync curator note as permanent comment entry whenever proposal detail is opened
+  // Background process: Auto-process PDF caching & auto-expand when proposal detail is opened
+  useEffect(() => {
+    if (activeTab === 'detail' && activeProposalIdx !== null) {
+      const activeProp = proposals[activeProposalIdx];
+      if (activeProp && activeProp.linkResubmitProposal) {
+        const activeId = activeProp.id;
+
+        if (localResubmitPdfs[activeId] && localResubmitPdfs[activeId].length > 0) {
+          // If already in DB cache / state, auto-expand if user hasn't interacted with toggle yet
+          if (expandedResubmitSections[activeId] === undefined) {
+            setExpandedResubmitSections(prev => ({ ...prev, [activeId]: true }));
+          }
+        } else if (!isProcessingResubmitPdf[activeId]) {
+          // Trigger background PDF processing & caching
+          handleProcessResubmitPdfs(activeId);
+        }
+      }
+    }
+  }, [activeTab, activeProposalIdx, proposals, localResubmitPdfs, isProcessingResubmitPdf, expandedResubmitSections]);
+
+  // INSTANT & HIGH-PRIORITY: Sync curator note as permanent comment entry INSTANTLY when proposal is opened
   useEffect(() => {
     if (activeTab === 'detail' && activeProposalIdx !== null) {
       const p = proposals[activeProposalIdx];
       if (!p) return;
 
-      insertCuratorNoteAsCommentAction(fgd.id, p.id).then((res) => {
-        if (res && !('error' in res)) {
-          const verdictLabel: Record<string, string> = {
-            lolos: 'Lolos', duplication: 'Duplikasi', mapped: 'Mapped',
-            non_compliance: 'Non-Compliance', low_impact: 'Low Impact',
-          };
-          const lines: string[] = [];
-          if (p.verdict) lines.push(`[${verdictLabel[p.verdict] ?? p.verdict}]`);
-          if (p.curatorNotes) lines.push(p.curatorNotes);
-          if (p.curatorRecommendation) lines.push(`Rekomendasi: ${p.curatorRecommendation}`);
-          const contentToShow = res.content || (lines.length > 0 ? lines.join('\n') : null);
+      const verdictLabel: Record<string, string> = {
+        lolos: 'Lolos', duplication: 'Duplikasi', mapped: 'Mapped',
+        non_compliance: 'Non-Compliance', low_impact: 'Low Impact',
+      };
+      const lines: string[] = [];
+      if (p.verdict) lines.push(`[${verdictLabel[p.verdict] ?? p.verdict}]`);
+      if (p.curatorNotes) lines.push(p.curatorNotes);
+      if (p.curatorRecommendation) lines.push(`Rekomendasi: ${p.curatorRecommendation}`);
+      const fallbackContent = lines.length > 0 ? lines.join('\n') : null;
 
-          if (contentToShow) {
-            setLocalComments((prev) => {
-              if (prev.some((c) => c.proposalId === p.id && c.commentType === 'curator_note')) {
-                return prev;
-              }
-              return [
-                ...prev,
-                {
-                  id: Date.now(),
-                  proposalId: p.id,
-                  curatorId: 0,
-                  content: contentToShow,
-                  createdAt: new Date().toISOString(),
-                  curatorName: p.curatorName ?? null,
-                  commentType: 'curator_note',
-                },
-              ];
-            });
+      // 1. INSTANT LOCAL SYNC (0ms): If curator note data exists in proposal, render immediately in UI
+      if (fallbackContent) {
+        setLocalComments((prev) => {
+          if (prev.some((c) => c.proposalId === p.id && c.commentType === 'curator_note')) {
+            return prev;
           }
+          return [
+            ...prev,
+            {
+              id: Date.now(),
+              proposalId: p.id,
+              curatorId: 0,
+              content: fallbackContent,
+              commentText: fallbackContent,
+              userName: p.curatorName || 'Kurator',
+              userRole: 'curator',
+              createdAt: new Date().toISOString(),
+              curatorName: p.curatorName ?? null,
+              commentType: 'curator_note',
+            },
+          ];
+        });
+      }
+
+      // 2. BACKGROUND SERVER ACTION (Idempotent DB sync)
+      insertCuratorNoteAsCommentAction(fgd.id, p.id).then((res) => {
+        if (res && !('error' in res) && res.content) {
+          setLocalComments((prev) => {
+            const existingIdx = prev.findIndex((c) => c.proposalId === p.id && c.commentType === 'curator_note');
+            const updatedItem = {
+              id: existingIdx >= 0 ? prev[existingIdx].id : Date.now(),
+              proposalId: p.id,
+              curatorId: 0,
+              content: res.content,
+              commentText: res.content,
+              userName: p.curatorName || 'Kurator',
+              userRole: 'curator',
+              createdAt: new Date().toISOString(),
+              curatorName: p.curatorName ?? null,
+              commentType: 'curator_note',
+            };
+
+            if (existingIdx >= 0) {
+              const newArr = [...prev];
+              newArr[existingIdx] = updatedItem;
+              return newArr;
+            }
+            return [...prev, updatedItem];
+          });
         }
+      }).catch(err => {
+        console.warn('[Curator Note Sync Error]', err);
       });
     }
   }, [activeTab, activeProposalIdx, proposals, fgd.id]);
@@ -259,100 +455,111 @@ export default function FgdRoomClient({
       .on(
         'postgres_changes',
         {
-          event: 'INSERT',
+          event: '*',
           schema: 'public',
           table: 'fgd_comments',
           filter: `session_id=eq.${fgd.id}`,
         },
         (payload) => {
-          const newComment = payload.new as {
-            id: number;
-            session_id: number;
-            proposal_id: number;
-            curator_id: number;
-            content: string;
-            comment_type: string | null;
-            created_at: string;
-          };
+          // Handle Realtime DELETE Event
+          if (payload.eventType === 'DELETE') {
+            const deletedId = (payload.old as { id: number })?.id;
+            if (deletedId) {
+              setLocalComments((prev) => prev.filter((c) => c.id !== deletedId));
+            }
+            return;
+          }
 
-          // Strict proposal_id scope check
-          if (newComment.proposal_id !== activeId) return;
+          if (payload.eventType === 'INSERT') {
+            const newComment = payload.new as {
+              id: number;
+              session_id: number;
+              proposal_id: number;
+              curator_id: number;
+              content: string;
+              comment_type: string | null;
+              created_at: string;
+            };
 
-          setLocalComments((prev) => {
-            // Dedup 1: Exact ID check
-            if (prev.some((c) => c.id === newComment.id)) return prev;
+            // Strict proposal_id scope check
+            if (newComment.proposal_id !== activeId) return;
 
-            // Dedup 2: Curator note check (replace synthetic curator_note entry)
-            if (newComment.comment_type === 'curator_note') {
-              const hasCuratorNote = prev.some(
-                (c) => c.proposalId === newComment.proposal_id && c.commentType === 'curator_note'
+            setLocalComments((prev) => {
+              // Dedup 1: Exact ID check
+              if (prev.some((c) => c.id === newComment.id)) return prev;
+
+              // Dedup 2: Curator note check (replace synthetic curator_note entry)
+              if (newComment.comment_type === 'curator_note') {
+                const hasCuratorNote = prev.some(
+                  (c) => c.proposalId === newComment.proposal_id && c.commentType === 'curator_note'
+                );
+                if (hasCuratorNote) {
+                  return prev.map((c) =>
+                    c.proposalId === newComment.proposal_id && c.commentType === 'curator_note'
+                      ? {
+                          id: newComment.id,
+                          proposalId: newComment.proposal_id,
+                          curatorId: newComment.curator_id,
+                          content: newComment.content,
+                          createdAt: newComment.created_at,
+                          curatorName: c.curatorName ?? proposals.find((p) => p.id === newComment.proposal_id)?.curatorName ?? null,
+                          commentType: newComment.comment_type,
+                        }
+                      : c
+                  );
+                }
+              }
+
+              // Dedup 3: Optimistic UI check from same user with same content
+              const isOptimisticDuplicate = prev.some(
+                (c) =>
+                  c.proposalId === newComment.proposal_id &&
+                  c.curatorId === newComment.curator_id &&
+                  c.content.trim() === newComment.content.trim() &&
+                  Math.abs(new Date(c.createdAt).getTime() - new Date(newComment.created_at).getTime()) < 10000
               );
-              if (hasCuratorNote) {
+
+              if (isOptimisticDuplicate) {
                 return prev.map((c) =>
-                  c.proposalId === newComment.proposal_id && c.commentType === 'curator_note'
+                  c.proposalId === newComment.proposal_id &&
+                  c.curatorId === newComment.curator_id &&
+                  c.content.trim() === newComment.content.trim()
                     ? {
                         id: newComment.id,
                         proposalId: newComment.proposal_id,
                         curatorId: newComment.curator_id,
                         content: newComment.content,
                         createdAt: newComment.created_at,
-                        curatorName: c.curatorName ?? proposals.find((p) => p.id === newComment.proposal_id)?.curatorName ?? null,
+                        curatorName: c.curatorName,
                         commentType: newComment.comment_type,
                       }
                     : c
                 );
               }
-            }
 
-            // Dedup 3: Optimistic UI check from same user with same content
-            const isOptimisticDuplicate = prev.some(
-              (c) =>
-                c.proposalId === newComment.proposal_id &&
-                c.curatorId === newComment.curator_id &&
-                c.content.trim() === newComment.content.trim() &&
-                Math.abs(new Date(c.createdAt).getTime() - new Date(newComment.created_at).getTime()) < 10000
-            );
+              // Normal new comment append
+              let curatorName: string | null = null;
+              const existingAuthor = prev.find((c) => c.curatorId === newComment.curator_id);
+              if (existingAuthor?.curatorName) {
+                curatorName = existingAuthor.curatorName;
+              } else if (newComment.curator_id === session?.userId) {
+                curatorName = session?.name ?? null;
+              }
 
-            if (isOptimisticDuplicate) {
-              return prev.map((c) =>
-                c.proposalId === newComment.proposal_id &&
-                c.curatorId === newComment.curator_id &&
-                c.content.trim() === newComment.content.trim()
-                  ? {
-                      id: newComment.id,
-                      proposalId: newComment.proposal_id,
-                      curatorId: newComment.curator_id,
-                      content: newComment.content,
-                      createdAt: newComment.created_at,
-                      curatorName: c.curatorName,
-                      commentType: newComment.comment_type,
-                    }
-                  : c
-              );
-            }
-
-            // Look up author name if available
-            let curatorName: string | null = null;
-            const existingAuthor = prev.find((c) => c.curatorId === newComment.curator_id);
-            if (existingAuthor?.curatorName) {
-              curatorName = existingAuthor.curatorName;
-            } else if (newComment.curator_id === session?.userId) {
-              curatorName = session?.name ?? null;
-            }
-
-            return [
-              ...prev,
-              {
-                id: newComment.id,
-                proposalId: newComment.proposal_id,
-                curatorId: newComment.curator_id,
-                content: newComment.content,
-                createdAt: newComment.created_at,
-                curatorName,
-                commentType: newComment.comment_type,
-              },
-            ];
-          });
+              return [
+                ...prev,
+                {
+                  id: newComment.id,
+                  proposalId: newComment.proposal_id,
+                  curatorId: newComment.curator_id,
+                  content: newComment.content,
+                  createdAt: newComment.created_at,
+                  curatorName,
+                  commentType: newComment.comment_type,
+                },
+              ];
+            });
+          }
         }
       )
       .subscribe();
@@ -1040,9 +1247,15 @@ export default function FgdRoomClient({
                   </button>
                 </div>
 
-                {/* Split View */}
-                <div className="flex-1 flex overflow-hidden">
-                  {/* LEFT: Proposal Detail */}
+                {/* Outer Split-Screen Container */}
+                <div className={`flex-1 flex overflow-hidden ${isResizingSplit ? 'select-none' : ''}`}>
+                  {/* PANEL KIRI: App FGD Curation Utama (Hanya disembunyikan jika split-screen aktif DAN preset 100% Full) */}
+                  {(!isSplitResubmitOpen || splitRatioPercent > 0) && (
+                    <div
+                      style={{ width: isSplitResubmitOpen ? `${splitRatioPercent}%` : '100%' }}
+                      className="h-full flex flex-row overflow-hidden transition-all duration-75"
+                    >
+                    {/* Navigation Header */}
                   <div className="w-1/2 p-6 overflow-y-auto border-r border-gray-200 bg-white">
                     <div className="flex items-start justify-between mb-3">
                       <div>
@@ -1175,6 +1388,292 @@ export default function FgdRoomClient({
                         </div>
                       )}
                     </div>
+
+                    {/* SECTION DETAIL DOKUMEN RESUBMISSION (COLLAPSIBLE WITH BACKGROUND PROCESS & AUTO-EXPAND) */}
+                    {(activeProposal.linkResubmitProposal || activeProposal.resubmitDocumentText) && (
+                      <div className="bg-slate-50 border border-slate-200 rounded-lg overflow-hidden mb-6 shadow-2xs">
+                        {/* Collapsible Header */}
+                        <div
+                          onClick={() => setExpandedResubmitSections(prev => ({ 
+                            ...prev, 
+                            [activeProposal.id]: !(prev[activeProposal.id] ?? false) 
+                          }))}
+                          className="w-full px-5 py-3.5 bg-slate-100/90 border-b border-slate-200 flex items-center justify-between hover:bg-slate-200/70 transition cursor-pointer text-left select-none"
+                        >
+                          <div className="flex items-center space-x-2.5">
+                            <span className="text-base">📄</span>
+                            <h4 className="font-bold text-slate-800 text-sm tracking-wide">
+                              Detail Dokumen Resubmission
+                            </h4>
+                            {localResubmitPdfs[activeProposal.id] && localResubmitPdfs[activeProposal.id].length > 0 && (
+                              <span className="bg-emerald-100 text-emerald-800 text-[11px] font-bold px-2 py-0.5 rounded-full border border-emerald-200">
+                                ✓ PDF Ready
+                              </span>
+                            )}
+                          </div>
+
+                          <div className="flex items-center space-x-3">
+                            {isProcessingResubmitPdf[activeProposal.id] && (
+                              <span className="text-xs text-indigo-700 font-semibold flex items-center bg-indigo-50 px-2.5 py-1 rounded-md border border-indigo-200">
+                                <svg className="animate-spin -ml-0.5 mr-1.5 h-3.5 w-3.5 text-indigo-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                Memproses PDF...
+                              </span>
+                            )}
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setIsSplitResubmitOpen(true);
+                                setExpandedResubmitSections(prev => ({ ...prev, [activeProposal.id]: true }));
+                              }}
+                              className="px-2.5 py-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded transition flex items-center space-x-1.5 shadow-2xs shrink-0"
+                              title="Buka Dokumen Resubmission di Panel Kanan Split-Screen"
+                            >
+                              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+                              </svg>
+                              <span>Split-Screen ⤢</span>
+                            </button>
+                            <svg
+                              className={`w-4 h-4 text-slate-500 transition-transform duration-200 ${(expandedResubmitSections[activeProposal.id] ?? true) ? 'rotate-180' : ''}`}
+                              fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                            >
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                            </svg>
+                          </div>
+                        </div>
+
+                        {/* Section Content */}
+                        {(expandedResubmitSections[activeProposal.id] ?? true) && (
+                          <div className="p-5 space-y-6 bg-white">
+                            {/* Loading Indicator (if user manually opens while background caching is running) */}
+                            {isProcessingResubmitPdf[activeProposal.id] && (!localResubmitPdfs[activeProposal.id] || localResubmitPdfs[activeProposal.id].length === 0) && (
+                              <div className="bg-indigo-50 border border-indigo-200 rounded-md p-4 flex items-center space-x-3 text-indigo-950 text-sm font-medium">
+                                <svg className="animate-spin h-5 w-5 text-indigo-600 flex-shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                <span>⚡ Menyiapkan & meng-cache dokumen PDF resubmission di background... Mohon tunggu sebentar.</span>
+                              </div>
+                            )}
+
+                            {/* Error State for PDF Caching */}
+                            {resubmitPdfError[activeProposal.id] && (
+                              <div className="bg-rose-50/90 text-rose-800 p-3.5 rounded-md border border-rose-200 text-xs flex items-center justify-between">
+                                <div className="flex items-center space-x-2">
+                                  <span>⚠️</span>
+                                  <span>{resubmitPdfError[activeProposal.id]}</span>
+                                </div>
+                                <button
+                                  onClick={() => handleProcessResubmitPdfs(activeProposal.id, true)}
+                                  className="px-2.5 py-1 bg-rose-600 hover:bg-rose-700 text-white font-bold text-[11px] rounded transition shadow-2xs"
+                                >
+                                  Coba Lagi
+                                </button>
+                              </div>
+                            )}
+
+                            {/* 1. PALING ATAS: DOKUMEN RESUBMISSION UTAMA (EMBED PDF UTUH) */}
+                            {(() => {
+                              const pdfItems = localResubmitPdfs[activeProposal.id] || (activeProposal.linkResubmitProposal ? [{
+                                title: 'Dokumen Resubmission Utama',
+                                originalUrl: activeProposal.linkResubmitProposal,
+                                isFallbackOnly: false
+                              }] : []);
+
+                              if (pdfItems.length === 0) return null;
+
+                              return (
+                                <div className="space-y-6 pt-1">
+                                  {pdfItems.map((pdfItem, idx) => {
+                                    const embedSrc = pdfItem.embedUrl || getEmbeddablePdfUrl(pdfItem.blobUrl || pdfItem.originalUrl);
+                                    return (
+                                      <div key={pdfItem.originalUrl + idx} className="space-y-2">
+                                        <div className="flex items-center justify-between">
+                                          <h5 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center space-x-1.5 flex-wrap gap-y-1">
+                                            <span>📄</span>
+                                            <span>{pdfItem.title}</span>
+                                            <span className="text-[10px] bg-indigo-100 text-indigo-800 font-extrabold px-2 py-0.5 rounded border border-indigo-200">
+                                              📄 PDF Multi-Halaman (Scroll di Dalam Iframe)
+                                            </span>
+                                            {pdfItem.sizeMb && (
+                                              <span className="text-[10px] bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded font-normal lowercase">
+                                                ({pdfItem.sizeMb} MB)
+                                              </span>
+                                            )}
+                                          </h5>
+                                          {/* Downgraded secondary link icon */}
+                                          <a
+                                            href={pdfItem.blobUrl || pdfItem.originalUrl}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="text-slate-500 hover:text-indigo-600 transition p-1 text-xs flex items-center space-x-1 bg-slate-100 hover:bg-indigo-50 px-2 py-1 rounded border border-slate-200"
+                                            title="Buka PDF di Tab Baru"
+                                          >
+                                            <span className="text-[11px] font-semibold">🔗 Buka PDF di Tab Baru</span>
+                                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+                                          </a>
+                                        </div>
+
+                                        {!pdfItem.isFallbackOnly ? (
+                                          <div className="w-full bg-slate-900 rounded-lg overflow-hidden border border-slate-300 shadow-sm relative">
+                                            <iframe
+                                              src={embedSrc}
+                                              className="w-full h-[700px] bg-white border-0"
+                                              title={pdfItem.title}
+                                              loading="lazy"
+                                            />
+                                          </div>
+                                        ) : (
+                                          <div className="p-4 bg-amber-50/80 border border-amber-200 rounded-md text-xs text-slate-700 flex flex-col md:flex-row items-center justify-between gap-3">
+                                            <span className="font-medium text-amber-950">
+                                              📄 Dokumen PDF ini berukuran {pdfItem.sizeMb ? `>30MB (${pdfItem.sizeMb}MB)` : 'besar/perlu akses langsung'}. Tampilan embed inline di-skip untuk menjaga performa.
+                                            </span>
+                                            <a
+                                              href={pdfItem.originalUrl}
+                                              target="_blank"
+                                              rel="noopener noreferrer"
+                                              className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs rounded transition flex-shrink-0 shadow-2xs"
+                                            >
+                                              🔗 Unduh / Buka Dokumen PDF
+                                            </a>
+                                          </div>
+                                        )}
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              );
+                            })()}
+
+                            {/* 2. DOKUMEN PENDUKUNG / FOLDER GOOGLE DRIVE INLINE VIEW (OPSI A WITH API KEY) */}
+                            {(() => {
+                              const driveFolders = extractDriveFolderUrls(activeProposal.resubmitDocumentText, activeProposal.linkResubmitProposal);
+                              if (driveFolders.length === 0) return null;
+
+                              return (
+                                <div className="space-y-4 pt-4 border-t border-slate-200">
+                                  {driveFolders.map((folder, fIdx) => (
+                                    <DriveFolderInlineView
+                                      key={folder.folderUrl + fIdx}
+                                      folderUrl={folder.folderUrl}
+                                      folderTitle={folder.title}
+                                    />
+                                  ))}
+                                </div>
+                              );
+                            })()}
+
+                            {/* 3. DOKUMEN / LINK GOOGLE WORKSPACE (FORMS, SHEETS, DOCS, SLIDES) */}
+                            {(() => {
+                              const workspaceItems = extractGoogleWorkspaceUrls(activeProposal.resubmitDocumentText, activeProposal.linkResubmitProposal);
+                              if (workspaceItems.length === 0) return null;
+
+                              return (
+                                <div className="space-y-6 pt-4 border-t border-slate-200">
+                                  {workspaceItems.map((item, wIdx) => (
+                                    <div key={item.url + wIdx} className="space-y-2">
+                                      <div className="flex items-center justify-between">
+                                        <h5 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center space-x-1.5 flex-wrap gap-y-1">
+                                          <span>{item.icon}</span>
+                                          <span>{item.title}</span>
+                                          <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded border ${item.badgeBg}`}>
+                                            {item.badgeText}
+                                          </span>
+                                        </h5>
+                                        <a
+                                          href={item.url}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="text-slate-500 hover:text-indigo-600 transition p-1 text-xs flex items-center space-x-1 bg-slate-100 hover:bg-indigo-50 px-2 py-1 rounded border border-slate-200"
+                                          title="Buka di Tab Baru"
+                                        >
+                                          <span className="text-[11px] font-semibold">🔗 Buka di Tab Baru</span>
+                                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+                                        </a>
+                                      </div>
+
+                                      <div className="w-full bg-slate-900 rounded-lg overflow-hidden border border-slate-300 shadow-sm relative">
+                                        <iframe
+                                          src={item.embedUrl}
+                                          style={{ height: `${item.heightPx}px` }}
+                                          className="w-full bg-white border-0"
+                                          title={item.title}
+                                          loading="lazy"
+                                        />
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              );
+                            })()}
+
+                            {/* 4. BAGIAN PENDUKUNG (DI BAWAH): GAMBAR SKETSA DARI GOOGLE DRIVE / CONTABO STORAGE */}
+                            {(() => {
+                              const imageItems = extractSupportingImageUrls(activeProposal.resubmitDocumentText || activeProposal.linkResubmitProposal);
+                              
+                              // Extract PDF File IDs from localResubmitPdfs to exclude any PDF files from being displayed as static image thumbnails
+                              const activePdfs = localResubmitPdfs[activeProposal.id] || [];
+                              const pdfDriveFileIds = new Set<string>();
+
+                              activePdfs.forEach(pdf => {
+                                const match = (pdf.originalUrl || '').match(/drive\.google\.com\/(?:file\/d\/|open\?id=)([a-zA-Z0-9_-]+)/i);
+                                if (match && match[1]) pdfDriveFileIds.add(match[1]);
+                              });
+
+                              // Filter out load errors and any Google Drive files that are actually PDFs
+                              const validItems = imageItems.filter(item => {
+                                if (imageLoadErrors[item.cdnUrl]) return false;
+                                const match = (item.originalUrl || '').match(/drive\.google\.com\/(?:file\/d\/|open\?id=)([a-zA-Z0-9_-]+)/i);
+                                if (match && match[1] && pdfDriveFileIds.has(match[1])) {
+                                  return false; // Exclude PDF file from static image gallery!
+                                }
+                                return true;
+                              });
+
+                              if (validItems.length === 0) return null;
+
+                              return (
+                                <div className="space-y-2 pt-4 border-t border-slate-200">
+                                  <div className="flex items-center justify-between">
+                                    <h5 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center space-x-1.5">
+                                      <span>🖼️</span>
+                                      <span>Gambar Sketsa / Diagram Inovasi</span>
+                                    </h5>
+                                    <span className="text-[10px] bg-amber-100 text-amber-900 font-semibold px-2 py-0.5 rounded border border-amber-200">
+                                      🖼️ File Gambar Statis (Bukan PDF)
+                                    </span>
+                                  </div>
+                                  <div className="grid grid-cols-1 gap-4 pt-1">
+                                    {validItems.map((item, idx) => (
+                                      <div key={item.cdnUrl} className="bg-slate-50 p-4 rounded-lg border border-slate-200 text-center space-y-2">
+                                        <img 
+                                          src={item.cdnUrl} 
+                                          alt={`Sketsa Resubmission #${idx + 1}`}
+                                          className="max-w-full h-auto mx-auto rounded border border-slate-300 shadow-xs"
+                                          loading="lazy"
+                                          referrerPolicy="no-referrer"
+                                          onError={() => setImageLoadErrors(prev => ({ ...prev, [item.cdnUrl]: true }))}
+                                        />
+                                        <div className="flex flex-col sm:flex-row items-center justify-between pt-1 text-xs border-t border-slate-200 gap-2">
+                                          <span className="text-[11px] text-slate-500 font-medium">
+                                            Sketsa / Diagram Resubmission #{idx + 1}
+                                          </span>
+                                          <a
+                                            href={item.cdnUrl}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="inline-flex items-center space-x-1 text-xs font-bold text-indigo-700 hover:text-indigo-900 bg-indigo-50 hover:bg-indigo-100 px-3 py-1 rounded-md border border-indigo-200 transition shadow-2xs"
+                                          >
+                                            <span>🔍 Buka & Perbesar Gambar di Tab Baru</span>
+                                          </a>
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              );
+                            })()}
+                          </div>
+                        )}
+                      </div>
+                    )}
 
                     {/* NEW ADDITIONAL DOCUMENT AI ANALYSIS SECTION */}
                     <div className="bg-white p-5 rounded-md border border-indigo-100 shadow-sm mb-6 relative">
@@ -1330,7 +1829,7 @@ export default function FgdRoomClient({
                   </div>
 
                   {/* RIGHT: Diskusi Thread */}
-                  <div className="w-1/2 p-6 flex flex-col bg-gray-50">
+                  <div className="w-1/2 p-6 flex flex-col bg-gray-50 h-full overflow-hidden">
                     <h3 className="font-bold text-gray-800 mb-4 flex-shrink-0">Ruang Diskusi</h3>
 
                     {/* Chat Thread */}
@@ -1360,6 +1859,8 @@ export default function FgdRoomClient({
 
                         return dedupedComments.map((c) => {
                           const isCuratorNote = c.commentType === 'curator_note';
+                          const isMyComment = !isCuratorNote && (c.curatorId === session?.userId);
+
                           return (
                             <div
                               key={c.id}
@@ -1382,9 +1883,25 @@ export default function FgdRoomClient({
                                     </span>
                                   )}
                                 </div>
-                                <span className="text-xs text-gray-400">
-                                  {new Date(c.createdAt).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
-                                </span>
+                                <div className="flex items-center space-x-2">
+                                  <span className="text-xs text-gray-400">
+                                    {new Date(c.createdAt).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
+                                  </span>
+                                  {isMyComment && (
+                                    <button
+                                      onClick={() => handleDeleteComment(c.id)}
+                                      disabled={isDeletingComment[c.id]}
+                                      className="text-gray-400 hover:text-red-600 transition-colors p-0.5 rounded hover:bg-gray-100 disabled:opacity-50"
+                                      title="Hapus komentar saya"
+                                    >
+                                      {isDeletingComment[c.id] ? (
+                                        <svg className="animate-spin w-3.5 h-3.5 text-red-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                      ) : (
+                                        <span className="text-xs">🗑️</span>
+                                      )}
+                                    </button>
+                                  )}
+                                </div>
                               </div>
                               <p className={`text-sm whitespace-pre-wrap ${
                                 isCuratorNote ? 'text-amber-950' : 'text-gray-700'
@@ -1416,7 +1933,268 @@ export default function FgdRoomClient({
                         </div>
                       </form>
                     )}
+                    </div>
                   </div>
+                  )}
+
+                  {/* DIVIDER RESIZER BAR (DRAGGABLE - Only shown when left panel is visible) */}
+                  {isSplitResubmitOpen && splitRatioPercent > 0 && (
+                    <div
+                      onMouseDown={() => setIsResizingSplit(true)}
+                      className="w-2.5 bg-slate-200 hover:bg-indigo-600 cursor-col-resize flex flex-col items-center justify-center relative z-20 group transition-colors shrink-0 select-none border-x border-slate-300 shadow-xs"
+                      title="Geser mouse untuk mengubah rasio lebar panel"
+                    >
+                      <div className="w-1 h-8 bg-slate-400 group-hover:bg-white rounded-full my-auto"></div>
+                    </div>
+                  )}
+
+                  {/* PANEL KANAN: Detail Dokumen Resubmission Split-Screen Ekstra Luas */}
+                  {isSplitResubmitOpen && (
+                    <div
+                      style={{ width: splitRatioPercent === 0 ? '100%' : `${100 - splitRatioPercent}%` }}
+                      className={`${
+                        splitRatioPercent === 0 
+                          ? 'fixed inset-0 z-50 flex flex-col bg-slate-900 overflow-hidden shadow-2xl' 
+                          : 'h-full flex flex-col bg-slate-900 border-l border-slate-700 shadow-2xl overflow-hidden z-20 transition-all duration-75 shrink-0'
+                      }`}
+                    >
+                      {/* Header Panel Kanan: Title + Preset Selector % + Close Button (PERMANENT FIXED NON-SCROLLABLE HEADER) */}
+                      <div className="p-3.5 bg-slate-800 border-b border-slate-700 flex items-center justify-between text-white shrink-0 shadow-md z-30 select-none">
+                        <div className="flex items-center space-x-2 truncate pr-2">
+                          <span className="text-base">📄</span>
+                          <h3 className="font-bold text-xs sm:text-sm text-slate-100 truncate">
+                            Dokumen Resubmission · <span className="text-indigo-300 font-semibold">{activeProposal.title}</span>
+                          </h3>
+                        </div>
+
+                        <div className="flex items-center space-x-2 shrink-0">
+                          {/* Preset Ratio Selector % */}
+                          <div className="hidden sm:flex items-center bg-slate-700 p-0.5 rounded-lg border border-slate-600 text-xs space-x-0.5">
+                            {[30, 40, 50, 60, 70].map((r) => (
+                              <button
+                                key={r}
+                                onClick={() => handlePresetRatio(r)}
+                                className={`px-2 py-0.5 rounded text-[11px] font-semibold transition ${
+                                  splitRatioPercent === r
+                                    ? 'bg-indigo-600 text-white shadow-2xs'
+                                    : 'text-slate-300 hover:text-white hover:bg-slate-600'
+                                }`}
+                                title={`Rasio Lebar: ${r}% Kiri / ${100 - r}% Kanan`}
+                              >
+                                {r}:{100 - r}
+                              </button>
+                            ))}
+                            <button
+                              onClick={() => handlePresetRatio(0)}
+                              className={`px-2.5 py-0.5 rounded text-[11px] font-extrabold transition ${
+                                splitRatioPercent === 0
+                                  ? 'bg-indigo-600 text-white shadow-2xs'
+                                  : 'bg-indigo-950/70 text-indigo-200 hover:text-white hover:bg-indigo-600/80 border border-indigo-500/40'
+                              }`}
+                              title="Dokumen Resubmission Full Screen 100%"
+                            >
+                              🔍 100% Full
+                            </button>
+                          </div>
+
+                          {/* Close Button */}
+                          <button
+                            onClick={() => setIsSplitResubmitOpen(false)}
+                            className="px-2.5 py-1 bg-slate-700 hover:bg-rose-600 text-slate-200 hover:text-white rounded-lg transition text-xs font-bold flex items-center space-x-1 shadow-2xs"
+                            title="Tutup Split-Screen"
+                          >
+                            <span>✕ Tutup</span>
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Body Panel Kanan: SINGLE UNIFIED SCROLL CONTAINER FOR ALL SECTIONS */}
+                      <div className="flex-1 min-h-0 overflow-y-auto p-5 bg-slate-100 space-y-6 scroll-smooth">
+                        {/* 1. PALING ATAS: DOKUMEN RESUBMISSION UTAMA (EMBED PDF UTUH H-750px) */}
+                        {(() => {
+                          const pdfItems = localResubmitPdfs[activeProposal.id] || (activeProposal.linkResubmitProposal ? [{
+                            title: 'Dokumen Resubmission Utama',
+                            originalUrl: activeProposal.linkResubmitProposal,
+                            isFallbackOnly: false
+                          }] : []);
+
+                          if (pdfItems.length === 0) return null;
+
+                          return (
+                            <div className="space-y-6 pt-1">
+                              {pdfItems.map((pdfItem, idx) => {
+                                const embedSrc = pdfItem.embedUrl || getEmbeddablePdfUrl(pdfItem.blobUrl || pdfItem.originalUrl);
+                                return (
+                                  <div key={pdfItem.originalUrl + idx} className="space-y-2">
+                                    <div className="flex items-center justify-between">
+                                      <h5 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center space-x-1.5">
+                                        <span>📄</span>
+                                        <span>{pdfItem.title}</span>
+                                        {pdfItem.sizeMb && (
+                                          <span className="text-[10px] bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded font-normal lowercase">
+                                            ({pdfItem.sizeMb} MB)
+                                          </span>
+                                        )}
+                                      </h5>
+                                      <a
+                                        href={pdfItem.blobUrl || pdfItem.originalUrl}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="text-slate-400 hover:text-indigo-600 transition p-1 text-xs flex items-center space-x-1"
+                                        title="Buka di Tab Baru"
+                                      >
+                                        <span className="text-[11px]">Buka Tab Baru</span>
+                                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+                                      </a>
+                                    </div>
+
+                                    {!pdfItem.isFallbackOnly ? (
+                                      <div className="w-full bg-slate-900 rounded-lg overflow-hidden border border-slate-300 shadow-md">
+                                        <iframe
+                                          src={embedSrc}
+                                          className="w-full h-[750px] bg-white border-0"
+                                          title={pdfItem.title}
+                                          loading="lazy"
+                                        />
+                                      </div>
+                                    ) : (
+                                      <div className="p-4 bg-amber-50/80 border border-amber-200 rounded-md text-xs text-slate-700 flex flex-col md:flex-row items-center justify-between gap-3">
+                                        <span className="font-medium text-amber-950">
+                                          📄 Dokumen PDF ini berukuran {pdfItem.sizeMb ? `>30MB (${pdfItem.sizeMb}MB)` : 'besar/perlu akses langsung'}. Tampilan embed inline di-skip untuk menjaga performa.
+                                        </span>
+                                        <a
+                                          href={pdfItem.originalUrl}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs rounded transition flex-shrink-0 shadow-2xs"
+                                        >
+                                          🔗 Unduh / Buka Dokumen PDF
+                                        </a>
+                                      </div>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          );
+                        })()}
+
+                        {/* 2. DOKUMEN PENDUKUNG / FOLDER GOOGLE DRIVE INLINE VIEW (OPSI A WITH API KEY) */}
+                        {(() => {
+                          const driveFolders = extractDriveFolderUrls(activeProposal.resubmitDocumentText, activeProposal.linkResubmitProposal);
+                          if (driveFolders.length === 0) return null;
+
+                          return (
+                            <div className="space-y-4 pt-4 border-t border-slate-200">
+                              {driveFolders.map((folder, fIdx) => (
+                                <DriveFolderInlineView
+                                  key={folder.folderUrl + fIdx}
+                                  folderUrl={folder.folderUrl}
+                                  folderTitle={folder.title}
+                                />
+                              ))}
+                            </div>
+                          );
+                        })()}
+
+                        {/* 3. DOKUMEN / LINK GOOGLE WORKSPACE (FORMS, SHEETS, DOCS, SLIDES) */}
+                        {(() => {
+                          const workspaceItems = extractGoogleWorkspaceUrls(activeProposal.resubmitDocumentText, activeProposal.linkResubmitProposal);
+                          if (workspaceItems.length === 0) return null;
+
+                          return (
+                            <div className="space-y-6 pt-4 border-t border-slate-200">
+                              {workspaceItems.map((item, wIdx) => (
+                                <div key={item.url + wIdx} className="space-y-2">
+                                  <div className="flex items-center justify-between">
+                                    <h5 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center space-x-1.5 flex-wrap gap-y-1">
+                                      <span>{item.icon}</span>
+                                      <span>{item.title}</span>
+                                      <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded border ${item.badgeBg}`}>
+                                        {item.badgeText}
+                                      </span>
+                                    </h5>
+                                    <a
+                                      href={item.url}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="text-slate-500 hover:text-indigo-600 transition p-1 text-xs flex items-center space-x-1 bg-slate-100 hover:bg-indigo-50 px-2 py-1 rounded border border-slate-200"
+                                      title="Buka di Tab Baru"
+                                    >
+                                      <span className="text-[11px] font-semibold">🔗 Buka di Tab Baru</span>
+                                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+                                    </a>
+                                  </div>
+
+                                  <div className="w-full bg-slate-900 rounded-lg overflow-hidden border border-slate-300 shadow-sm relative">
+                                    <iframe
+                                      src={item.embedUrl}
+                                      style={{ height: `${item.heightPx}px` }}
+                                      className="w-full bg-white border-0"
+                                      title={item.title}
+                                      loading="lazy"
+                                    />
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          );
+                        })()}
+
+                        {/* 4. GAMBAR SKETSA / DIAGRAM INOVASI PENDUKUNG */}
+                        {(() => {
+                          const imageItems = extractSupportingImageUrls(activeProposal.resubmitDocumentText || activeProposal.linkResubmitProposal);
+                          
+                          // Extract PDF File IDs from localResubmitPdfs to exclude any PDF files from being displayed as static image thumbnails
+                          const activePdfs = localResubmitPdfs[activeProposal.id] || [];
+                          const pdfDriveFileIds = new Set<string>();
+
+                          activePdfs.forEach(pdf => {
+                            const match = (pdf.originalUrl || '').match(/drive\.google\.com\/(?:file\/d\/|open\?id=)([a-zA-Z0-9_-]+)/i);
+                            if (match && match[1]) pdfDriveFileIds.add(match[1]);
+                          });
+
+                          // Filter out load errors and any Google Drive files that are actually PDFs
+                          const validItems = imageItems.filter(item => {
+                            if (imageLoadErrors[item.cdnUrl]) return false;
+                            const match = (item.originalUrl || '').match(/drive\.google\.com\/(?:file\/d\/|open\?id=)([a-zA-Z0-9_-]+)/i);
+                            if (match && match[1] && pdfDriveFileIds.has(match[1])) {
+                              return false; // Exclude PDF file from static image gallery!
+                            }
+                            return true;
+                          });
+
+                          if (validItems.length === 0) return null;
+
+                          return (
+                            <div className="space-y-2 pt-4 border-t border-slate-200">
+                              <h5 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center space-x-1.5">
+                                <span>🖼️</span>
+                                <span>Gambar Sketsa / Diagram Inovasi</span>
+                              </h5>
+                              <div className="grid grid-cols-1 gap-4 pt-1">
+                                {validItems.map((item, idx) => (
+                                  <div key={item.cdnUrl} className="bg-slate-50 p-3 rounded-lg border border-slate-200 text-center">
+                                    <img 
+                                      src={item.cdnUrl} 
+                                      alt={`Sketsa Resubmission #${idx + 1}`}
+                                      className="max-w-full h-auto mx-auto rounded border border-slate-300 shadow-xs"
+                                      loading="lazy"
+                                      referrerPolicy="no-referrer"
+                                      onError={() => setImageLoadErrors(prev => ({ ...prev, [item.cdnUrl]: true }))}
+                                    />
+                                    <div className="text-[11px] text-slate-500 mt-2 font-medium">
+                                      Sketsa / Diagram Resubmission #{idx + 1}
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          );
+                        })()}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </>
             )}
