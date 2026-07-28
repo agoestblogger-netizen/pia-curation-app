@@ -126,13 +126,30 @@ export async function getOrCacheResubmitPdfsAction(proposalId: number) {
     // Return cached results if present in DB (Idempotency Guard)
     if (proposal.cachedResubmitPdfUrls && Array.isArray(proposal.cachedResubmitPdfUrls) && proposal.cachedResubmitPdfUrls.length > 0) {
       const items = proposal.cachedResubmitPdfUrls as ResubmitPdfItem[];
-      const updatedItems = await Promise.all(
-        items.map(async (item) => ({
-          ...item,
-          embedUrl: await getEmbeddablePdfUrl(item.blobUrl || item.originalUrl),
-        }))
-      );
-      return { data: updatedItems };
+      
+      // Check if resubmitDocumentText has single Google Drive links that aren't indexed in cached items yet
+      const driveMatches = [...((proposal.resubmitDocumentText || '').matchAll(/drive\.google\.com\/(?:file\/d\/|open\?id=)([a-zA-Z0-9_-]+)/gi))];
+      const cachedUrls = new Set(items.map(i => i.originalUrl || ''));
+      
+      let hasMissingDriveFile = false;
+      for (const dm of driveMatches) {
+        const fileId = dm[1];
+        const previewUrl = `https://drive.google.com/file/d/${fileId}/preview`;
+        if (!cachedUrls.has(fileId) && !cachedUrls.has(previewUrl)) {
+          hasMissingDriveFile = true;
+          break;
+        }
+      }
+
+      if (!hasMissingDriveFile) {
+        const updatedItems = await Promise.all(
+          items.map(async (item) => ({
+            ...item,
+            embedUrl: await getEmbeddablePdfUrl(item.blobUrl || item.originalUrl),
+          }))
+        );
+        return { data: updatedItems };
+      }
     }
 
     // Extract PDF items
