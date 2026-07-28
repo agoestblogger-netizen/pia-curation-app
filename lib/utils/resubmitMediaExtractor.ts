@@ -31,15 +31,20 @@ export function extractDriveFolderUrls(text: string | null | undefined, mainUrl:
 
   if (!text) return folders;
 
-  // Regex to match Google Drive Folder URLs
-  const folderRegex = /https?:\/\/drive\.google\.com\/(?:drive\/(?:u\/\d+\/)?folders\/|folders\/)([a-zA-Z0-9_-]+)(?:\?[^\s"'<>]*)?/gi;
-  const matches = [...text.matchAll(folderRegex)];
+  // Sanitize line-breaks and whitespace in Drive URLs introduced during PDF text extraction
+  let sanitizedText = text;
+  sanitizedText = sanitizedText.replace(/(drive\.google\.com\/[^\s"<>]+)\s+([^\s"<>]+)/gi, '$1$2');
+
+  // Robust Regex to match Google Drive Folder URLs with full 20-50 char ID
+  const folderRegex = /https?:\/\/drive\.google\.com\/(?:[a-zA-Z0-9_\-\/]*\/)?folders\/([a-zA-Z0-9_-]{20,50})/gi;
+  const matches = [...sanitizedText.matchAll(folderRegex)];
 
   let index = 1;
   for (const m of matches) {
-    const fullUrl = m[0].replace(/[.,;)]+$/, '');
-    if (!seen.has(fullUrl)) {
-      seen.add(fullUrl);
+    const fullUrl = m[0];
+    const folderId = m[1];
+    if (folderId && !seen.has(folderId)) {
+      seen.add(folderId);
       folders.push({
         title: `Folder Google Drive Pendukung #${index}`,
         folderUrl: fullUrl,

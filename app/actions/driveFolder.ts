@@ -35,12 +35,12 @@ export async function getGoogleDriveFolderFilesAction(folderUrl: string, folderT
   if (!folderUrl) return fallbackResult;
 
   // Extract Folder ID from Google Drive URL
-  const folderMatch = folderUrl.match(/(?:drive\/(?:u\/\d+\/)?folders\/|folders\/)([a-zA-Z0-9_-]+)/i);
+  const folderMatch = folderUrl.match(/folders\/([a-zA-Z0-9_-]{20,50})/i);
   if (!folderMatch || !folderMatch[1]) {
     return fallbackResult;
   }
 
-  const folderId = folderMatch[1].replace(/[.,;)]+$/, '');
+  const folderId = folderMatch[1];
   fallbackResult.folderId = folderId;
 
   // Return cached result if fresh (< 1 hour)
