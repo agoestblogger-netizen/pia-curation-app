@@ -1339,23 +1339,6 @@ export default function FgdRoomClient({
                         {/* Section Content */}
                         {(expandedResubmitSections[activeProposal.id] ?? false) && (
                           <div className="p-5 space-y-6 bg-white">
-                            {/* GOOGLE DRIVE FOLDER INLINE DISPLAY (OPSI A WITH API KEY) */}
-                            {(() => {
-                              const driveFolders = extractDriveFolderUrls(activeProposal.resubmitDocumentText, activeProposal.linkResubmitProposal);
-                              if (driveFolders.length === 0) return null;
-
-                              return (
-                                <div className="space-y-4 mb-4">
-                                  {driveFolders.map((folder, fIdx) => (
-                                    <DriveFolderInlineView
-                                      key={folder.folderUrl + fIdx}
-                                      folderUrl={folder.folderUrl}
-                                      folderTitle={folder.title}
-                                    />
-                                  ))}
-                                </div>
-                              );
-                            })()}
                             {/* Loading Indicator (if user manually opens while background caching is running) */}
                             {isProcessingResubmitPdf[activeProposal.id] && (!localResubmitPdfs[activeProposal.id] || localResubmitPdfs[activeProposal.id].length === 0) && (
                               <div className="bg-indigo-50 border border-indigo-200 rounded-md p-4 flex items-center space-x-3 text-indigo-950 text-sm font-medium">
@@ -1380,7 +1363,7 @@ export default function FgdRoomClient({
                               </div>
                             )}
 
-                            {/* 1. BAGIAN UTAMA (DI ATAS): EMBED DOKUMEN PDF RESUBMISSION UTUH */}
+                            {/* 1. PALING ATAS: DOKUMEN RESUBMISSION UTAMA (EMBED PDF UTUH) */}
                             {(() => {
                               const pdfItems = localResubmitPdfs[activeProposal.id] || (activeProposal.linkResubmitProposal ? [{
                                 title: 'Dokumen Resubmission Utama',
@@ -1446,6 +1429,24 @@ export default function FgdRoomClient({
                                       </div>
                                     );
                                   })}
+                                </div>
+                              );
+                            })()}
+
+                            {/* 2. DOKUMEN PENDUKUNG / FOLDER GOOGLE DRIVE INLINE VIEW (OPSI A WITH API KEY) */}
+                            {(() => {
+                              const driveFolders = extractDriveFolderUrls(activeProposal.resubmitDocumentText, activeProposal.linkResubmitProposal);
+                              if (driveFolders.length === 0) return null;
+
+                              return (
+                                <div className="space-y-4 pt-4 border-t border-slate-200">
+                                  {driveFolders.map((folder, fIdx) => (
+                                    <DriveFolderInlineView
+                                      key={folder.folderUrl + fIdx}
+                                      folderUrl={folder.folderUrl}
+                                      folderTitle={folder.title}
+                                    />
+                                  ))}
                                 </div>
                               );
                             })()}
