@@ -109,7 +109,7 @@ export async function getGoogleDriveFolderFilesAction(folderUrl: string, folderT
         mimeType: f.mimeType,
         isFolder: isSubFolder,
         thumbnailUrl: isImg
-          ? `https://lh3.googleusercontent.com/d/${f.id}`
+          ? `https://drive.google.com/thumbnail?id=${f.id}&sz=w2000`
           : (f.thumbnailLink || ''),
         previewUrl: isSubFolder
           ? `https://drive.google.com/drive/folders/${f.id}`
