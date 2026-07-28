@@ -71,8 +71,17 @@ export function extractSupportingImageUrls(text: string | null | undefined): Res
   const seen = new Set<string>();
 
   // Sanitize line-breaks and whitespace in S3/Contabo URLs introduced during PDF text extraction
+  let prevText = '';
   let sanitizedText = text;
-  sanitizedText = sanitizedText.replace(/(contabostorage\.com\/[^\s"<>]+)\s+([^\s"<>]+)/gi, '$1$2');
+  while (prevText !== sanitizedText) {
+    prevText = sanitizedText;
+    sanitizedText = sanitizedText.replace(/(contabostorage\.com\/[^\s"<>]+)\s+([^\s"<>]+)/gi, (match, part1, part2) => {
+      if (/\.(?:jpeg|jpg|png|webp|gif|pdf)$/i.test(part1)) {
+        return match; // Keep space if part1 already ends with a file extension
+      }
+      return part1 + part2;
+    });
+  }
 
   // 1. Google Drive Image URLs
   const driveRegex = /https?:\/\/drive\.google\.com\/(?:file\/d\/|open\?id=)([a-zA-Z0-9_-]+)(?:[^\s"'<>]*)?/gi;
