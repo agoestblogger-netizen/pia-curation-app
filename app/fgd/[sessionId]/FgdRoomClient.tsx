@@ -1941,10 +1941,10 @@ export default function FgdRoomClient({
                   {isSplitResubmitOpen && (
                     <div
                       style={{ width: `${100 - splitRatioPercent}%` }}
-                      className="h-full flex flex-col bg-slate-900 border-l border-slate-700 shadow-2xl overflow-hidden z-10 transition-all duration-75"
+                      className="h-full flex flex-col bg-slate-900 border-l border-slate-700 shadow-2xl overflow-hidden z-20 transition-all duration-75 relative"
                     >
-                      {/* Header Panel Kanan: Title + Preset Selector % + Close Button */}
-                      <div className="p-3.5 bg-slate-800 border-b border-slate-700 flex items-center justify-between text-white shrink-0 shadow-md">
+                      {/* Header Panel Kanan: Title + Preset Selector % + Close Button (STICKY LOCKED ON TOP) */}
+                      <div className="p-3.5 bg-slate-800/95 backdrop-blur-md border-b border-slate-700 flex items-center justify-between text-white shrink-0 shadow-md sticky top-0 z-50 select-none">
                         <div className="flex items-center space-x-2 truncate pr-2">
                           <span className="text-base">📄</span>
                           <h3 className="font-bold text-xs sm:text-sm text-slate-100 truncate">
