@@ -147,50 +147,50 @@ export async function insertCuratorNoteAsCommentAction(
   const session = await getSession();
   if (!session) return { error: 'Unauthorized' };
 
-  // 1. Cek apakah sudah ada entry curator_note untuk proposal+session ini (dedup guard)
-  const existing = await db
-    .select({ id: fgdComments.id })
-    .from(fgdComments)
-    .where(
-      and(
-        eq(fgdComments.sessionId, sessionId),
-        eq(fgdComments.proposalId, proposalId),
-        eq(fgdComments.commentType, 'curator_note')
-      )
-    )
-    .limit(1);
-
-  if (existing.length > 0) return { success: true, skipped: true };
-
-  // 2. Fetch catatan kurator + nama kurator dari screening_results
-  const [sr] = await db
-    .select({
-      notes: screeningResults.notes,
-      recommendation: screeningResults.recommendation,
-      verdict: screeningResults.verdict,
-      curatorId: screeningResults.curatorId,
-    })
-    .from(screeningResults)
-    .where(eq(screeningResults.proposalId, proposalId))
-    .limit(1);
-
-  // Jika tidak ada catatan kurator, skip
-  if (!sr || (!sr.notes && !sr.recommendation)) return { success: true, skipped: true };
-  if (!sr.curatorId) return { success: true, skipped: true };
-
-  // 3. Build konten entri — gabungkan notes + rekomendasi dalam satu teks
-  const verdictLabel: Record<string, string> = {
-    lolos: 'Lolos', duplication: 'Duplikasi', mapped: 'Mapped',
-    non_compliance: 'Non-Compliance', low_impact: 'Low Impact',
-  };
-  const lines: string[] = [];
-  if (sr.verdict) lines.push(`[${verdictLabel[sr.verdict] ?? sr.verdict}]`);
-  if (sr.notes) lines.push(sr.notes);
-  if (sr.recommendation) lines.push(`Rekomendasi: ${sr.recommendation}`);
-  const content = lines.join('\n');
-
-  // 4. Insert sebagai comment dengan type curator_note, curatorId dari screening
   try {
+    // 1. Cek apakah sudah ada entry curator_note untuk proposal+session ini (dedup guard)
+    const existing = await db
+      .select({ id: fgdComments.id })
+      .from(fgdComments)
+      .where(
+        and(
+          eq(fgdComments.sessionId, sessionId),
+          eq(fgdComments.proposalId, proposalId),
+          eq(fgdComments.commentType, 'curator_note')
+        )
+      )
+      .limit(1);
+
+    if (existing.length > 0) return { success: true, skipped: true };
+
+    // 2. Fetch catatan kurator + nama kurator dari screening_results
+    const [sr] = await db
+      .select({
+        notes: screeningResults.notes,
+        recommendation: screeningResults.recommendation,
+        verdict: screeningResults.verdict,
+        curatorId: screeningResults.curatorId,
+      })
+      .from(screeningResults)
+      .where(eq(screeningResults.proposalId, proposalId))
+      .limit(1);
+
+    // Jika tidak ada catatan kurator, skip
+    if (!sr || (!sr.notes && !sr.recommendation)) return { success: true, skipped: true };
+    if (!sr.curatorId) return { success: true, skipped: true };
+
+    // 3. Build konten entri — gabungkan notes + rekomendasi dalam satu teks
+    const verdictLabel: Record<string, string> = {
+      lolos: 'Lolos', duplication: 'Duplikasi', mapped: 'Mapped',
+      non_compliance: 'Non-Compliance', low_impact: 'Low Impact',
+    };
+    const lines: string[] = [];
+    if (sr.verdict) lines.push(`[${verdictLabel[sr.verdict] ?? sr.verdict}]`);
+    if (sr.notes) lines.push(sr.notes);
+    if (sr.recommendation) lines.push(`Rekomendasi: ${sr.recommendation}`);
+    const content = lines.join('\n');
+
+    // 4. Insert sebagai comment dengan type curator_note, curatorId dari screening
     await db.insert(fgdComments).values({
       sessionId,
       proposalId,
@@ -198,15 +198,16 @@ export async function insertCuratorNoteAsCommentAction(
       content,
       commentType: 'curator_note',
     });
+
+    revalidatePath(`/fgd/${sessionId}`);
+    return { success: true, skipped: false, content };
   } catch (e: any) {
     if (e?.code === '23505' || e?.message?.includes('unique') || e?.message?.includes('duplicate')) {
-      return { success: true, skipped: true, content };
+      return { success: true, skipped: true };
     }
-    throw e;
+    console.error('[insertCuratorNoteAsCommentAction] Error:', e?.message || e);
+    return { error: e?.message || 'Gagal menyisipkan catatan kurator' };
   }
-
-  revalidatePath(`/fgd/${sessionId}`);
-  return { success: true, skipped: false, content };
 }
 
 /**
