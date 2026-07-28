@@ -1475,9 +1475,12 @@ export default function FgdRoomClient({
                                     return (
                                       <div key={pdfItem.originalUrl + idx} className="space-y-2">
                                         <div className="flex items-center justify-between">
-                                          <h5 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center space-x-1.5">
+                                          <h5 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center space-x-1.5 flex-wrap gap-y-1">
                                             <span>📄</span>
                                             <span>{pdfItem.title}</span>
+                                            <span className="text-[10px] bg-indigo-100 text-indigo-800 font-extrabold px-2 py-0.5 rounded border border-indigo-200">
+                                              📄 PDF Multi-Halaman (Scroll di Dalam Iframe)
+                                            </span>
                                             {pdfItem.sizeMb && (
                                               <span className="text-[10px] bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded font-normal lowercase">
                                                 ({pdfItem.sizeMb} MB)
@@ -1489,19 +1492,19 @@ export default function FgdRoomClient({
                                             href={pdfItem.blobUrl || pdfItem.originalUrl}
                                             target="_blank"
                                             rel="noopener noreferrer"
-                                            className="text-slate-400 hover:text-indigo-600 transition p-1 text-xs flex items-center space-x-1"
-                                            title="Buka di Tab Baru"
+                                            className="text-slate-500 hover:text-indigo-600 transition p-1 text-xs flex items-center space-x-1 bg-slate-100 hover:bg-indigo-50 px-2 py-1 rounded border border-slate-200"
+                                            title="Buka PDF di Tab Baru"
                                           >
-                                            <span className="text-[11px]">Buka Tab Baru</span>
+                                            <span className="text-[11px] font-semibold">🔗 Buka PDF di Tab Baru</span>
                                             <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
                                           </a>
                                         </div>
 
                                         {!pdfItem.isFallbackOnly ? (
-                                          <div className="w-full bg-slate-900 rounded-lg overflow-hidden border border-slate-300 shadow-xs">
+                                          <div className="w-full bg-slate-900 rounded-lg overflow-hidden border border-slate-300 shadow-sm relative">
                                             <iframe
                                               src={embedSrc}
-                                              className="w-full h-[600px] bg-white border-0"
+                                              className="w-full h-[700px] bg-white border-0"
                                               title={pdfItem.title}
                                               loading="lazy"
                                             />
@@ -1546,7 +1549,7 @@ export default function FgdRoomClient({
                               );
                             })()}
 
-                            {/* 2. BAGIAN PENDUKUNG (DI BAWAH): GAMBAR SKETSA DARI GOOGLE DRIVE / CONTABO STORAGE */}
+                            {/* 3. BAGIAN PENDUKUNG (DI BAWAH): GAMBAR SKETSA DARI GOOGLE DRIVE / CONTABO STORAGE */}
                             {(() => {
                               const imageItems = extractSupportingImageUrls(activeProposal.resubmitDocumentText || activeProposal.linkResubmitProposal);
                               // Filter out any image URLs that triggered load errors so they are completely hidden
@@ -1555,13 +1558,18 @@ export default function FgdRoomClient({
 
                               return (
                                 <div className="space-y-2 pt-4 border-t border-slate-200">
-                                  <h5 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center space-x-1.5">
-                                    <span>🖼️</span>
-                                    <span>Gambar Sketsa / Diagram Inovasi</span>
-                                  </h5>
+                                  <div className="flex items-center justify-between">
+                                    <h5 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center space-x-1.5">
+                                      <span>🖼️</span>
+                                      <span>Gambar Sketsa / Diagram Inovasi</span>
+                                    </h5>
+                                    <span className="text-[10px] bg-amber-100 text-amber-900 font-semibold px-2 py-0.5 rounded border border-amber-200">
+                                      🖼️ File Gambar Statis (Bukan PDF)
+                                    </span>
+                                  </div>
                                   <div className="grid grid-cols-1 gap-4 pt-1">
                                     {validItems.map((item, idx) => (
-                                      <div key={item.cdnUrl} className="bg-slate-50 p-3 rounded-lg border border-slate-200 text-center">
+                                      <div key={item.cdnUrl} className="bg-slate-50 p-4 rounded-lg border border-slate-200 text-center space-y-2">
                                         <img 
                                           src={item.cdnUrl} 
                                           alt={`Sketsa Resubmission #${idx + 1}`}
@@ -1570,8 +1578,18 @@ export default function FgdRoomClient({
                                           referrerPolicy="no-referrer"
                                           onError={() => setImageLoadErrors(prev => ({ ...prev, [item.cdnUrl]: true }))}
                                         />
-                                        <div className="text-[11px] text-slate-500 mt-2 font-medium">
-                                          Sketsa / Diagram Resubmission #{idx + 1}
+                                        <div className="flex flex-col sm:flex-row items-center justify-between pt-1 text-xs border-t border-slate-200 gap-2">
+                                          <span className="text-[11px] text-slate-500 font-medium">
+                                            Sketsa / Diagram Resubmission #{idx + 1}
+                                          </span>
+                                          <a
+                                            href={item.cdnUrl}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="inline-flex items-center space-x-1 text-xs font-bold text-indigo-700 hover:text-indigo-900 bg-indigo-50 hover:bg-indigo-100 px-3 py-1 rounded-md border border-indigo-200 transition shadow-2xs"
+                                          >
+                                            <span>🔍 Buka & Perbesar Gambar di Tab Baru</span>
+                                          </a>
                                         </div>
                                       </div>
                                     ))}
