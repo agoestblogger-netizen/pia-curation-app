@@ -728,20 +728,22 @@ export default function FgdRoomClient({
 
   const activeProposal = activeProposalIdx !== null ? proposals[activeProposalIdx] : null;
 
+  // Use activeProposalIdx (stable state) as dep — NOT activeProposal (computed) to avoid TDZ ReferenceError
   useEffect(() => {
-    if (activeProposal) {
-      const pId = activeProposal.id;
-      if (!localResolvedMedia[pId]) {
-        resolveResubmitMediaAction(activeProposal.resubmitDocumentText, activeProposal.linkResubmitProposal)
-          .then((pkg) => {
-            setLocalResolvedMedia(prev => ({ ...prev, [pId]: pkg }));
-          })
-          .catch(err => {
-            console.error('[Resubmit Media Server Resolver Error]:', err);
-          });
-      }
-    }
-  }, [activeProposal]);
+    if (activeProposalIdx === null) return;
+    const proposal = proposals[activeProposalIdx];
+    if (!proposal) return;
+    const pId = proposal.id;
+    if (localResolvedMedia[pId]) return; // Already resolved, skip
+    resolveResubmitMediaAction(proposal.resubmitDocumentText, proposal.linkResubmitProposal)
+      .then((pkg) => {
+        setLocalResolvedMedia(prev => ({ ...prev, [pId]: pkg }));
+      })
+      .catch(err => {
+        console.error('[Resubmit Media Server Resolver Error]:', err);
+      });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeProposalIdx]);
 
   // ─── Group proposals for 'grouped' view mode (by category) ────────────────
   const groupedProposals: Record<string, Proposal[]> = {};

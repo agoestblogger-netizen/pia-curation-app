@@ -102,19 +102,19 @@ export async function resolveUrl(rawUrl: string): Promise<string> {
 export async function resolveTextUrls(text: string | null | undefined): Promise<string> {
   if (!text) return '';
 
-  const urlRegex = /(https?:\/\/[^\s<>"\']+)/g;
+  const urlRegex = /(https?:\/\/[^\s<>"']+)/g;
   const matches = text.match(urlRegex) || [];
-
-  let resolvedText = text;
   const uniqueUrls = Array.from(new Set(matches));
 
-  for (const rawUrl of uniqueUrls) {
-    if (isShortenerUrl(rawUrl)) {
-      const resolved = await resolveUrl(rawUrl);
-      if (resolved && resolved !== rawUrl) {
-        // Replace all instances of shortener with expanded URL
-        resolvedText = resolvedText.split(rawUrl).join(resolved);
-      }
+  // Fast-path: if no shortener URLs found, return original text immediately
+  const shortenerUrls = uniqueUrls.filter(u => isShortenerUrl(u));
+  if (shortenerUrls.length === 0) return text;
+
+  let resolvedText = text;
+  for (const rawUrl of shortenerUrls) {
+    const resolved = await resolveUrl(rawUrl);
+    if (resolved && resolved !== rawUrl) {
+      resolvedText = resolvedText.split(rawUrl).join(resolved);
     }
   }
 
