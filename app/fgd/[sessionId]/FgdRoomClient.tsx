@@ -9,7 +9,8 @@ import { uploadFgdAdditionalDocument } from '@/app/actions/uploadDocument';
 import { deleteFgdAdditionalDocument } from '@/app/actions/deleteDocument';
 import ProposalDocumentButtons from '@/app/components/ProposalDocumentButtons';
 import { supabase } from '@/lib/supabase/client';
-import { extractDriveFolderUrls, extractSupportingImageUrls, extractGoogleWorkspaceUrls } from '@/lib/utils/resubmitMediaExtractor';
+import { extractDriveFolderUrls, extractSupportingImageUrls, extractGoogleWorkspaceUrls, extractUnhandledUrls, ResubmitMediaPackage } from '@/lib/utils/resubmitMediaExtractor';
+import { resolveResubmitMediaAction } from '@/app/actions/urlResolver';
 import DriveFolderInlineView from '@/app/components/DriveFolderInlineView';
 
 // Helper function to transform raw PDF URLs into inline embeddable iframe URLs
@@ -210,6 +211,8 @@ export default function FgdRoomClient({
   const [resubmitPdfError, setResubmitPdfError] = useState<Record<number, string | null>>({});
   const [expandedResubmitSections, setExpandedResubmitSections] = useState<Record<number, boolean>>({});
   const [imageLoadErrors, setImageLoadErrors] = useState<Record<string, boolean>>({});
+  const [showInlineIframeUrls, setShowInlineIframeUrls] = useState<Record<string, boolean>>({});
+  const [localResolvedMedia, setLocalResolvedMedia] = useState<Record<number, ResubmitMediaPackage>>({});
 
   // Split-Screen State & Ratio Settings
   const [isSplitResubmitOpen, setIsSplitResubmitOpen] = useState(false);
@@ -724,6 +727,23 @@ export default function FgdRoomClient({
   );
 
   const activeProposal = activeProposalIdx !== null ? proposals[activeProposalIdx] : null;
+
+  // Use activeProposalIdx (stable state) as dep — NOT activeProposal (computed) to avoid TDZ ReferenceError
+  useEffect(() => {
+    if (activeProposalIdx === null) return;
+    const proposal = proposals[activeProposalIdx];
+    if (!proposal) return;
+    const pId = proposal.id;
+    if (localResolvedMedia[pId]) return; // Already resolved, skip
+    resolveResubmitMediaAction(proposal.resubmitDocumentText, proposal.linkResubmitProposal)
+      .then((pkg) => {
+        setLocalResolvedMedia(prev => ({ ...prev, [pId]: pkg }));
+      })
+      .catch(err => {
+        console.error('[Resubmit Media Server Resolver Error]:', err);
+      });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeProposalIdx]);
 
   // ─── Group proposals for 'grouped' view mode (by category) ────────────────
   const groupedProposals: Record<string, Proposal[]> = {};
@@ -1544,7 +1564,8 @@ export default function FgdRoomClient({
 
                             {/* 2. DOKUMEN PENDUKUNG / FOLDER GOOGLE DRIVE INLINE VIEW (OPSI A WITH API KEY) */}
                             {(() => {
-                              const driveFolders = extractDriveFolderUrls(activeProposal.resubmitDocumentText, activeProposal.linkResubmitProposal);
+                              const resolvedPkg = localResolvedMedia[activeProposal.id];
+                              const driveFolders = resolvedPkg ? resolvedPkg.driveFolders : extractDriveFolderUrls(activeProposal.resubmitDocumentText, activeProposal.linkResubmitProposal);
                               if (driveFolders.length === 0) return null;
 
                               return (
@@ -1562,7 +1583,8 @@ export default function FgdRoomClient({
 
                             {/* 3. DOKUMEN / LINK GOOGLE WORKSPACE (FORMS, SHEETS, DOCS, SLIDES) */}
                             {(() => {
-                              const workspaceItems = extractGoogleWorkspaceUrls(activeProposal.resubmitDocumentText, activeProposal.linkResubmitProposal);
+                              const resolvedPkg = localResolvedMedia[activeProposal.id];
+                              const workspaceItems = resolvedPkg ? resolvedPkg.workspaceItems : extractGoogleWorkspaceUrls(activeProposal.resubmitDocumentText, activeProposal.linkResubmitProposal);
                               if (workspaceItems.length === 0) return null;
 
                               return (
@@ -1606,7 +1628,8 @@ export default function FgdRoomClient({
 
                             {/* 4. BAGIAN PENDUKUNG (DI BAWAH): GAMBAR SKETSA DARI GOOGLE DRIVE / CONTABO STORAGE */}
                             {(() => {
-                              const imageItems = extractSupportingImageUrls(activeProposal.resubmitDocumentText || activeProposal.linkResubmitProposal);
+                              const resolvedPkg = localResolvedMedia[activeProposal.id];
+                              const imageItems = resolvedPkg ? resolvedPkg.images : extractSupportingImageUrls(activeProposal.resubmitDocumentText || activeProposal.linkResubmitProposal);
                               
                               // Extract PDF File IDs from localResubmitPdfs to exclude any PDF files from being displayed as static image thumbnails
                               const activePdfs = localResubmitPdfs[activeProposal.id] || [];
@@ -1617,9 +1640,8 @@ export default function FgdRoomClient({
                                 if (match && match[1]) pdfDriveFileIds.add(match[1]);
                               });
 
-                              // Filter out load errors and any Google Drive files that are actually PDFs
+                              // Filter out any Google Drive files that are actually PDFs
                               const validItems = imageItems.filter(item => {
-                                if (imageLoadErrors[item.cdnUrl]) return false;
                                 const match = (item.originalUrl || '').match(/drive\.google\.com\/(?:file\/d\/|open\?id=)([a-zA-Z0-9_-]+)/i);
                                 if (match && match[1] && pdfDriveFileIds.has(match[1])) {
                                   return false; // Exclude PDF file from static image gallery!
@@ -1641,29 +1663,124 @@ export default function FgdRoomClient({
                                     </span>
                                   </div>
                                   <div className="grid grid-cols-1 gap-4 pt-1">
-                                    {validItems.map((item, idx) => (
-                                      <div key={item.cdnUrl} className="bg-slate-50 p-4 rounded-lg border border-slate-200 text-center space-y-2">
-                                        <img 
-                                          src={item.cdnUrl} 
-                                          alt={`Sketsa Resubmission #${idx + 1}`}
-                                          className="max-w-full h-auto mx-auto rounded border border-slate-300 shadow-xs"
-                                          loading="lazy"
-                                          referrerPolicy="no-referrer"
-                                          onError={() => setImageLoadErrors(prev => ({ ...prev, [item.cdnUrl]: true }))}
-                                        />
-                                        <div className="flex flex-col sm:flex-row items-center justify-between pt-1 text-xs border-t border-slate-200 gap-2">
-                                          <span className="text-[11px] text-slate-500 font-medium">
-                                            Sketsa / Diagram Resubmission #{idx + 1}
-                                          </span>
-                                          <a
-                                            href={item.cdnUrl}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="inline-flex items-center space-x-1 text-xs font-bold text-indigo-700 hover:text-indigo-900 bg-indigo-50 hover:bg-indigo-100 px-3 py-1 rounded-md border border-indigo-200 transition shadow-2xs"
-                                          >
-                                            <span>🔍 Buka & Perbesar Gambar di Tab Baru</span>
-                                          </a>
+                                    {validItems.map((item, idx) => {
+                                      const isError = imageLoadErrors[item.cdnUrl] || imageLoadErrors[item.originalUrl];
+
+                                      if (isError) {
+                                        const showIframe = showInlineIframeUrls[item.cdnUrl] || showInlineIframeUrls[item.originalUrl];
+                                        const embedUrl = getEmbeddablePdfUrl(item.originalUrl) || item.originalUrl;
+
+                                        return (
+                                          <div key={item.cdnUrl} className="p-4 bg-amber-50/90 rounded-xl border border-amber-200 text-amber-950 shadow-2xs space-y-3">
+                                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                                              <div className="flex items-start space-x-3">
+                                                <div className="p-2 bg-amber-100 rounded-lg text-amber-700 shrink-0 mt-0.5">
+                                                  🔒
+                                                </div>
+                                                <div className="text-left">
+                                                  <p className="text-xs font-bold text-amber-950">Gambar Sketsa #{idx + 1}</p>
+                                                  <p className="text-[11px] text-amber-800 mt-0.5">
+                                                    🔒 Gambar Lampiran Akses Terbatas / Internal Pegadaian (Private API).
+                                                  </p>
+                                                </div>
+                                              </div>
+                                              <div className="flex items-center space-x-2 shrink-0 self-start sm:self-auto">
+                                                <button
+                                                  onClick={() => setShowInlineIframeUrls(prev => ({ ...prev, [item.cdnUrl]: !showIframe }))}
+                                                  className="inline-flex items-center justify-center space-x-1 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-lg transition shadow-2xs"
+                                                >
+                                                  <span>{showIframe ? '❌ Tutup Preview' : '👁️ Pratinjau Inline (iFrame)'}</span>
+                                                </button>
+                                                <a
+                                                  href={item.originalUrl}
+                                                  target="_blank"
+                                                  rel="noopener noreferrer"
+                                                  className="inline-flex items-center justify-center space-x-1 px-3 py-1.5 bg-amber-200/80 hover:bg-amber-300 text-amber-950 font-semibold text-xs rounded-lg transition shadow-2xs"
+                                                >
+                                                  <span>Buka Tab Baru ↗</span>
+                                                </a>
+                                              </div>
+                                            </div>
+
+                                            {showIframe && (
+                                              <div className="w-full bg-slate-900 rounded-lg overflow-hidden border border-amber-300 shadow-md relative pt-2">
+                                                <div className="px-3 py-1 bg-amber-100 text-amber-900 text-[10px] font-bold border-b border-amber-200 flex items-center justify-between">
+                                                  <span>💡 Memuat iFrame Drive memanfaatkan sesi akun Google Pegadaian di browser Anda</span>
+                                                  <button onClick={() => setShowInlineIframeUrls(prev => ({ ...prev, [item.cdnUrl]: false }))} className="text-amber-800 hover:text-black">✖ Tutup</button>
+                                                </div>
+                                                <iframe
+                                                  src={embedUrl}
+                                                  className="w-full h-[520px] bg-white border-0"
+                                                  title={`Pratinjau iFrame ${idx + 1}`}
+                                                  loading="lazy"
+                                                />
+                                              </div>
+                                            )}
+                                          </div>
+                                        );
+                                      }
+
+                                      return (
+                                        <div key={item.cdnUrl} className="bg-slate-50 p-4 rounded-lg border border-slate-200 text-center space-y-2">
+                                          <img 
+                                            src={item.cdnUrl} 
+                                            alt={`Sketsa Resubmission #${idx + 1}`}
+                                            className="max-w-full h-auto mx-auto rounded border border-slate-300 shadow-xs"
+                                            loading="lazy"
+                                            referrerPolicy="no-referrer"
+                                            onError={() => setImageLoadErrors(prev => ({ ...prev, [item.cdnUrl]: true }))}
+                                          />
+                                          <div className="flex flex-col sm:flex-row items-center justify-between pt-1 text-xs border-t border-slate-200 gap-2">
+                                            <span className="text-[11px] text-slate-500 font-medium">
+                                              Sketsa / Diagram Resubmission #{idx + 1}
+                                            </span>
+                                            <a
+                                              href={item.cdnUrl}
+                                              target="_blank"
+                                              rel="noopener noreferrer"
+                                              className="inline-flex items-center space-x-1 text-xs font-bold text-indigo-700 hover:text-indigo-900 bg-indigo-50 hover:bg-indigo-100 px-3 py-1 rounded-md border border-indigo-200 transition shadow-2xs"
+                                            >
+                                              <span>🔍 Buka & Perbesar Gambar di Tab Baru</span>
+                                            </a>
+                                          </div>
                                         </div>
+                                      );
+                                    })}
+                                  </div>
+                                </div>
+                              );
+                            })()}
+
+                            {/* 5. LAMPIRAN EKSTERNAL / TAUTAN LAINNYA (UNHANDLED DOMAINS FALLBACK) */}
+                            {(() => {
+                              const resolvedPkg = localResolvedMedia[activeProposal.id];
+                              const unhandledItems = resolvedPkg ? resolvedPkg.unhandledItems : extractUnhandledUrls(activeProposal.resubmitDocumentText, activeProposal.linkResubmitProposal);
+                              if (unhandledItems.length === 0) return null;
+
+                              return (
+                                <div className="space-y-3 pt-4 border-t border-slate-200">
+                                  <h5 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center space-x-1.5">
+                                    <span>🔗</span>
+                                    <span>Lampiran Eksternal / Tautan Lainnya ({unhandledItems.length})</span>
+                                  </h5>
+                                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                                    {unhandledItems.map((item, uIdx) => (
+                                      <div key={item.url + uIdx} className="flex items-center justify-between p-3 bg-white rounded-lg border border-slate-200 shadow-2xs hover:bg-slate-50 transition">
+                                        <div className="flex items-center space-x-2 truncate pr-2">
+                                          <span className="text-base shrink-0">🌐</span>
+                                          <div className="truncate text-left">
+                                            <p className="text-xs font-bold text-slate-900 truncate">{item.label}</p>
+                                            <p className="text-[10px] text-slate-500 truncate">{item.domain}</p>
+                                          </div>
+                                        </div>
+                                        <a
+                                          href={item.url}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="px-2.5 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 font-semibold text-xs rounded transition shrink-0 flex items-center space-x-1"
+                                        >
+                                          <span>🔗 Buka Lampiran</span>
+                                        </a>
                                       </div>
                                     ))}
                                   </div>

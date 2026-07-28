@@ -1,4 +1,4 @@
-import { isShortenerUrl, resolveUrl } from './urlResolver';
+import { isShortenerUrl, resolveUrl, resolveTextUrls } from './urlResolver';
 
 export type ResubmitFolderItem = {
   title: string;
@@ -32,14 +32,21 @@ export function extractDriveFolderUrls(text: string | null | undefined, mainUrl:
   if (!text) return folders;
 
   // Sanitize line-breaks and whitespace in Drive URLs introduced during PDF text extraction, 
-  // but avoid falsely merging the URL with subsequent words (like "Dokumen") if the ID is already complete.
+  // ensuring split 33-character Google Drive Folder IDs are properly merged.
   let sanitizedText = text;
   sanitizedText = sanitizedText.replace(/(drive\.google\.com\/[^\s"<>]+)\s+([^\s"<>]+)/gi, (match, part1, part2) => {
-    const folderMatch = part1.match(/folders\/([a-zA-Z0-9_-]{20,50})/i);
-    if (folderMatch && folderMatch[1].length >= 28) {
-      return match; // Keep the space, do not merge
+    const folderMatch = part1.match(/folders\/([a-zA-Z0-9_-]+)/i);
+    if (folderMatch) {
+      const id1 = folderMatch[1];
+      if (id1.length >= 33) {
+        return match; // Already complete 33-char ID, keep space
+      }
+      const part2Clean = part2.split(/[\/?#]/)[0];
+      if (/^[a-zA-Z0-9_-]{1,10}$/.test(part2Clean) && id1.length + part2Clean.length <= 33) {
+        return part1 + part2; // Merge trailing fragment to complete the 33-char ID
+      }
     }
-    return part1 + part2;
+    return match;
   });
 
   // Robust Regex to match Google Drive Folder URLs with full 20-50 char ID
@@ -70,9 +77,34 @@ export function extractSupportingImageUrls(text: string | null | undefined): Res
   const results: ResubmitImageItem[] = [];
   const seen = new Set<string>();
 
-  // Sanitize line-breaks and whitespace in S3/Contabo URLs introduced during PDF text extraction
+  // Sanitize line-breaks and whitespace in Drive URLs and S3/Contabo URLs introduced during PDF text extraction
+  let prevText = '';
   let sanitizedText = text;
-  sanitizedText = sanitizedText.replace(/(contabostorage\.com\/[^\s"<>]+)\s+([^\s"<>]+)/gi, '$1$2');
+  while (prevText !== sanitizedText) {
+    prevText = sanitizedText;
+    // 1. Contabo replace
+    sanitizedText = sanitizedText.replace(/(contabostorage\.com\/[^\s"<>]+)\s+([^\s"<>]+)/gi, (match, part1, part2) => {
+      if (/\.(?:jpeg|jpg|png|webp|gif|pdf)$/i.test(part1)) {
+        return match; // Keep space if part1 already ends with a file extension
+      }
+      return part1 + part2;
+    });
+    // 2. Drive file/d/ replace
+    sanitizedText = sanitizedText.replace(/(drive\.google\.com\/file\/d\/[^\s"<>]+)\s+([^\s"<>]+)/gi, (match, part1, part2) => {
+      const fileMatch = part1.match(/file\/d\/([a-zA-Z0-9_-]+)/i);
+      if (fileMatch) {
+        const id1 = fileMatch[1];
+        if (id1.length >= 33) {
+          return match;
+        }
+        const part2Clean = part2.split(/[\/?#]/)[0];
+        if (/^[a-zA-Z0-9_-]{1,10}$/.test(part2Clean) && id1.length + part2Clean.length <= 33) {
+          return part1 + part2;
+        }
+      }
+      return match;
+    });
+  }
 
   // 1. Google Drive Image URLs
   const driveRegex = /https?:\/\/drive\.google\.com\/(?:file\/d\/|open\?id=)([a-zA-Z0-9_-]+)(?:[^\s"'<>]*)?/gi;
@@ -111,14 +143,78 @@ export function extractSupportingImageUrls(text: string | null | undefined): Res
         continue;
       }
       seen.add(fullUrl);
+      const isContaboOrS3 = fullUrl.includes('contabostorage.com') || fullUrl.includes('s3.amazonaws.com') || fullUrl.includes('blob.vercel-storage.com');
       results.push({
         originalUrl: fullUrl,
-        cdnUrl: fullUrl,
+        cdnUrl: isContaboOrS3 ? `/api/image/proxy?url=${encodeURIComponent(fullUrl)}` : fullUrl,
       });
     }
   }
 
   return results;
+}
+
+export type ResubmitUnhandledLinkItem = {
+  url: string;
+  domain: string;
+  label: string;
+};
+
+// Extract unhandled third-party links (Dropbox, OneDrive, internal web, etc.)
+export function extractUnhandledUrls(text: string | null | undefined, mainUrl: string | null | undefined): ResubmitUnhandledLinkItem[] {
+  const fullText = (text || '') + '\n' + (mainUrl || '');
+  if (!fullText.trim()) return [];
+
+  const items: ResubmitUnhandledLinkItem[] = [];
+  const seen = new Set<string>();
+
+  const urlRegex = /https?:\/\/[^\s"'<>]+/gi;
+  const matches = [...fullText.matchAll(urlRegex)];
+
+  for (const m of matches) {
+    const cleanUrl = m[0].replace(/[.,;)]+$/, '');
+    if (seen.has(cleanUrl)) continue;
+
+    // Skip handled domains/patterns
+    if (
+      cleanUrl.includes('drive.google.com') ||
+      cleanUrl.includes('docs.google.com') ||
+      cleanUrl.includes('contabostorage.com') ||
+      cleanUrl.includes('cdn.phototourl.com') ||
+      cleanUrl.includes('ibb.co') ||
+      cleanUrl.includes('imgur.com') ||
+      cleanUrl.endsWith('.pdf') ||
+      cleanUrl.endsWith('.jpg') ||
+      cleanUrl.endsWith('.jpeg') ||
+      cleanUrl.endsWith('.png') ||
+      cleanUrl.endsWith('.webp')
+    ) {
+      continue;
+    }
+
+    try {
+      const parsed = new URL(cleanUrl);
+      const domain = parsed.hostname.replace(/^www\./, '');
+      seen.add(cleanUrl);
+      
+      let label = 'Lampiran Pihak Ketiga';
+      if (domain.includes('dropbox.com')) label = 'Dropbox File';
+      else if (domain.includes('onedrive') || domain.includes('1drv.ms') || domain.includes('sharepoint.com')) label = 'Microsoft OneDrive / SharePoint';
+      else if (domain.includes('youtube.com') || domain.includes('youtu.be')) label = 'Video YouTube';
+      else if (domain.includes('figma.com')) label = 'Desain Figma';
+      else if (domain.includes('canva.com')) label = 'Desain Canva';
+
+      items.push({
+        url: cleanUrl,
+        domain,
+        label,
+      });
+    } catch {
+      // Invalid URL syntax
+    }
+  }
+
+  return items;
 }
 
 export type GoogleWorkspaceItem = {
@@ -224,4 +320,52 @@ export function extractGoogleWorkspaceUrls(text: string | null | undefined, main
   }
 
   return items;
+}
+
+// ASYNC EXTRACTORS (Resolves shorteners like bit.ly, s.id, shorturl.at before extraction)
+export async function extractDriveFolderUrlsAsync(text: string | null | undefined, mainUrl: string | null | undefined): Promise<ResubmitFolderItem[]> {
+  const resolvedText = await resolveTextUrls(text || '');
+  const resolvedMainUrl = mainUrl ? await resolveUrl(mainUrl) : mainUrl;
+  return extractDriveFolderUrls(resolvedText, resolvedMainUrl);
+}
+
+export async function extractSupportingImageUrlsAsync(text: string | null | undefined): Promise<ResubmitImageItem[]> {
+  const resolvedText = await resolveTextUrls(text || '');
+  return extractSupportingImageUrls(resolvedText);
+}
+
+export async function extractGoogleWorkspaceUrlsAsync(text: string | null | undefined, mainUrl: string | null | undefined): Promise<GoogleWorkspaceItem[]> {
+  const resolvedText = await resolveTextUrls(text || '');
+  const resolvedMainUrl = mainUrl ? await resolveUrl(mainUrl) : mainUrl;
+  return extractGoogleWorkspaceUrls(resolvedText, resolvedMainUrl);
+}
+
+export async function extractUnhandledUrlsAsync(text: string | null | undefined, mainUrl: string | null | undefined): Promise<ResubmitUnhandledLinkItem[]> {
+  const resolvedText = await resolveTextUrls(text || '');
+  const resolvedMainUrl = mainUrl ? await resolveUrl(mainUrl) : mainUrl;
+  return extractUnhandledUrls(resolvedText, resolvedMainUrl);
+}
+
+export type ResubmitMediaPackage = {
+  driveFolders: ResubmitFolderItem[];
+  images: ResubmitImageItem[];
+  workspaceItems: GoogleWorkspaceItem[];
+  unhandledItems: ResubmitUnhandledLinkItem[];
+};
+
+export async function extractAllResubmitMediaAsync(text: string | null | undefined, mainUrl: string | null | undefined): Promise<ResubmitMediaPackage> {
+  const resolvedText = await resolveTextUrls(text || '');
+  const resolvedMainUrl = mainUrl ? await resolveUrl(mainUrl) : mainUrl;
+
+  const driveFolders = extractDriveFolderUrls(resolvedText, resolvedMainUrl);
+  const images = extractSupportingImageUrls(resolvedText + ' ' + (resolvedMainUrl || ''));
+  const workspaceItems = extractGoogleWorkspaceUrls(resolvedText, resolvedMainUrl);
+  const unhandledItems = extractUnhandledUrls(resolvedText, resolvedMainUrl);
+
+  return {
+    driveFolders,
+    images,
+    workspaceItems,
+    unhandledItems,
+  };
 }

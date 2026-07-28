@@ -13,6 +13,7 @@ export default function DriveFolderInlineView({
   const [folderData, setFolderData] = useState<DriveFolderResult | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [imageLoadErrors, setImageLoadErrors] = useState<Record<string, boolean>>({});
+  const [showIframePreview, setShowIframePreview] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -64,32 +65,80 @@ export default function DriveFolderInlineView({
 
   // FALLBACK STATE: If API call failed, private, restricted, or no files -> Render Callout Banner
   if (!folderData || folderData.isFallback || folderData.files.length === 0) {
-    return (
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-blue-50/90 rounded-xl border border-blue-200 text-blue-950 shadow-2xs gap-3 my-3">
-        <div className="flex items-start space-x-3">
-          <div className="p-2 bg-blue-100 rounded-lg text-blue-600 shrink-0 mt-0.5">
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 002-2h-6l-2-2H5a2 2 0 002 2z" />
-            </svg>
+    const isEmpty = folderData && !folderData.isFallback && folderData.files.length === 0;
+
+    if (isEmpty) {
+      return (
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-200 text-slate-900 shadow-2xs gap-3 my-3">
+          <div className="flex items-start space-x-3">
+            <div className="p-2 bg-slate-200/80 rounded-lg text-slate-600 shrink-0 mt-0.5">
+              📁
+            </div>
+            <div>
+              <p className="text-xs font-bold text-slate-900">{folderTitle}</p>
+              <p className="text-[11px] text-slate-600 mt-0.5">
+                📁 Folder ini belum berisi file (Kosong).
+              </p>
+            </div>
           </div>
-          <div>
-            <p className="text-xs font-bold text-blue-950">{folderTitle}</p>
-            <p className="text-[11px] text-blue-700 mt-0.5">
-              Terdapat folder berisikan beberapa file dokumen/lampiran pendukung di Google Drive.
-            </p>
+          <a
+            href={folderUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center justify-center space-x-1.5 px-3 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-800 font-semibold text-xs rounded-lg transition-colors shadow-2xs shrink-0"
+          >
+            <span>Buka Folder ↗</span>
+          </a>
+        </div>
+      );
+    }
+
+    return (
+      <div className="p-4 bg-amber-50/90 rounded-xl border border-amber-200 text-amber-950 shadow-2xs space-y-3 my-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-start space-x-3">
+            <div className="p-2 bg-amber-100 rounded-lg text-amber-700 shrink-0 mt-0.5">
+              🔒
+            </div>
+            <div>
+              <p className="text-xs font-bold text-amber-950">{folderTitle}</p>
+              <p className="text-[11px] text-amber-800 mt-0.5">
+                🔒 Folder Google Drive Akses Terbatas / Internal Pegadaian (Private API).
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center space-x-2 shrink-0 self-start sm:self-auto">
+            <button
+              onClick={() => setShowIframePreview(prev => !prev)}
+              className="inline-flex items-center justify-center space-x-1 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-lg transition shadow-2xs"
+            >
+              <span>{showIframePreview ? '❌ Tutup Preview' : '👁️ Pratinjau Inline (iFrame)'}</span>
+            </button>
+            <a
+              href={folderUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center justify-center space-x-1 px-3 py-1.5 bg-amber-200/80 hover:bg-amber-300 text-amber-950 font-semibold text-xs rounded-lg transition shadow-2xs"
+            >
+              <span>Buka Tab Baru ↗</span>
+            </a>
           </div>
         </div>
-        <a
-          href={folderUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center justify-center space-x-1.5 px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs rounded-lg transition-colors shadow-2xs shrink-0 self-start sm:self-auto"
-        >
-          <span>📁 Buka Folder Google Drive</span>
-          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-          </svg>
-        </a>
+
+        {showIframePreview && (
+          <div className="w-full bg-slate-900 rounded-lg overflow-hidden border border-amber-300 shadow-md relative pt-2">
+            <div className="px-3 py-1 bg-amber-100 text-amber-900 text-[10px] font-bold border-b border-amber-200 flex items-center justify-between">
+              <span>💡 Memuat iFrame Drive memanfaatkan sesi akun Google Pegadaian di browser Anda</span>
+              <button onClick={() => setShowIframePreview(false)} className="text-amber-800 hover:text-black">✖ Tutup</button>
+            </div>
+            <iframe
+              src={folderUrl}
+              className="w-full h-[520px] bg-white border-0"
+              title={folderTitle}
+              loading="lazy"
+            />
+          </div>
+        )}
       </div>
     );
   }
