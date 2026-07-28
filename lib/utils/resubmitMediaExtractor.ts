@@ -118,9 +118,11 @@ export type GoogleWorkspaceItem = {
   type: 'form' | 'sheet' | 'doc' | 'slide';
   title: string;
   url: string;
+  embedUrl: string;
   icon: string;
   badgeBg: string;
   badgeText: string;
+  heightPx: number;
 };
 
 // Helper function to extract Google Workspace links (Forms, Sheets, Docs, Slides) from text and main link
@@ -140,43 +142,76 @@ export function extractGoogleWorkspaceUrls(text: string | null | undefined, main
 
     if (cleanUrl.includes('/forms/')) {
       seen.add(cleanUrl);
+      let formEmbed = cleanUrl;
+      if (formEmbed.includes('viewform')) {
+        formEmbed = formEmbed.replace(/viewform(?:\?[^\s"'<>]*)?$/i, 'viewform?embedded=true');
+        if (!formEmbed.includes('embedded=true')) {
+          formEmbed += (formEmbed.includes('?') ? '&' : '?') + 'embedded=true';
+        }
+      } else {
+        formEmbed = formEmbed.replace(/\/+$/, '') + '/viewform?embedded=true';
+      }
+
       items.push({
         type: 'form',
         title: 'Google Form (Survei / Kuesioner)',
         url: cleanUrl,
+        embedUrl: formEmbed,
         icon: '📋',
-        badgeBg: 'bg-purple-50 border-purple-200 text-purple-900',
-        badgeText: 'Form Kuesioner',
+        badgeBg: 'bg-purple-100 text-purple-900 border-purple-200',
+        badgeText: 'Form Kuesioner Inline',
+        heightPx: 700,
       });
     } else if (cleanUrl.includes('/spreadsheets/')) {
       seen.add(cleanUrl);
+      const sheetMatch = cleanUrl.match(/\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/i);
+      const sheetEmbed = sheetMatch && sheetMatch[1] 
+        ? `https://docs.google.com/spreadsheets/d/${sheetMatch[1]}/preview` 
+        : cleanUrl;
+
       items.push({
         type: 'sheet',
         title: 'Google Spreadsheet (Data / Model Finansial)',
         url: cleanUrl,
+        embedUrl: sheetEmbed,
         icon: '📊',
-        badgeBg: 'bg-emerald-50 border-emerald-200 text-emerald-900',
-        badgeText: 'Data Spreadsheet',
+        badgeBg: 'bg-emerald-100 text-emerald-900 border-emerald-200',
+        badgeText: 'Spreadsheet Inline',
+        heightPx: 600,
       });
     } else if (cleanUrl.includes('/document/')) {
       seen.add(cleanUrl);
+      const docMatch = cleanUrl.match(/\/document\/d\/([a-zA-Z0-9_-]+)/i);
+      const docEmbed = docMatch && docMatch[1] 
+        ? `https://docs.google.com/document/d/${docMatch[1]}/preview` 
+        : cleanUrl;
+
       items.push({
         type: 'doc',
         title: 'Google Docs (Dokumen Teks)',
         url: cleanUrl,
+        embedUrl: docEmbed,
         icon: '📝',
-        badgeBg: 'bg-blue-50 border-blue-200 text-blue-900',
-        badgeText: 'Dokumen Teks',
+        badgeBg: 'bg-blue-100 text-blue-900 border-blue-200',
+        badgeText: 'Dokumen Teks Inline',
+        heightPx: 600,
       });
     } else if (cleanUrl.includes('/presentation/')) {
       seen.add(cleanUrl);
+      const slideMatch = cleanUrl.match(/\/presentation\/d\/([a-zA-Z0-9_-]+)/i);
+      const slideEmbed = slideMatch && slideMatch[1] 
+        ? `https://docs.google.com/presentation/d/${slideMatch[1]}/embed` 
+        : cleanUrl;
+
       items.push({
         type: 'slide',
         title: 'Google Slides (Presentasi Slide)',
         url: cleanUrl,
+        embedUrl: slideEmbed,
         icon: '🎨',
-        badgeBg: 'bg-amber-50 border-amber-200 text-amber-900',
-        badgeText: 'Presentasi Slide',
+        badgeBg: 'bg-amber-100 text-amber-900 border-amber-200',
+        badgeText: 'Presentasi Slide Inline',
+        heightPx: 550,
       });
     }
   }

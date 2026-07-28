@@ -1555,40 +1555,40 @@ export default function FgdRoomClient({
                               if (workspaceItems.length === 0) return null;
 
                               return (
-                                <div className="space-y-3 pt-4 border-t border-slate-200">
-                                  <h5 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center space-x-1.5">
-                                    <span>🌐</span>
-                                    <span>Link Dokumen / Aplikasi Google Workspace Pendukung</span>
-                                  </h5>
-                                  <div className="grid grid-cols-1 gap-2.5">
-                                    {workspaceItems.map((item, wIdx) => (
-                                      <div key={item.url + wIdx} className={`p-3 rounded-lg border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 ${item.badgeBg} shadow-2xs`}>
-                                        <div className="flex items-center space-x-3">
-                                          <span className="text-xl shrink-0">{item.icon}</span>
-                                          <div>
-                                            <div className="font-bold text-xs flex items-center space-x-2">
-                                              <span>{item.title}</span>
-                                              <span className="text-[10px] px-1.5 py-0.2 rounded font-semibold bg-white/80 border border-slate-300">
-                                                {item.badgeText}
-                                              </span>
-                                            </div>
-                                            <div className="text-[11px] opacity-80 truncate max-w-md font-mono mt-0.5">
-                                              {item.url}
-                                            </div>
-                                          </div>
-                                        </div>
+                                <div className="space-y-6 pt-4 border-t border-slate-200">
+                                  {workspaceItems.map((item, wIdx) => (
+                                    <div key={item.url + wIdx} className="space-y-2">
+                                      <div className="flex items-center justify-between">
+                                        <h5 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center space-x-1.5 flex-wrap gap-y-1">
+                                          <span>{item.icon}</span>
+                                          <span>{item.title}</span>
+                                          <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded border ${item.badgeBg}`}>
+                                            {item.badgeText}
+                                          </span>
+                                        </h5>
                                         <a
                                           href={item.url}
                                           target="_blank"
                                           rel="noopener noreferrer"
-                                          className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded transition flex items-center space-x-1.5 shadow-2xs shrink-0 self-end sm:self-center"
+                                          className="text-slate-500 hover:text-indigo-600 transition p-1 text-xs flex items-center space-x-1 bg-slate-100 hover:bg-indigo-50 px-2 py-1 rounded border border-slate-200"
+                                          title="Buka di Tab Baru"
                                         >
-                                          <span>🔗 Buka di Tab Baru</span>
+                                          <span className="text-[11px] font-semibold">🔗 Buka di Tab Baru</span>
                                           <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
                                         </a>
                                       </div>
-                                    ))}
-                                  </div>
+
+                                      <div className="w-full bg-slate-900 rounded-lg overflow-hidden border border-slate-300 shadow-sm relative">
+                                        <iframe
+                                          src={item.embedUrl}
+                                          style={{ height: `${item.heightPx}px` }}
+                                          className="w-full bg-white border-0"
+                                          title={item.title}
+                                          loading="lazy"
+                                        />
+                                      </div>
+                                    </div>
+                                  ))}
                                 </div>
                               );
                             })()}
@@ -2088,40 +2088,40 @@ export default function FgdRoomClient({
                           if (workspaceItems.length === 0) return null;
 
                           return (
-                            <div className="space-y-3 pt-4 border-t border-slate-200">
-                              <h5 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center space-x-1.5">
-                                <span>🌐</span>
-                                <span>Link Dokumen / Aplikasi Google Workspace Pendukung</span>
-                              </h5>
-                              <div className="grid grid-cols-1 gap-2.5">
-                                {workspaceItems.map((item, wIdx) => (
-                                  <div key={item.url + wIdx} className={`p-3 rounded-lg border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 ${item.badgeBg} shadow-2xs`}>
-                                    <div className="flex items-center space-x-3">
-                                      <span className="text-xl shrink-0">{item.icon}</span>
-                                      <div>
-                                        <div className="font-bold text-xs flex items-center space-x-2">
-                                          <span>{item.title}</span>
-                                          <span className="text-[10px] px-1.5 py-0.2 rounded font-semibold bg-white/80 border border-slate-300">
-                                            {item.badgeText}
-                                          </span>
-                                        </div>
-                                        <div className="text-[11px] opacity-80 truncate max-w-md font-mono mt-0.5">
-                                          {item.url}
-                                        </div>
-                                      </div>
-                                    </div>
+                            <div className="space-y-6 pt-4 border-t border-slate-200">
+                              {workspaceItems.map((item, wIdx) => (
+                                <div key={item.url + wIdx} className="space-y-2">
+                                  <div className="flex items-center justify-between">
+                                    <h5 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center space-x-1.5 flex-wrap gap-y-1">
+                                      <span>{item.icon}</span>
+                                      <span>{item.title}</span>
+                                      <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded border ${item.badgeBg}`}>
+                                        {item.badgeText}
+                                      </span>
+                                    </h5>
                                     <a
                                       href={item.url}
                                       target="_blank"
                                       rel="noopener noreferrer"
-                                      className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded transition flex items-center space-x-1.5 shadow-2xs shrink-0 self-end sm:self-center"
+                                      className="text-slate-500 hover:text-indigo-600 transition p-1 text-xs flex items-center space-x-1 bg-slate-100 hover:bg-indigo-50 px-2 py-1 rounded border border-slate-200"
+                                      title="Buka di Tab Baru"
                                     >
-                                      <span>🔗 Buka di Tab Baru</span>
+                                      <span className="text-[11px] font-semibold">🔗 Buka di Tab Baru</span>
                                       <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
                                     </a>
                                   </div>
-                                ))}
-                              </div>
+
+                                  <div className="w-full bg-slate-900 rounded-lg overflow-hidden border border-slate-300 shadow-sm relative">
+                                    <iframe
+                                      src={item.embedUrl}
+                                      style={{ height: `${item.heightPx}px` }}
+                                      className="w-full bg-white border-0"
+                                      title={item.title}
+                                      loading="lazy"
+                                    />
+                                  </div>
+                                </div>
+                              ))}
                             </div>
                           );
                         })()}
