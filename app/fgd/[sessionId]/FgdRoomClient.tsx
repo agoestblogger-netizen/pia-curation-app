@@ -9,52 +9,7 @@ import { uploadFgdAdditionalDocument } from '@/app/actions/uploadDocument';
 import { deleteFgdAdditionalDocument } from '@/app/actions/deleteDocument';
 import ProposalDocumentButtons from '@/app/components/ProposalDocumentButtons';
 import { supabase } from '@/lib/supabase/client';
-
-// Helper function to extract supporting image links from both Google Drive and Contabo / direct image URLs
-function extractSupportingImageUrls(text: string | null | undefined): { originalUrl: string; cdnUrl: string }[] {
-  if (!text) return [];
-
-  const results: { originalUrl: string; cdnUrl: string }[] = [];
-  const seen = new Set<string>();
-
-  // Sanitize line-breaks and whitespace in S3/Contabo URLs introduced during PDF text extraction
-  let sanitizedText = text;
-  sanitizedText = sanitizedText.replace(/(contabostorage\.com\/[^\s"<>]+)\s+([^\s"<>]+)/gi, '$1$2');
-  sanitizedText = sanitizedText.replace(/(contabostorage\.com\/[^\s"<>]+)\s+([^\s"<>]+)/gi, '$1$2');
-
-  // 1. Google Drive Image URLs
-  const driveRegex = /https?:\/\/drive\.google\.com\/(?:file\/d\/|open\?id=)([a-zA-Z0-9_-]+)(?:[^\s"'<>]*)?/gi;
-  const driveMatches = [...sanitizedText.matchAll(driveRegex)];
-
-  for (const m of driveMatches) {
-    const fullMatch = m[0];
-    const fileId = m[1];
-    if (fileId && !seen.has(fileId)) {
-      seen.add(fileId);
-      results.push({
-        originalUrl: fullMatch,
-        cdnUrl: `https://lh3.googleusercontent.com/d/${fileId}`
-      });
-    }
-  }
-
-  // 2. Direct Image URLs (Contabo Storage, S3, etc.)
-  const imageDirectRegex = /https?:\/\/[^\s"'<>]+\.(?:jpg|jpeg|png|webp|gif)(?:\?[^\s"'<>]*)?/gi;
-  const imageMatches = [...sanitizedText.matchAll(imageDirectRegex)];
-
-  for (const m of imageMatches) {
-    const fullUrl = m[0];
-    if (!seen.has(fullUrl) && !fullUrl.includes('drive.google.com')) {
-      seen.add(fullUrl);
-      results.push({
-        originalUrl: fullUrl,
-        cdnUrl: fullUrl
-      });
-    }
-  }
-
-  return results;
-}
+import { extractDriveFolderUrls, extractSupportingImageUrls } from '@/lib/utils/resubmitMediaExtractor';
 
 // Helper function to transform raw PDF URLs into inline embeddable iframe URLs
 function getEmbeddablePdfUrl(url: string | null | undefined): string {
@@ -1342,7 +1297,7 @@ export default function FgdRoomClient({
                     </div>
 
                     {/* SECTION DETAIL DOKUMEN RESUBMISSION (COLLAPSIBLE WITH BACKGROUND PROCESS & AUTO-EXPAND) */}
-                    {activeProposal.linkResubmitProposal && (
+                    {(activeProposal.linkResubmitProposal || activeProposal.resubmitDocumentText) && (
                       <div className="bg-slate-50 border border-slate-200 rounded-lg overflow-hidden mb-6 shadow-2xs">
                         {/* Collapsible Header */}
                         <button
@@ -1383,6 +1338,44 @@ export default function FgdRoomClient({
                         {/* Section Content */}
                         {(expandedResubmitSections[activeProposal.id] ?? false) && (
                           <div className="p-5 space-y-6 bg-white">
+                            {/* GOOGLE DRIVE FOLDER CALLOUT BANNERS (PRIORITAS 1) */}
+                            {(() => {
+                              const driveFolders = extractDriveFolderUrls(activeProposal.resubmitDocumentText, activeProposal.linkResubmitProposal);
+                              if (driveFolders.length === 0) return null;
+
+                              return (
+                                <div className="space-y-3 mb-4">
+                                  {driveFolders.map((folder, fIdx) => (
+                                    <div key={folder.folderUrl + fIdx} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-blue-50/90 rounded-xl border border-blue-200 text-blue-950 shadow-xs gap-3">
+                                      <div className="flex items-start space-x-3">
+                                        <div className="p-2 bg-blue-100 rounded-lg text-blue-600 shrink-0 mt-0.5">
+                                          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 002-2h-6l-2-2H5a2 2 0 002 2z" />
+                                          </svg>
+                                        </div>
+                                        <div>
+                                          <p className="text-xs font-bold text-blue-950">{folder.title}</p>
+                                          <p className="text-[11px] text-blue-700 mt-0.5">
+                                            Terdapat folder berisikan beberapa file dokumen/lampiran pendukung di Google Drive.
+                                          </p>
+                                        </div>
+                                      </div>
+                                      <a
+                                        href={folder.folderUrl}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="inline-flex items-center justify-center space-x-1.5 px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs rounded-lg transition-colors shadow-xs shrink-0 self-start sm:self-auto"
+                                      >
+                                        <span>📁 Buka Folder Google Drive</span>
+                                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                                        </svg>
+                                      </a>
+                                    </div>
+                                  ))}
+                                </div>
+                              );
+                            })()}
                             {/* Loading Indicator (if user manually opens while background caching is running) */}
                             {isProcessingResubmitPdf[activeProposal.id] && (!localResubmitPdfs[activeProposal.id] || localResubmitPdfs[activeProposal.id].length === 0) && (
                               <div className="bg-indigo-50 border border-indigo-200 rounded-md p-4 flex items-center space-x-3 text-indigo-950 text-sm font-medium">

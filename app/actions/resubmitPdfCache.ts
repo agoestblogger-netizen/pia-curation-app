@@ -4,6 +4,7 @@ import { db } from '@/lib/db';
 import { proposals } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 import { put } from '@vercel/blob';
+import { resolveTextUrls, resolveUrl } from '@/lib/utils/urlResolver';
 
 export type ResubmitPdfItem = {
   title: string;
@@ -29,7 +30,7 @@ export async function getEmbeddablePdfUrl(url: string | null | undefined): Promi
     return url;
   }
 
-  // 3. Contabo Storage S3 or external PDFs -> Internal PDF Stream Proxy (forces Content-Type: application/pdf and Content-Disposition: inline to prevent auto-download)
+  // 3. Contabo Storage S3 or external PDFs -> Internal PDF Stream Proxy
   return `/api/pdf/proxy?url=${encodeURIComponent(url)}`;
 }
 
@@ -38,17 +39,26 @@ export async function extractSupportingPdfUrls(text: string | null | undefined, 
   const items: ResubmitPdfItem[] = [];
   const seen = new Set<string>();
 
-  if (mainPdfUrl) {
-    seen.add(mainPdfUrl);
+  // Resolve mainPdfUrl if it is a shortener
+  let resolvedMainUrl = mainPdfUrl ? await resolveUrl(mainPdfUrl) : null;
+
+  // Don't add Google Drive Folder as single PDF iframe item
+  const isFolder = resolvedMainUrl && (resolvedMainUrl.includes('/drive/folders/') || resolvedMainUrl.includes('/folders/'));
+
+  if (resolvedMainUrl && !isFolder) {
+    seen.add(resolvedMainUrl);
     items.push({
       title: 'Dokumen Resubmission Utama',
-      originalUrl: mainPdfUrl,
+      originalUrl: resolvedMainUrl,
     });
   }
 
   if (!text) return items;
 
-  let sanitizedText = text;
+  // Resolve any URL shorteners in resubmit text
+  const resolvedText = await resolveTextUrls(text);
+
+  let sanitizedText = resolvedText;
   sanitizedText = sanitizedText.replace(/(contabostorage\.com\/[^\s"<>]+)\s+([^\s"<>]+)/gi, '$1$2');
   sanitizedText = sanitizedText.replace(/(contabostorage\.com\/[^\s"<>]+)\s+([^\s"<>]+)/gi, '$1$2');
 
