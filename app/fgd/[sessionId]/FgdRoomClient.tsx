@@ -9,7 +9,8 @@ import { uploadFgdAdditionalDocument } from '@/app/actions/uploadDocument';
 import { deleteFgdAdditionalDocument } from '@/app/actions/deleteDocument';
 import ProposalDocumentButtons from '@/app/components/ProposalDocumentButtons';
 import { supabase } from '@/lib/supabase/client';
-import { extractDriveFolderUrls, extractSupportingImageUrls, extractGoogleWorkspaceUrls, extractUnhandledUrls, extractAllResubmitMediaAsync, ResubmitMediaPackage } from '@/lib/utils/resubmitMediaExtractor';
+import { extractDriveFolderUrls, extractSupportingImageUrls, extractGoogleWorkspaceUrls, extractUnhandledUrls, ResubmitMediaPackage } from '@/lib/utils/resubmitMediaExtractor';
+import { resolveResubmitMediaAction } from '@/app/actions/urlResolver';
 import DriveFolderInlineView from '@/app/components/DriveFolderInlineView';
 
 // Helper function to transform raw PDF URLs into inline embeddable iframe URLs
@@ -731,12 +732,12 @@ export default function FgdRoomClient({
     if (activeProposal) {
       const pId = activeProposal.id;
       if (!localResolvedMedia[pId]) {
-        extractAllResubmitMediaAsync(activeProposal.resubmitDocumentText, activeProposal.linkResubmitProposal)
+        resolveResubmitMediaAction(activeProposal.resubmitDocumentText, activeProposal.linkResubmitProposal)
           .then((pkg) => {
             setLocalResolvedMedia(prev => ({ ...prev, [pId]: pkg }));
           })
           .catch(err => {
-            console.error('[Resubmit Media Resolver Error]:', err);
+            console.error('[Resubmit Media Server Resolver Error]:', err);
           });
       }
     }
