@@ -1552,8 +1552,26 @@ export default function FgdRoomClient({
                             {/* 3. BAGIAN PENDUKUNG (DI BAWAH): GAMBAR SKETSA DARI GOOGLE DRIVE / CONTABO STORAGE */}
                             {(() => {
                               const imageItems = extractSupportingImageUrls(activeProposal.resubmitDocumentText || activeProposal.linkResubmitProposal);
-                              // Filter out any image URLs that triggered load errors so they are completely hidden
-                              const validItems = imageItems.filter(item => !imageLoadErrors[item.cdnUrl]);
+                              
+                              // Extract PDF File IDs from localResubmitPdfs to exclude any PDF files from being displayed as static image thumbnails
+                              const activePdfs = localResubmitPdfs[activeProposal.id] || [];
+                              const pdfDriveFileIds = new Set<string>();
+
+                              activePdfs.forEach(pdf => {
+                                const match = (pdf.originalUrl || '').match(/drive\.google\.com\/(?:file\/d\/|open\?id=)([a-zA-Z0-9_-]+)/i);
+                                if (match && match[1]) pdfDriveFileIds.add(match[1]);
+                              });
+
+                              // Filter out load errors and any Google Drive files that are actually PDFs
+                              const validItems = imageItems.filter(item => {
+                                if (imageLoadErrors[item.cdnUrl]) return false;
+                                const match = (item.originalUrl || '').match(/drive\.google\.com\/(?:file\/d\/|open\?id=)([a-zA-Z0-9_-]+)/i);
+                                if (match && match[1] && pdfDriveFileIds.has(match[1])) {
+                                  return false; // Exclude PDF file from static image gallery!
+                                }
+                                return true;
+                              });
+
                               if (validItems.length === 0) return null;
 
                               return (
@@ -2023,7 +2041,26 @@ export default function FgdRoomClient({
                         {/* 3. GAMBAR SKETSA / DIAGRAM INOVASI PENDUKUNG */}
                         {(() => {
                           const imageItems = extractSupportingImageUrls(activeProposal.resubmitDocumentText || activeProposal.linkResubmitProposal);
-                          const validItems = imageItems.filter(item => !imageLoadErrors[item.cdnUrl]);
+                          
+                          // Extract PDF File IDs from localResubmitPdfs to exclude any PDF files from being displayed as static image thumbnails
+                          const activePdfs = localResubmitPdfs[activeProposal.id] || [];
+                          const pdfDriveFileIds = new Set<string>();
+
+                          activePdfs.forEach(pdf => {
+                            const match = (pdf.originalUrl || '').match(/drive\.google\.com\/(?:file\/d\/|open\?id=)([a-zA-Z0-9_-]+)/i);
+                            if (match && match[1]) pdfDriveFileIds.add(match[1]);
+                          });
+
+                          // Filter out load errors and any Google Drive files that are actually PDFs
+                          const validItems = imageItems.filter(item => {
+                            if (imageLoadErrors[item.cdnUrl]) return false;
+                            const match = (item.originalUrl || '').match(/drive\.google\.com\/(?:file\/d\/|open\?id=)([a-zA-Z0-9_-]+)/i);
+                            if (match && match[1] && pdfDriveFileIds.has(match[1])) {
+                              return false; // Exclude PDF file from static image gallery!
+                            }
+                            return true;
+                          });
+
                           if (validItems.length === 0) return null;
 
                           return (
