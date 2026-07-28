@@ -210,6 +210,7 @@ export default function FgdRoomClient({
   const [resubmitPdfError, setResubmitPdfError] = useState<Record<number, string | null>>({});
   const [expandedResubmitSections, setExpandedResubmitSections] = useState<Record<number, boolean>>({});
   const [imageLoadErrors, setImageLoadErrors] = useState<Record<string, boolean>>({});
+  const [showInlineIframeUrls, setShowInlineIframeUrls] = useState<Record<string, boolean>>({});
 
   // Split-Screen State & Ratio Settings
   const [isSplitResubmitOpen, setIsSplitResubmitOpen] = useState(false);
@@ -1644,27 +1645,55 @@ export default function FgdRoomClient({
                                       const isError = imageLoadErrors[item.cdnUrl] || imageLoadErrors[item.originalUrl];
 
                                       if (isError) {
+                                        const showIframe = showInlineIframeUrls[item.cdnUrl] || showInlineIframeUrls[item.originalUrl];
+                                        const embedUrl = getEmbeddablePdfUrl(item.originalUrl) || item.originalUrl;
+
                                         return (
-                                          <div key={item.cdnUrl} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-amber-50/90 rounded-xl border border-amber-200 text-amber-950 shadow-2xs gap-3">
-                                            <div className="flex items-start space-x-3">
-                                              <div className="p-2 bg-amber-100 rounded-lg text-amber-700 shrink-0 mt-0.5">
-                                                🔒
+                                          <div key={item.cdnUrl} className="p-4 bg-amber-50/90 rounded-xl border border-amber-200 text-amber-950 shadow-2xs space-y-3">
+                                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                                              <div className="flex items-start space-x-3">
+                                                <div className="p-2 bg-amber-100 rounded-lg text-amber-700 shrink-0 mt-0.5">
+                                                  🔒
+                                                </div>
+                                                <div className="text-left">
+                                                  <p className="text-xs font-bold text-amber-950">Gambar Sketsa #{idx + 1}</p>
+                                                  <p className="text-[11px] text-amber-800 mt-0.5">
+                                                    🔒 Gambar Lampiran Akses Terbatas / Internal Pegadaian (Private API).
+                                                  </p>
+                                                </div>
                                               </div>
-                                              <div className="text-left">
-                                                <p className="text-xs font-bold text-amber-950">Gambar Sketsa #{idx + 1}</p>
-                                                <p className="text-[11px] text-amber-800 mt-0.5">
-                                                  🔒 Gambar Lampiran Tidak Dapat Dimuat (Kemungkinan Private atau Akses Ditolak).
-                                                </p>
+                                              <div className="flex items-center space-x-2 shrink-0 self-start sm:self-auto">
+                                                <button
+                                                  onClick={() => setShowInlineIframeUrls(prev => ({ ...prev, [item.cdnUrl]: !showIframe }))}
+                                                  className="inline-flex items-center justify-center space-x-1 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-lg transition shadow-2xs"
+                                                >
+                                                  <span>{showIframe ? '❌ Tutup Preview' : '👁️ Pratinjau Inline (iFrame)'}</span>
+                                                </button>
+                                                <a
+                                                  href={item.originalUrl}
+                                                  target="_blank"
+                                                  rel="noopener noreferrer"
+                                                  className="inline-flex items-center justify-center space-x-1 px-3 py-1.5 bg-amber-200/80 hover:bg-amber-300 text-amber-950 font-semibold text-xs rounded-lg transition shadow-2xs"
+                                                >
+                                                  <span>Buka Tab Baru ↗</span>
+                                                </a>
                                               </div>
                                             </div>
-                                            <a
-                                              href={item.originalUrl}
-                                              target="_blank"
-                                              rel="noopener noreferrer"
-                                              className="inline-flex items-center justify-center space-x-1 px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white font-semibold text-xs rounded-md transition shadow-2xs shrink-0 self-start sm:self-auto"
-                                            >
-                                              <span>Coba Buka Manual ↗</span>
-                                            </a>
+
+                                            {showIframe && (
+                                              <div className="w-full bg-slate-900 rounded-lg overflow-hidden border border-amber-300 shadow-md relative pt-2">
+                                                <div className="px-3 py-1 bg-amber-100 text-amber-900 text-[10px] font-bold border-b border-amber-200 flex items-center justify-between">
+                                                  <span>💡 Memuat iFrame Drive memanfaatkan sesi akun Google Pegadaian di browser Anda</span>
+                                                  <button onClick={() => setShowInlineIframeUrls(prev => ({ ...prev, [item.cdnUrl]: false }))} className="text-amber-800 hover:text-black">✖ Tutup</button>
+                                                </div>
+                                                <iframe
+                                                  src={embedUrl}
+                                                  className="w-full h-[520px] bg-white border-0"
+                                                  title={`Pratinjau iFrame ${idx + 1}`}
+                                                  loading="lazy"
+                                                />
+                                              </div>
+                                            )}
                                           </div>
                                         );
                                       }
