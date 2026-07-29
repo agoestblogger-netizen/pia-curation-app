@@ -438,13 +438,14 @@ export default async function ProposalDetailPage({
 
 
             {/* Bandingkan dengan Proposal Lain (Admin, Coordinator, Curator only) */}
-            {!isViewer && (isCurator || isCoordinator) && (
+            {!isViewer && (isCurator || isCoordinator || session.roles.includes('admin')) && (
               <CompareProposalsPanel
                 proposalId={proposal.id}
                 proposalTitle={proposal.title}
                 category={proposal.category}
                 competitionId={proposal.competitionId}
                 isReadOnly={!assignment && !isCoordinator && isLinkedToDuplicate}
+                isViewer={isViewer}
               />
             )}
 
@@ -481,12 +482,12 @@ export default async function ProposalDetailPage({
             </div>
           </div>
 
-          {/* Catatan Kurator — read-only for Coordinator/Admin */}
-          {(isCoordinator || session.roles.includes('admin')) && !shouldMask && (
+          {/* Catatan Kurator — read-only for Coordinator/Admin/Viewer */}
+          {(isCoordinator || session.roles.includes('admin') || isViewer) && !shouldMask && (
             <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
               <h3 className="font-bold text-gray-900 mb-3 flex items-center gap-2">
                 <span>📝</span> Catatan Kurator
-                {curatorNotesData?.curatorName && (
+                {curatorNotesData?.curatorName && !isViewer && (
                   <span className="text-xs font-normal text-gray-500 ml-1">— {curatorNotesData.curatorName}</span>
                 )}
               </h3>
