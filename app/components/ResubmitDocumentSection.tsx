@@ -34,24 +34,29 @@ function getSafePreviewUrlForTab(pdfItem?: { blobUrl?: string | null; originalUr
   const rawTarget = pdfItem?.embedUrl || pdfItem?.blobUrl || pdfItem?.originalUrl || fallbackUrl;
   if (!rawTarget) return '';
 
-  // 1. Google Drive file -> convert file ID to /preview (forces inline browser view, NEVER downloads)
+  // 1. If rawTarget is already a Google Docs Viewer or Google Drive preview URL -> return directly for tab opening
+  if (rawTarget.includes('docs.google.com') || rawTarget.includes('/preview')) {
+    return rawTarget;
+  }
+
+  // 2. Google Drive file -> convert file ID to /preview (forces inline browser view, NEVER downloads)
   const driveIdMatch = rawTarget.match(/(?:drive\.google\.com\/(?:file\/d\/|open\?id=|uc\?.*id=)|id=)([a-zA-Z0-9_-]{25,})/i);
   if (driveIdMatch && driveIdMatch[1]) {
     return `https://drive.google.com/file/d/${driveIdMatch[1]}/preview`;
   }
 
-  // 2. Google Drive folder -> convert to /drive/folders/ ID
+  // 3. Google Drive folder -> convert to /drive/folders/ ID
   const folderMatch = rawTarget.match(/drive\.google\.com\/drive\/(?:u\/\d+\/)?folders\/([a-zA-Z0-9_-]+)/i);
   if (folderMatch && folderMatch[1]) {
     return `https://drive.google.com/drive/folders/${folderMatch[1]}`;
   }
 
-  // 3. Vercel Blob URL or existing proxy URL -> use directly
+  // 4. Vercel Blob URL or existing proxy URL -> use directly
   if (rawTarget.includes('public.blob.vercel-storage.com') || rawTarget.includes('/api/pdf/proxy') || rawTarget.includes('/api/proxy-pdf')) {
     return rawTarget;
   }
 
-  // 4. Any direct PDF link -> stream via PDF Proxy to force inline display with Content-Disposition: inline
+  // 5. Any direct PDF link -> stream via PDF Proxy to force inline display with Content-Disposition: inline
   return `/api/pdf/proxy?url=${encodeURIComponent(rawTarget)}`;
 }
 

@@ -6,9 +6,15 @@ const ALLOWED_DOMAIN_PATTERNS = [
   /contabostorage\.com$/i,
   /public\.blob\.vercel-storage\.com$/i,
   /drive\.google\.com$/i,
+  /docs\.google\.com$/i,
+  /google\.com$/i,
+  /\.google\.com$/i,
   /googleusercontent\.com$/i,
   /api\.cida\.ai$/i,
   /cias\.id$/i,
+  /bit\.ly$/i,
+  /tinyurl\.com$/i,
+  /s\.id$/i,
 ];
 
 function isAllowedUrl(targetUrl: string): boolean {
