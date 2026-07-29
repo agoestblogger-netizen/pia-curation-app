@@ -18,19 +18,19 @@ import ResubmitDocumentSection from '@/app/components/ResubmitDocumentSection';
 function getEmbeddablePdfUrl(url: string | null | undefined): string {
   if (!url) return '';
   
-  // 1. Google Drive PDF URLs -> Stream via Native PDF Proxy (forces native browser PDF viewer which opens links in a new tab!)
+  // 1. Google Drive PDF URLs -> Google Docs Viewer API (renders PDF with target="_blank" on all hyperlinks)
   const driveMatch = url.match(/(?:drive\.google\.com\/(?:file\/d\/|open\?id=|uc\?.*id=)|id=)([a-zA-Z0-9_-]{25,})/i);
   if (driveMatch && driveMatch[1]) {
     const directDriveUrl = `https://drive.google.com/uc?export=download&id=${driveMatch[1]}`;
-    return `/api/pdf/proxy?url=${encodeURIComponent(directDriveUrl)}`;
+    return `https://docs.google.com/viewer?url=${encodeURIComponent(directDriveUrl)}&embedded=true`;
   }
 
-  // 2. Vercel Blob URLs -> direct display
-  if (url.includes('public.blob.vercel-storage.com')) {
-    return url;
+  // 2. Vercel Blob URLs or Direct PDFs -> Google Docs Viewer API
+  if (url.includes('public.blob.vercel-storage.com') || url.toLowerCase().includes('.pdf')) {
+    return `https://docs.google.com/viewer?url=${encodeURIComponent(url)}&embedded=true`;
   }
 
-  // 3. Contabo Storage S3 or external PDFs -> Internal PDF Proxy Stream (Native Browser PDF Viewer with multi-page scroll support)
+  // 3. Fallback to PDF Stream Proxy
   return `/api/pdf/proxy?url=${encodeURIComponent(url)}`;
 }
 
@@ -118,6 +118,20 @@ export default function FgdRoomClient({
 
   // Local state for votes so voting updates appear in real-time across all views
   const [localVotes, setLocalVotes] = useState<Vote[]>(votes);
+
+  // Prevent any embedded iframe link from navigating away the Ruang FGD top tab
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (document.activeElement && document.activeElement.tagName === 'IFRAME') {
+        e.preventDefault();
+        e.returnValue = '';
+        return '';
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, []);
   // Keep localComments in sync if server-side comments prop changes (e.g. after router.refresh)
   const commentsRef = comments;
   // sync on mount only — subsequent updates via local state mutations
