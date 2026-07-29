@@ -283,11 +283,6 @@ export default async function ProposalDetailPage({
               </div>
             </div>
 
-            {/* Detail Dokumen Resubmission */}
-            <ResubmitDocumentSection 
-              proposal={proposal} 
-              showSplitScreenButton={true}
-            />
 
             <div className="space-y-4 mb-8">
               {/* Row 1: Innovator */}
@@ -434,6 +429,12 @@ export default async function ProposalDetailPage({
                 )}
               </div>
             )}
+
+            {/* Detail Dokumen Resubmission */}
+            <ResubmitDocumentSection 
+              proposal={proposal} 
+              showSplitScreenButton={true}
+            />
 
 
             {/* Bandingkan dengan Proposal Lain (Admin, Coordinator, Curator only) */}
