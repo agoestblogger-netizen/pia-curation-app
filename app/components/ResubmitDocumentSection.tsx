@@ -265,8 +265,8 @@ export default function ResubmitDocumentSection({
                   ? `https://docs.google.com/viewer?url=${encodeURIComponent(`https://drive.google.com/uc?export=download&id=${driveIdMatch[1]}`)}&embedded=true` 
                   : null;
 
-                // Determine safe embed URL (never put raw shorteners or raw export=download URLs directly into iframe src)
-                const embedSrc = pdfItem.embedUrl || safeDriveEmbed || (
+                // Determine safe embed URL (always force Google Docs Viewer API to guarantee target=_blank on PDF links)
+                const embedSrc = safeDriveEmbed || (pdfItem.embedUrl && pdfItem.embedUrl.includes('docs.google.com/viewer') ? pdfItem.embedUrl : null) || (
                   rawTarget && (rawTarget.includes('public.blob.vercel-storage.com') || rawTarget.includes('/api/pdf/proxy') || rawTarget.toLowerCase().includes('.pdf'))
                     ? `https://docs.google.com/viewer?url=${encodeURIComponent(rawTarget)}&embedded=true`
                     : null

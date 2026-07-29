@@ -1778,7 +1778,7 @@ export default function FgdRoomClient({
                           return (
                             <div className="space-y-6 pt-1">
                               {pdfItems.map((pdfItem, idx) => {
-                                const embedSrc = pdfItem.embedUrl || getEmbeddablePdfUrl(pdfItem.blobUrl || pdfItem.originalUrl);
+                                const embedSrc = getEmbeddablePdfUrl(pdfItem.blobUrl || pdfItem.originalUrl);
                                 return (
                                   <div key={pdfItem.originalUrl + idx} className="space-y-2">
                                     <div className="flex items-center justify-between">
