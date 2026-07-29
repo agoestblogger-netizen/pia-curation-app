@@ -30,6 +30,31 @@ type Props = {
   defaultExpanded?: boolean;
 };
 
+function getSafePreviewUrlForTab(pdfItem?: { blobUrl?: string | null; originalUrl?: string; embedUrl?: string | null } | null, fallbackUrl?: string | null): string {
+  const rawTarget = pdfItem?.embedUrl || pdfItem?.blobUrl || pdfItem?.originalUrl || fallbackUrl;
+  if (!rawTarget) return '';
+
+  // 1. Google Drive file -> convert file ID to /preview (forces inline browser view, NEVER downloads)
+  const driveIdMatch = rawTarget.match(/(?:drive\.google\.com\/(?:file\/d\/|open\?id=|uc\?.*id=)|id=)([a-zA-Z0-9_-]{25,})/i);
+  if (driveIdMatch && driveIdMatch[1]) {
+    return `https://drive.google.com/file/d/${driveIdMatch[1]}/preview`;
+  }
+
+  // 2. Google Drive folder -> convert to /drive/folders/ ID
+  const folderMatch = rawTarget.match(/drive\.google\.com\/drive\/(?:u\/\d+\/)?folders\/([a-zA-Z0-9_-]+)/i);
+  if (folderMatch && folderMatch[1]) {
+    return `https://drive.google.com/drive/folders/${folderMatch[1]}`;
+  }
+
+  // 3. Vercel Blob URL or existing proxy URL -> use directly
+  if (rawTarget.includes('public.blob.vercel-storage.com') || rawTarget.includes('/api/pdf/proxy') || rawTarget.includes('/api/proxy-pdf')) {
+    return rawTarget;
+  }
+
+  // 4. Any direct PDF link -> stream via PDF Proxy to force inline display with Content-Disposition: inline
+  return `/api/pdf/proxy?url=${encodeURIComponent(rawTarget)}`;
+}
+
 export default function ResubmitDocumentSection({
   proposal,
   showSplitScreenButton = false,
@@ -102,13 +127,11 @@ export default function ResubmitDocumentSection({
           } else if (res.error) {
             setPdfError(res.error);
           }
+          setIsProcessingPdf(false);
         }
-      } catch (err: any) {
+      } catch (err) {
         if (isMounted) {
-          setPdfError(err.message || 'Gagal memproses dokumen PDF');
-        }
-      } finally {
-        if (isMounted) {
+          console.error('Failed to process resubmit PDF:', err);
           setIsProcessingPdf(false);
         }
       }
@@ -187,7 +210,7 @@ export default function ResubmitDocumentSection({
                 if (onOpenSplitScreen) {
                   onOpenSplitScreen();
                 } else {
-                  const targetUrl = proposal.linkResubmitProposal || (displayPdfs[0]?.blobUrl || displayPdfs[0]?.originalUrl);
+                  const targetUrl = getSafePreviewUrlForTab(displayPdfs[0], proposal.linkResubmitProposal);
                   if (targetUrl) {
                     window.open(targetUrl, '_blank');
                   }
@@ -247,6 +270,8 @@ export default function ResubmitDocumentSection({
                     : null
                 );
 
+                const safeTabUrl = getSafePreviewUrlForTab(pdfItem, proposal.linkResubmitProposal);
+
                 return (
                   <div key={pdfItem.originalUrl + idx} className="space-y-2">
                     <div className="flex items-center justify-between">
@@ -264,7 +289,7 @@ export default function ResubmitDocumentSection({
                       </h5>
 
                       <a
-                        href={pdfItem.blobUrl || pdfItem.originalUrl}
+                        href={safeTabUrl}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="text-slate-500 hover:text-indigo-600 transition p-1 text-xs flex items-center space-x-1 bg-slate-100 hover:bg-indigo-50 px-2 py-1 rounded border border-slate-200"
