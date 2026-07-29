@@ -307,6 +307,7 @@ export default function ResubmitDocumentSection({
                         {embedSrc ? (
                           <iframe
                             src={embedSrc}
+                            sandbox={embedSrc.includes('drive.google.com') ? "allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox allow-forms" : undefined}
                             className="w-full h-[700px] bg-white border-0"
                             title={pdfItem.title}
                             loading="lazy"

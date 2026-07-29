@@ -117,20 +117,6 @@ export default function FgdRoomClient({
 
   // Local state for votes so voting updates appear in real-time across all views
   const [localVotes, setLocalVotes] = useState<Vote[]>(votes);
-
-  // Prevent any embedded iframe link from navigating away the Ruang FGD top tab
-  useEffect(() => {
-    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      if (document.activeElement && document.activeElement.tagName === 'IFRAME') {
-        e.preventDefault();
-        e.returnValue = '';
-        return '';
-      }
-    };
-
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-  }, []);
   // Keep localComments in sync if server-side comments prop changes (e.g. after router.refresh)
   const commentsRef = comments;
   // sync on mount only — subsequent updates via local state mutations
