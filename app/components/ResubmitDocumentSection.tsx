@@ -262,13 +262,13 @@ export default function ResubmitDocumentSection({
                 // Extract Google Drive File ID safely from any Drive URL format (file/d/, open?id=, uc?export=download&id=, etc.)
                 const driveIdMatch = rawTarget ? rawTarget.match(/(?:drive\.google\.com\/(?:file\/d\/|open\?id=|uc\?.*id=)|id=)([a-zA-Z0-9_-]{25,})/i) : null;
                 const safeDriveEmbed = driveIdMatch && driveIdMatch[1] 
-                  ? `https://drive.google.com/file/d/${driveIdMatch[1]}/preview` 
+                  ? `https://docs.google.com/viewer?url=${encodeURIComponent(`https://drive.google.com/uc?export=download&id=${driveIdMatch[1]}`)}&embedded=true` 
                   : null;
 
-                // Determine safe embed URL (use internal PDF Stream Proxy for S3/Contabo PDFs to guarantee multi-page scroll support)
-                const embedSrc = pdfItem.embedUrl || safeDriveEmbed || (
+                // Determine safe embed URL (always force Google Docs Viewer API to guarantee target=_blank on PDF links)
+                const embedSrc = safeDriveEmbed || (pdfItem.embedUrl && pdfItem.embedUrl.includes('docs.google.com/viewer') ? pdfItem.embedUrl : null) || (
                   rawTarget && (rawTarget.includes('public.blob.vercel-storage.com') || rawTarget.includes('/api/pdf/proxy') || rawTarget.toLowerCase().includes('.pdf'))
-                    ? `/api/pdf/proxy?url=${encodeURIComponent(rawTarget)}`
+                    ? `https://docs.google.com/viewer?url=${encodeURIComponent(rawTarget)}&embedded=true`
                     : null
                 );
 
@@ -280,9 +280,6 @@ export default function ResubmitDocumentSection({
                       <h5 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center space-x-1.5 flex-wrap gap-y-1">
                         <span>📄</span>
                         <span>{pdfItem.title}</span>
-                        <span className="text-[10px] bg-indigo-100 text-indigo-800 font-extrabold px-2 py-0.5 rounded border border-indigo-200">
-                          📄 PDF Multi-Halaman (Scroll di Dalam Iframe)
-                        </span>
                         {pdfItem.sizeMb && (
                           <span className="text-[10px] bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded font-normal lowercase">
                             ({pdfItem.sizeMb} MB)
@@ -307,7 +304,6 @@ export default function ResubmitDocumentSection({
                         {embedSrc ? (
                           <iframe
                             src={embedSrc}
-                            sandbox={embedSrc.includes('drive.google.com') ? "allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox allow-forms" : undefined}
                             className="w-full h-[700px] bg-white border-0"
                             title={pdfItem.title}
                             loading="lazy"

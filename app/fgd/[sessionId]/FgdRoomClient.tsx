@@ -18,18 +18,19 @@ import ResubmitDocumentSection from '@/app/components/ResubmitDocumentSection';
 function getEmbeddablePdfUrl(url: string | null | undefined): string {
   if (!url) return '';
   
-  // 1. Google Drive PDF URLs -> Official Drive Preview
+  // 1. Google Drive PDF URLs -> Google Docs Viewer API (renders PDF with target="_blank" on all hyperlinks)
   const driveMatch = url.match(/(?:drive\.google\.com\/(?:file\/d\/|open\?id=|uc\?.*id=)|id=)([a-zA-Z0-9_-]{25,})/i);
   if (driveMatch && driveMatch[1]) {
-    return `https://drive.google.com/file/d/${driveMatch[1]}/preview`;
+    const directDriveUrl = `https://drive.google.com/uc?export=download&id=${driveMatch[1]}`;
+    return `https://docs.google.com/viewer?url=${encodeURIComponent(directDriveUrl)}&embedded=true`;
   }
 
-  // 2. Vercel Blob URLs -> direct display
-  if (url.includes('public.blob.vercel-storage.com')) {
-    return url;
+  // 2. Vercel Blob URLs or Direct PDFs -> Google Docs Viewer API
+  if (url.includes('public.blob.vercel-storage.com') || url.toLowerCase().includes('.pdf')) {
+    return `https://docs.google.com/viewer?url=${encodeURIComponent(url)}&embedded=true`;
   }
 
-  // 3. Contabo Storage S3 or external PDFs -> Internal PDF Stream Proxy (Native multi-page scroll support)
+  // 3. Fallback to PDF Stream Proxy
   return `/api/pdf/proxy?url=${encodeURIComponent(url)}`;
 }
 
