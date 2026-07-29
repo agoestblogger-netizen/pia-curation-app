@@ -1777,7 +1777,7 @@ export default function FgdRoomClient({
                                         )}
                                       </h5>
                                       <a
-                                        href={pdfItem.blobUrl || pdfItem.originalUrl}
+                                        href={getEmbeddablePdfUrl(pdfItem.blobUrl || pdfItem.originalUrl)}
                                         target="_blank"
                                         rel="noopener noreferrer"
                                         className="text-slate-400 hover:text-indigo-600 transition p-1 text-xs flex items-center space-x-1"
@@ -1792,6 +1792,7 @@ export default function FgdRoomClient({
                                       <div className="w-full bg-slate-900 rounded-lg overflow-hidden border border-slate-300 shadow-md">
                                         <iframe
                                           src={embedSrc}
+                                          sandbox="allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox allow-forms"
                                           className="w-full h-[750px] bg-white border-0"
                                           title={pdfItem.title}
                                           loading="lazy"
@@ -1869,6 +1870,7 @@ export default function FgdRoomClient({
                                   <div className="w-full bg-slate-900 rounded-lg overflow-hidden border border-slate-300 shadow-sm relative">
                                     <iframe
                                       src={item.embedUrl}
+                                      sandbox="allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox allow-forms"
                                       style={{ height: `${item.heightPx}px` }}
                                       className="w-full bg-white border-0"
                                       title={item.title}
