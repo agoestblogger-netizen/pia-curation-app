@@ -116,7 +116,7 @@ export async function getGoogleDriveFolderFilesAction(folderUrl: string, folderT
           : isPdf
           ? `https://drive.google.com/file/d/${f.id}/preview`
           : `https://drive.google.com/file/d/${f.id}/view`,
-        downloadUrl: f.webContentLink || `https://drive.google.com/file/d/${f.id}/view`,
+        downloadUrl: `https://drive.google.com/file/d/${f.id}/view`,
       };
     });
 

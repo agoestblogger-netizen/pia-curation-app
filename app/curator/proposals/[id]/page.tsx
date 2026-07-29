@@ -9,6 +9,7 @@ import ScreeningForm from './ScreeningForm';
 import { checkHardLock } from '@/app/actions/screening';
 import FormattedTextDisplay from '@/app/components/FormattedTextDisplay';
 import ProposalDocumentButtons from '@/app/components/ProposalDocumentButtons';
+import ResubmitDocumentSection from '@/app/components/ResubmitDocumentSection';
 
 import { maskProposalIdentity } from '@/lib/utils/blindReview';
 import CompareProposalsPanel from './CompareProposalsPanel';
@@ -282,20 +283,6 @@ export default async function ProposalDetailPage({
               </div>
             </div>
 
-            {/* Dokumen Resubmission */}
-            {(proposal.linkResubmitProposal || proposal.linkSuratOrisinalitas) && (
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 border-b border-gray-200 pb-2 bg-blue-50/50 p-3 rounded-lg border">
-                <h3 className="font-bold text-blue-900 uppercase tracking-wide text-sm flex items-center">
-                  <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-                  Dokumen Resubmission
-                </h3>
-                <ProposalDocumentButtons
-                  linkResubmitProposal={proposal.linkResubmitProposal}
-                  linkSuratOrisinalitas={proposal.linkSuratOrisinalitas}
-                  size="md"
-                />
-              </div>
-            )}
 
             <div className="space-y-4 mb-8">
               {/* Row 1: Innovator */}
@@ -443,28 +430,22 @@ export default async function ProposalDetailPage({
               </div>
             )}
 
-            {/* Dokumen Resubmission (Teks Extracted) */}
-            {proposal.resubmitDocumentText && (
-              <div className="mb-8">
-                <h3 className="font-bold text-gray-900 mb-3 border-b border-gray-100 pb-2 text-lg">Dokumen Resubmission (Teks)</h3>
-                <FormattedTextDisplay 
-                  proposalId={proposal.id}
-                  fieldName="resubmitDocumentText"
-                  originalText={cleanMetadataHeaders(proposal.resubmitDocumentText)}
-                  formattedText={(proposal.formattedTexts as any)?.resubmitDocumentText}
-                  canFormat={isCoordinator || isCurator || session.roles.includes('promoter') || isViewer}
-                />
-              </div>
-            )}
+            {/* Detail Dokumen Resubmission */}
+            <ResubmitDocumentSection 
+              proposal={proposal} 
+              showSplitScreenButton={true}
+            />
+
 
             {/* Bandingkan dengan Proposal Lain (Admin, Coordinator, Curator only) */}
-            {!isViewer && (isCurator || isCoordinator) && (
+            {!isViewer && (isCurator || isCoordinator || session.roles.includes('admin')) && (
               <CompareProposalsPanel
                 proposalId={proposal.id}
                 proposalTitle={proposal.title}
                 category={proposal.category}
                 competitionId={proposal.competitionId}
                 isReadOnly={!assignment && !isCoordinator && isLinkedToDuplicate}
+                isViewer={isViewer}
               />
             )}
 
@@ -501,12 +482,12 @@ export default async function ProposalDetailPage({
             </div>
           </div>
 
-          {/* Catatan Kurator — read-only for Coordinator/Admin */}
-          {(isCoordinator || session.roles.includes('admin')) && !shouldMask && (
+          {/* Catatan Kurator — read-only for Coordinator/Admin/Viewer */}
+          {(isCoordinator || session.roles.includes('admin') || isViewer) && !shouldMask && (
             <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
               <h3 className="font-bold text-gray-900 mb-3 flex items-center gap-2">
                 <span>📝</span> Catatan Kurator
-                {curatorNotesData?.curatorName && (
+                {curatorNotesData?.curatorName && !isViewer && (
                   <span className="text-xs font-normal text-gray-500 ml-1">— {curatorNotesData.curatorName}</span>
                 )}
               </h3>

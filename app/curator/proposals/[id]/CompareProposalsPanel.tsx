@@ -11,6 +11,7 @@ interface CompareProposalsPanelProps {
   category: string;
   competitionId: number;
   isReadOnly?: boolean;
+  isViewer?: boolean;
 }
 
 export default function CompareProposalsPanel({
@@ -19,6 +20,7 @@ export default function CompareProposalsPanel({
   category,
   competitionId,
   isReadOnly = false,
+  isViewer = false,
 }: CompareProposalsPanelProps) {
   const searchParams = useSearchParams();
   const [isOpen, setIsOpen] = useState(false);
@@ -446,7 +448,7 @@ export default function CompareProposalsPanel({
                     )}
 
                     {/* Section Tandai Duplikasi */}
-                    {!isReadOnly && (
+                    {!isReadOnly && !isViewer && (
                       <div className="pt-3 mt-3 border-t border-gray-100">
                         {markStatus === 'success' ? (
                         <div className="bg-green-50 text-green-700 p-3 rounded-lg border border-green-200 text-sm flex items-center justify-center gap-2">

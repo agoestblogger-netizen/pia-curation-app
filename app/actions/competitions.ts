@@ -61,29 +61,44 @@ export async function createCompetitionAction(
 import { cache } from 'react';
 
 export const getActiveCompetition = cache(async () => {
-  const [comp] = await db
-    .select()
-    .from(competitions)
-    .where(eq(competitions.isActive, true))
-    .limit(1);
-  return comp ?? null;
+  try {
+    const [comp] = await db
+      .select()
+      .from(competitions)
+      .where(eq(competitions.isActive, true))
+      .limit(1);
+    return comp ?? null;
+  } catch (err) {
+    console.error('[getActiveCompetition] Error querying active competition:', err);
+    return null;
+  }
 });
 
 export async function getAllCompetitions() {
-  return db.select().from(competitions).orderBy(desc(competitions.year));
+  try {
+    return await db.select().from(competitions).orderBy(desc(competitions.year));
+  } catch (err) {
+    console.error('[getAllCompetitions] Error querying competitions:', err);
+    return [];
+  }
 }
 
 export async function getProposalCountByCategory(competitionId: number) {
-  const result = await db
-    .select({
-      category: proposals.category,
-      count: count(),
-    })
-    .from(proposals)
-    .where(eq(proposals.competitionId, competitionId))
-    .groupBy(proposals.category);
-  
-  return result;
+  try {
+    const result = await db
+      .select({
+        category: proposals.category,
+        count: count(),
+      })
+      .from(proposals)
+      .where(eq(proposals.competitionId, competitionId))
+      .groupBy(proposals.category);
+    
+    return result;
+  } catch (err) {
+    console.error('[getProposalCountByCategory] Error querying counts:', err);
+    return [];
+  }
 }
 
 
