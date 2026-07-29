@@ -262,13 +262,13 @@ export default function ResubmitDocumentSection({
                 // Extract Google Drive File ID safely from any Drive URL format (file/d/, open?id=, uc?export=download&id=, etc.)
                 const driveIdMatch = rawTarget ? rawTarget.match(/(?:drive\.google\.com\/(?:file\/d\/|open\?id=|uc\?.*id=)|id=)([a-zA-Z0-9_-]{25,})/i) : null;
                 const safeDriveEmbed = driveIdMatch && driveIdMatch[1] 
-                  ? `https://docs.google.com/viewer?url=${encodeURIComponent(`https://drive.google.com/uc?export=download&id=${driveIdMatch[1]}`)}&embedded=true` 
+                  ? `https://drive.google.com/file/d/${driveIdMatch[1]}/preview` 
                   : null;
 
-                // Determine safe embed URL (always force Google Docs Viewer API to guarantee target=_blank on PDF links)
-                const embedSrc = safeDriveEmbed || (pdfItem.embedUrl && pdfItem.embedUrl.includes('docs.google.com/viewer') ? pdfItem.embedUrl : null) || (
+                // Determine safe embed URL (use internal PDF Stream Proxy for S3/Contabo PDFs to guarantee multi-page scroll support)
+                const embedSrc = pdfItem.embedUrl || safeDriveEmbed || (
                   rawTarget && (rawTarget.includes('public.blob.vercel-storage.com') || rawTarget.includes('/api/pdf/proxy') || rawTarget.toLowerCase().includes('.pdf'))
-                    ? `https://docs.google.com/viewer?url=${encodeURIComponent(rawTarget)}&embedded=true`
+                    ? `/api/pdf/proxy?url=${encodeURIComponent(rawTarget)}`
                     : null
                 );
 
