@@ -432,19 +432,6 @@ export default async function ProposalDetailPage({
               </div>
             )}
 
-            {/* Dokumen Resubmission (Teks Extracted) */}
-            {proposal.resubmitDocumentText && (
-              <div className="mb-8">
-                <h3 className="font-bold text-gray-900 mb-3 border-b border-gray-100 pb-2 text-lg">Dokumen Resubmission (Teks)</h3>
-                <FormattedTextDisplay 
-                  proposalId={proposal.id}
-                  fieldName="resubmitDocumentText"
-                  originalText={cleanMetadataHeaders(proposal.resubmitDocumentText)}
-                  formattedText={(proposal.formattedTexts as any)?.resubmitDocumentText}
-                  canFormat={isCoordinator || isCurator || session.roles.includes('promoter') || isViewer}
-                />
-              </div>
-            )}
 
             {/* Bandingkan dengan Proposal Lain (Admin, Coordinator, Curator only) */}
             {!isViewer && (isCurator || isCoordinator) && (
