@@ -133,6 +133,7 @@ export default function DriveFolderInlineView({
             </div>
             <iframe
               src={folderUrl}
+              sandbox="allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox allow-forms"
               className="w-full h-[520px] bg-white border-0"
               title={folderTitle}
               loading="lazy"
@@ -236,6 +237,7 @@ export default function DriveFolderInlineView({
                 <div className="w-full bg-slate-900 border-t border-slate-200">
                   <iframe
                     src={pdf.previewUrl}
+                    sandbox="allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox allow-forms"
                     className="w-full h-[480px] bg-white border-0"
                     title={pdf.name}
                     loading="lazy"
