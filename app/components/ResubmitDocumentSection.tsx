@@ -179,12 +179,19 @@ export default function ResubmitDocumentSection({
         </div>
 
         <div className="flex items-center space-x-3 shrink-0">
-          {showSplitScreenButton && onOpenSplitScreen && (
+          {showSplitScreenButton && (
             <button
               type="button"
               onClick={(e) => {
                 e.stopPropagation();
-                onOpenSplitScreen();
+                if (onOpenSplitScreen) {
+                  onOpenSplitScreen();
+                } else {
+                  const targetUrl = proposal.linkResubmitProposal || (displayPdfs[0]?.blobUrl || displayPdfs[0]?.originalUrl);
+                  if (targetUrl) {
+                    window.open(targetUrl, '_blank');
+                  }
+                }
               }}
               className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white font-extrabold text-xs rounded-lg transition-colors flex items-center space-x-1.5 shadow-2xs"
               title="Buka Tampilan Layar Penuh / Split-Screen"

@@ -287,12 +287,6 @@ export default async function ProposalDetailPage({
             <ResubmitDocumentSection 
               proposal={proposal} 
               showSplitScreenButton={true}
-              onOpenSplitScreen={() => {
-                const targetUrl = proposal.linkResubmitProposal || `/api/pdf/proxy?url=${encodeURIComponent(proposal.linkProposal || '')}`;
-                if (targetUrl) {
-                  window.open(targetUrl, '_blank');
-                }
-              }}
             />
 
             <div className="space-y-4 mb-8">
