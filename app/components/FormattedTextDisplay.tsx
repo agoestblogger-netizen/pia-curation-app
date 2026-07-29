@@ -19,6 +19,15 @@ function preprocessBullets(text: string): string {
     .replace(/\s*([∘○])\s*/g, '\n  - ');
 }
 
+function autolinkUrls(htmlText: string): string {
+  const urlRegex = /(https?:\/\/[^\s<"'`]+)/gi;
+  return htmlText.replace(urlRegex, (match, url) => {
+    const cleanUrl = url.replace(/[.,;)]+$/, '');
+    const trailing = url.slice(cleanUrl.length);
+    return `<a href="${cleanUrl}" target="_blank" rel="noopener noreferrer" class="text-indigo-600 hover:text-indigo-800 font-semibold underline underline-offset-2 break-all">${cleanUrl} ↗</a>${trailing}`;
+  });
+}
+
 // Simple Markdown parser to avoid external dependencies
 function renderMarkdown(text: string) {
   let cleanedText = preprocessBullets(text)
@@ -42,6 +51,8 @@ function renderMarkdown(text: string) {
     .replace(/(<li class="ml-(?:5|8) list-(?:decimal|lower-alpha).*?<\/li>\n?)+/g, (match) => `<ol class="mb-4 my-2.5 space-y-1.5 pl-1 font-normal">${match}</ol>`)
     .replace(/\n\n/g, '<br/><br/>')
     .replace(/<\/(ul|ol)>\s*<br\/>/g, '</$1>');
+
+  html = autolinkUrls(html);
     
   return { __html: html };
 }
@@ -157,9 +168,17 @@ export default function FormattedTextDisplay({
       {/* Content */}
       <div className="bg-gray-50 rounded-lg p-4 border border-gray-100 text-gray-800 relative max-h-[500px] overflow-y-auto pr-3">
         {(!formattedText || showOriginal) ? (
-          <div className="whitespace-pre-wrap leading-relaxed text-sm">
-            {originalText}
-          </div>
+          <div 
+            className="whitespace-pre-wrap leading-relaxed text-sm"
+            dangerouslySetInnerHTML={{
+              __html: autolinkUrls(
+                (originalText || '')
+                  .replace(/&/g, '&amp;')
+                  .replace(/</g, '&lt;')
+                  .replace(/>/g, '&gt;')
+              )
+            }}
+          />
         ) : (
           <div 
             className="text-sm leading-relaxed"
