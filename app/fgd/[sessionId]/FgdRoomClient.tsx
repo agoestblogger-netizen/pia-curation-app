@@ -18,10 +18,11 @@ import ResubmitDocumentSection from '@/app/components/ResubmitDocumentSection';
 function getEmbeddablePdfUrl(url: string | null | undefined): string {
   if (!url) return '';
   
-  // 1. Google Drive PDF URLs -> convert to official /preview embed format
-  const driveMatch = url.match(/drive\.google\.com\/(?:file\/d\/|open\?id=)([a-zA-Z0-9_-]+)/i);
+  // 1. Google Drive PDF URLs -> Stream via Native PDF Proxy (forces native browser PDF viewer which opens links in a new tab!)
+  const driveMatch = url.match(/(?:drive\.google\.com\/(?:file\/d\/|open\?id=|uc\?.*id=)|id=)([a-zA-Z0-9_-]{25,})/i);
   if (driveMatch && driveMatch[1]) {
-    return `https://drive.google.com/file/d/${driveMatch[1]}/preview`;
+    const directDriveUrl = `https://drive.google.com/uc?export=download&id=${driveMatch[1]}`;
+    return `/api/pdf/proxy?url=${encodeURIComponent(directDriveUrl)}`;
   }
 
   // 2. Vercel Blob URLs -> direct display

@@ -261,7 +261,7 @@ export default function ResubmitDocumentSection({
                 
                 // Extract Google Drive File ID safely from any Drive URL format (file/d/, open?id=, uc?export=download&id=, etc.)
                 const driveIdMatch = rawTarget ? rawTarget.match(/(?:drive\.google\.com\/(?:file\/d\/|open\?id=|uc\?.*id=)|id=)([a-zA-Z0-9_-]{25,})/i) : null;
-                const safeDriveEmbed = driveIdMatch && driveIdMatch[1] ? `https://drive.google.com/file/d/${driveIdMatch[1]}/preview` : null;
+                const safeDriveEmbed = driveIdMatch && driveIdMatch[1] ? `/api/pdf/proxy?url=${encodeURIComponent(`https://drive.google.com/uc?export=download&id=${driveIdMatch[1]}`)}` : null;
 
                 // Determine safe embed URL (never put raw shorteners or raw export=download URLs directly into iframe src)
                 const embedSrc = pdfItem.embedUrl || safeDriveEmbed || (
