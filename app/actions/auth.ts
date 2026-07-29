@@ -32,7 +32,14 @@ export async function loginAction(
 
   const { email, password } = parsed.data;
 
-  const [user] = await db.select().from(users).where(eq(users.email, email)).limit(1);
+  let user = null;
+  try {
+    const [foundUser] = await db.select().from(users).where(eq(users.email, email)).limit(1);
+    user = foundUser;
+  } catch (err) {
+    console.error('[loginAction] Database query error for email:', email, err);
+    return { error: 'Terjadi kendala koneksi basis data. Silakan coba lagi.' };
+  }
 
   if (!user || !user.isActive) {
     return { error: 'Akun tidak ditemukan atau tidak aktif.' };
@@ -108,7 +115,15 @@ export async function changePasswordAction(
     return { error: 'Konfirmasi password baru tidak cocok.' };
   }
 
-  const [user] = await db.select().from(users).where(eq(users.id, session.userId)).limit(1);
+  let user = null;
+  try {
+    const [foundUser] = await db.select().from(users).where(eq(users.id, session.userId)).limit(1);
+    user = foundUser;
+  } catch (err) {
+    console.error('[changePasswordAction] Database query error for userId:', session.userId, err);
+    return { error: 'Terjadi kendala koneksi basis data. Silakan coba lagi.' };
+  }
+
   if (!user) return { error: 'User tidak ditemukan.' };
 
   const valid = await bcrypt.compare(oldPassword, user.passwordHash);
@@ -117,10 +132,15 @@ export async function changePasswordAction(
   }
 
   const newHash = await bcrypt.hash(newPassword, 10);
-  await db.update(users).set({
-    passwordHash: newHash,
-    updatedAt: new Date(),
-  }).where(eq(users.id, session.userId));
+  try {
+    await db.update(users).set({
+      passwordHash: newHash,
+      updatedAt: new Date(),
+    }).where(eq(users.id, session.userId));
+  } catch (err) {
+    console.error('[changePasswordAction] Database update error:', err);
+    return { error: 'Gagal memperbarui password pada basis data. Silakan coba lagi.' };
+  }
 
   const { createAuditLog } = await import('@/lib/audit');
   await createAuditLog({
