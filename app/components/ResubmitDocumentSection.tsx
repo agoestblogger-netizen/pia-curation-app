@@ -228,8 +228,18 @@ export default function ResubmitDocumentSection({
             <div className="space-y-6 pt-1">
               {displayPdfs.map((pdfItem, idx) => {
                 const rawTarget = pdfItem.blobUrl || pdfItem.originalUrl;
-                const driveMatch = rawTarget ? rawTarget.match(/drive\.google\.com\/(?:file\/d\/|open\?id=)([a-zA-Z0-9_-]+)/i) : null;
-                const embedSrc = pdfItem.embedUrl || (driveMatch && driveMatch[1] ? `https://drive.google.com/file/d/${driveMatch[1]}/preview` : rawTarget);
+                
+                // Extract Google Drive File ID safely from any Drive URL format (file/d/, open?id=, uc?export=download&id=, etc.)
+                const driveIdMatch = rawTarget ? rawTarget.match(/(?:drive\.google\.com\/(?:file\/d\/|open\?id=|uc\?.*id=)|id=)([a-zA-Z0-9_-]{25,})/i) : null;
+                const safeDriveEmbed = driveIdMatch && driveIdMatch[1] ? `https://drive.google.com/file/d/${driveIdMatch[1]}/preview` : null;
+
+                // Determine safe embed URL (never put raw shorteners or raw export=download URLs directly into iframe src)
+                const embedSrc = pdfItem.embedUrl || safeDriveEmbed || (
+                  rawTarget && (rawTarget.includes('public.blob.vercel-storage.com') || rawTarget.includes('/api/pdf/proxy') || rawTarget.toLowerCase().includes('.pdf'))
+                    ? `/api/pdf/proxy?url=${encodeURIComponent(rawTarget)}`
+                    : null
+                );
+
                 return (
                   <div key={pdfItem.originalUrl + idx} className="space-y-2">
                     <div className="flex items-center justify-between">
@@ -260,12 +270,21 @@ export default function ResubmitDocumentSection({
 
                     {!pdfItem.isFallbackOnly ? (
                       <div className="w-full bg-slate-900 rounded-lg overflow-hidden border border-slate-300 shadow-sm relative">
-                        <iframe
-                          src={embedSrc}
-                          className="w-full h-[700px] bg-white border-0"
-                          title={pdfItem.title}
-                          loading="lazy"
-                        />
+                        {embedSrc ? (
+                          <iframe
+                            src={embedSrc}
+                            className="w-full h-[700px] bg-white border-0"
+                            title={pdfItem.title}
+                            loading="lazy"
+                          />
+                        ) : (
+                          <div className="w-full h-[300px] bg-slate-50 flex items-center justify-center p-6 text-slate-600 text-xs">
+                            <div className="flex items-center space-x-2">
+                              <svg className="animate-spin h-4 w-4 text-indigo-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                              <span>⚡ Menyiapkan pratinjau dokumen PDF secara aman...</span>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     ) : (
                       <div className="p-4 bg-amber-50/80 border border-amber-200 rounded-md text-xs text-slate-700 flex flex-col md:flex-row items-center justify-between gap-3">
