@@ -1793,7 +1793,6 @@ export default function FgdRoomClient({
                                       <div className="w-full bg-slate-900 rounded-lg overflow-hidden border border-slate-300 shadow-md">
                                         <iframe
                                           src={embedSrc}
-                                          sandbox="allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox allow-forms"
                                           className="w-full h-[750px] bg-white border-0"
                                           title={pdfItem.title}
                                           loading="lazy"
@@ -1871,7 +1870,6 @@ export default function FgdRoomClient({
                                   <div className="w-full bg-slate-900 rounded-lg overflow-hidden border border-slate-300 shadow-sm relative">
                                     <iframe
                                       src={item.embedUrl}
-                                      sandbox="allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox allow-forms"
                                       style={{ height: `${item.heightPx}px` }}
                                       className="w-full bg-white border-0"
                                       title={item.title}
