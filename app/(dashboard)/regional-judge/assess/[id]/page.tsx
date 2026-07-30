@@ -1,12 +1,13 @@
 import { requireRole } from '@/lib/auth/helpers';
 import { db } from '@/lib/db';
 import { proposals, regionalFinalAssessments, regionalFinalSessions, regionalFinalJudges } from '@/lib/db/schema';
-import { eq, and, ne, isNotNull, desc } from 'drizzle-orm';
+import { eq, and, ne, isNotNull, desc, sql } from 'drizzle-orm';
 import { notFound, redirect } from 'next/navigation';
 import Link from 'next/link';
 import RegionalAssessClient from './RegionalAssessClient';
 import FormattedTextDisplay from '@/app/components/FormattedTextDisplay';
 import { getRegionalFinalProposals } from '@/app/actions/regional-final-judging';
+import ProposalDetailCollapsible from './ProposalDetailCollapsible';
 
 export default async function AssessPage({
   params,
@@ -100,8 +101,21 @@ export default async function AssessPage({
       </div>
     );
   }
-  const proposal = regionalProposals.find(p => p.id === proposalId);
+  const partialProposal = regionalProposals.find(p => p.id === proposalId);
+  if (!partialProposal) return notFound();
+
+  let [proposal] = await db.select().from(proposals).where(eq(proposals.id, proposalId)).limit(1);
   if (!proposal) return notFound();
+
+  const rnResult = await db.execute(sql`
+    SELECT rn FROM (
+      SELECT id, ROW_NUMBER() OVER (PARTITION BY category, region_center ORDER BY id ASC) as rn 
+      FROM proposals 
+      WHERE competition_id = ${proposal.competitionId}
+    ) sub WHERE sub.id = ${proposalId}
+  `);
+  
+  const proposalRowNumber = rnResult.length > 0 ? Number(rnResult[0].rn) : 0;
 
   // Get existing assessment in current session
   let [existing] = await db.select().from(regionalFinalAssessments)
@@ -190,24 +204,12 @@ export default async function AssessPage({
             <p className="text-gray-600 mt-1 font-medium">Inovator: {proposal.proposerName} <span className="text-gray-400">({proposal.proposerOrg || '-'})</span></p>
           </div>
         </div>
-        
-        {proposal.summary && (
-          <div className="mt-6 pt-6 border-t border-gray-200">
-            <h3 className="text-sm font-semibold text-gray-900 mb-2">Review Proposal</h3>
-            <div className="bg-gray-50 rounded-lg">
-              <FormattedTextDisplay 
-                proposalId={proposal.id}
-                fieldName="summary"
-                originalText={proposal.summary}
-                formattedText={(proposal.formattedTexts as any)?.summary}
-                canFormat={true}
-                autoFormatOnLoad={true}
-                hideFormatButton={true}
-              />
-            </div>
-          </div>
-        )}
       </div>
+
+      <ProposalDetailCollapsible 
+        proposal={proposal as any} 
+        proposalRowNumber={proposalRowNumber} 
+      />
 
       <RegionalAssessClient 
         key={proposalId}
