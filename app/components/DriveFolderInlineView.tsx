@@ -14,6 +14,19 @@ export default function DriveFolderInlineView({
   const [isLoading, setIsLoading] = useState(true);
   const [imageLoadErrors, setImageLoadErrors] = useState<Record<string, boolean>>({});
   const [showIframePreview, setShowIframePreview] = useState(false);
+  const [iframeKey, setIframeKey] = useState(0);
+
+  const handleGoogleLoginPopup = () => {
+    const popup = window.open(folderUrl, 'GoogleDriveLoginPopup', 'width=850,height=650,scrollbars=yes,resizable=yes');
+    if (popup) {
+      const timer = setInterval(() => {
+        if (popup.closed) {
+          clearInterval(timer);
+          setIframeKey(prev => prev + 1);
+        }
+      }, 1000);
+    }
+  };
 
   useEffect(() => {
     let isMounted = true;
@@ -127,11 +140,21 @@ export default function DriveFolderInlineView({
 
         {showIframePreview && (
           <div className="w-full bg-slate-900 rounded-lg overflow-hidden border border-amber-300 shadow-md relative pt-2">
-            <div className="px-3 py-1.5 bg-amber-100 text-amber-950 text-[11px] font-semibold border-b border-amber-200 flex items-center justify-between gap-2 flex-wrap">
-              <span>💡 Jika muncul error 403 / akses ditolak di iFrame, silakan klik tombol <strong>"Buka Tab Baru ↗"</strong> di atas.</span>
+            <div className="px-3 py-2 bg-amber-100 text-amber-950 text-[11px] font-semibold border-b border-amber-200 flex items-center justify-between gap-2 flex-wrap">
+              <div className="flex items-center space-x-2 flex-wrap gap-y-1">
+                <span>💡 Jika iFrame menampilkan Error 403:</span>
+                <button
+                  onClick={handleGoogleLoginPopup}
+                  className="px-2.5 py-1 bg-amber-200 hover:bg-amber-300 text-amber-950 font-bold rounded-md border border-amber-400/80 transition text-[11px] flex items-center space-x-1 shadow-2xs"
+                  title="Buka pop-up login Google, lalu iFrame akan otomatis ter-refresh saat login selesai"
+                >
+                  <span>🔑 Buka Pop-up Login Google & Refresh iFrame</span>
+                </button>
+              </div>
               <button onClick={() => setShowIframePreview(false)} className="text-amber-800 hover:text-black font-bold text-xs">✖ Tutup</button>
             </div>
             <iframe
+              key={iframeKey}
               src={folderData?.folderId ? `https://drive.google.com/embeddedfolderview?id=${folderData.folderId}#grid` : folderUrl}
               className="w-full h-[520px] bg-white border-0"
               title={folderTitle}
