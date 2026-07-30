@@ -14,6 +14,35 @@ export default function DriveFolderInlineView({
   const [isLoading, setIsLoading] = useState(true);
   const [imageLoadErrors, setImageLoadErrors] = useState<Record<string, boolean>>({});
   const [showIframePreview, setShowIframePreview] = useState(false);
+  const [iframeKey, setIframeKey] = useState(0);
+
+  // Auto-detect or default to Account Index 2 (/u/2/) for Pegadaian Google Account
+  const initialSessionIndex = folderUrl.match(/\/u\/(\d+)\//)?.[1] || '2';
+  const [sessionIndex, setSessionIndex] = useState<string>(initialSessionIndex);
+
+  const getFormattedUrl = (index: string) => {
+    if (!index || index === 'none') return folderUrl;
+    if (folderUrl.includes('/u/')) {
+      return folderUrl.replace(/\/u\/\d+\//, `/u/${index}/`);
+    }
+    return folderUrl.replace('/drive/folders/', `/drive/u/${index}/folders/`);
+  };
+
+  const currentFolderUrl = getFormattedUrl(sessionIndex);
+
+  const handleGoogleLoginPopup = () => {
+    // Force Google Account Chooser with current formatted URL
+    const accountChooserUrl = `https://accounts.google.com/AccountChooser?continue=${encodeURIComponent(currentFolderUrl)}`;
+    const popup = window.open(accountChooserUrl, 'GoogleDriveLoginPopup', 'width=850,height=650,scrollbars=yes,resizable=yes');
+    if (popup) {
+      const timer = setInterval(() => {
+        if (popup.closed) {
+          clearInterval(timer);
+          setIframeKey(prev => prev + 1);
+        }
+      }, 1000);
+    }
+  };
 
   useEffect(() => {
     let isMounted = true;
@@ -94,46 +123,84 @@ export default function DriveFolderInlineView({
     }
 
     return (
-      <div className="p-4 bg-amber-50/90 rounded-xl border border-amber-200 text-amber-950 shadow-2xs space-y-3 my-3">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="flex items-start space-x-3">
-            <div className="p-2 bg-amber-100 rounded-lg text-amber-700 shrink-0 mt-0.5">
-              🔒
+      <div className="p-4 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-xs hover:shadow-sm transition-all space-y-3.5 my-3">
+        {/* Main Header Bar */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3.5">
+          <div className="flex items-center space-x-3 min-w-0 flex-1">
+            <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-600 flex items-center justify-center shrink-0 shadow-2xs">
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+              </svg>
             </div>
-            <div>
-              <p className="text-xs font-bold text-amber-950">{folderTitle}</p>
-              <p className="text-[11px] text-amber-800 mt-0.5">
-                🔒 Folder Google Drive Akses Terbatas / Internal Pegadaian (Private API).
-              </p>
+            <div className="min-w-0 flex-1">
+              <h4 className="text-sm font-bold text-slate-900 dark:text-white truncate">
+                {folderTitle}
+              </h4>
+              <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-amber-700 bg-amber-50 border border-amber-200/80 px-2 py-0.5 rounded-md">
+                  🔒 Akses Terbatas Pegadaian
+                </span>
+              </div>
             </div>
           </div>
-          <div className="flex items-center space-x-2 shrink-0 self-start sm:self-auto">
+
+          {/* Action Buttons */}
+          <div className="flex items-center space-x-2 shrink-0">
             <button
               onClick={() => setShowIframePreview(prev => !prev)}
-              className="inline-flex items-center justify-center space-x-1 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-lg transition shadow-2xs"
+              className="inline-flex items-center justify-center space-x-1.5 px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-200 font-semibold text-xs rounded-xl border border-slate-200/80 dark:border-slate-700 transition"
             >
-              <span>{showIframePreview ? '❌ Tutup Preview' : '👁️ Pratinjau Inline (iFrame)'}</span>
+              <span>{showIframePreview ? '❌ Tutup iFrame' : '👁️ Pratinjau iFrame'}</span>
             </button>
             <a
-              href={folderUrl}
+              href={currentFolderUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center justify-center space-x-1 px-3 py-1.5 bg-amber-200/80 hover:bg-amber-300 text-amber-950 font-semibold text-xs rounded-lg transition shadow-2xs"
+              className="inline-flex items-center justify-center space-x-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl transition shadow-xs"
+              title="Buka folder langsung di tab baru"
             >
-              <span>Buka Tab Baru ↗</span>
+              <span>📁 Buka Drive ↗</span>
             </a>
           </div>
         </div>
 
+        {/* Optional iFrame Preview Drawer */}
         {showIframePreview && (
-          <div className="w-full bg-slate-900 rounded-lg overflow-hidden border border-amber-300 shadow-md relative pt-2">
-            <div className="px-3 py-1 bg-amber-100 text-amber-900 text-[10px] font-bold border-b border-amber-200 flex items-center justify-between">
-              <span>💡 Memuat iFrame Drive memanfaatkan sesi akun Google Pegadaian di browser Anda</span>
-              <button onClick={() => setShowIframePreview(false)} className="text-amber-800 hover:text-black">✖ Tutup</button>
+          <div className="w-full bg-slate-950 rounded-xl overflow-hidden border border-slate-800 shadow-md relative pt-2">
+            <div className="px-3.5 py-2 bg-slate-900 text-slate-200 text-[11px] font-semibold border-b border-slate-800 flex items-center justify-between gap-3 flex-wrap">
+              <div className="flex items-center space-x-2 flex-wrap gap-y-1.5">
+                <div className="flex items-center space-x-1.5 bg-slate-800 px-2 py-1 rounded-lg border border-slate-700">
+                  <span className="text-[10px] font-medium text-slate-300">Sesi Akun Google:</span>
+                  <select
+                    value={sessionIndex}
+                    onChange={(e) => {
+                      setSessionIndex(e.target.value);
+                      setIframeKey(prev => prev + 1);
+                    }}
+                    className="bg-slate-900 text-white text-[10px] font-bold rounded px-1.5 py-0.5 border border-slate-600 focus:outline-none cursor-pointer"
+                  >
+                    <option value="0">Akun #1 (/u/0/)</option>
+                    <option value="1">Akun #2 (/u/1/)</option>
+                    <option value="2">Akun #3 (/u/2/ - Pegadaian)</option>
+                    <option value="3">Akun #4 (/u/3/)</option>
+                  </select>
+                </div>
+                <button
+                  onClick={handleGoogleLoginPopup}
+                  className="px-2.5 py-1 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg text-[11px] transition shadow-2xs"
+                >
+                  <span>🔑 Ganti Akun (Pop-up)</span>
+                </button>
+              </div>
+              <button onClick={() => setShowIframePreview(false)} className="text-slate-400 hover:text-white font-bold text-xs">✖ Tutup</button>
+            </div>
+            <div className="px-3 py-1.5 bg-slate-900/90 text-amber-300 text-[10px] border-b border-slate-800 flex items-center gap-1.5">
+              <span>💡 Jika iFrame muncul Error 403 (kebijakan keamanan Google), gunakan tombol <strong>"📁 Buka Drive ↗"</strong> di atas.</span>
             </div>
             <iframe
-              src={folderUrl}
-              className="w-full h-[520px] bg-white border-0"
+              key={`${iframeKey}-${sessionIndex}`}
+              src={currentFolderUrl}
+              className="w-full h-[480px] bg-white border-0"
               title={folderTitle}
               loading="lazy"
             />
