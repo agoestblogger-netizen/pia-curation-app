@@ -17,7 +17,9 @@ export default function DriveFolderInlineView({
   const [iframeKey, setIframeKey] = useState(0);
 
   const handleGoogleLoginPopup = () => {
-    const popup = window.open(folderUrl, 'GoogleDriveLoginPopup', 'width=850,height=650,scrollbars=yes,resizable=yes');
+    // Force Google Account Chooser so user can select/login to their @pegadaian.co.id account
+    const accountChooserUrl = `https://accounts.google.com/AccountChooser?continue=${encodeURIComponent(folderUrl)}`;
+    const popup = window.open(accountChooserUrl, 'GoogleDriveLoginPopup', 'width=850,height=650,scrollbars=yes,resizable=yes');
     if (popup) {
       const timer = setInterval(() => {
         if (popup.closed) {
@@ -142,13 +144,13 @@ export default function DriveFolderInlineView({
           <div className="w-full bg-slate-900 rounded-lg overflow-hidden border border-amber-300 shadow-md relative pt-2">
             <div className="px-3 py-2 bg-amber-100 text-amber-950 text-[11px] font-semibold border-b border-amber-200 flex items-center justify-between gap-2 flex-wrap">
               <div className="flex items-center space-x-2 flex-wrap gap-y-1">
-                <span>💡 Jika iFrame menampilkan Error 403:</span>
+                <span>💡 Jika iFrame menampilkan "You need access" / 403:</span>
                 <button
                   onClick={handleGoogleLoginPopup}
                   className="px-2.5 py-1 bg-amber-200 hover:bg-amber-300 text-amber-950 font-bold rounded-md border border-amber-400/80 transition text-[11px] flex items-center space-x-1 shadow-2xs"
-                  title="Buka pop-up login Google, lalu iFrame akan otomatis ter-refresh saat login selesai"
+                  title="Buka menu ganti akun Google untuk memilih/login akun Pegadaian"
                 >
-                  <span>🔑 Buka Pop-up Login Google & Refresh iFrame</span>
+                  <span>🔄 Ganti Akun / Login Google Pegadaian (Pop-up)</span>
                 </button>
               </div>
               <button onClick={() => setShowIframePreview(false)} className="text-amber-800 hover:text-black font-bold text-xs">✖ Tutup</button>
