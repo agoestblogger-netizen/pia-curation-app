@@ -44,6 +44,8 @@ interface SuratPenetapanProps {
     id: number;
     title: string;
     proposerName: string;
+    proposerUnitKerja?: string | null;
+    proposerNik?: string | null;
     rowNumber: number;
   }>;
 }
@@ -96,7 +98,15 @@ export const SuratPenetapanRegionalReport = ({
               <Text style={styles.tableCell}>{p.title}</Text>
               <Text style={{ fontSize: 7, color: '#666', marginTop: 2 }}>ID: {p.id} | Ref: {p.rowNumber}</Text>
             </View>
-            <View style={styles.tableColInovator}><Text style={styles.tableCell}>{p.proposerName}</Text></View>
+            <View style={styles.tableColInovator}>
+              <Text style={[styles.tableCell, { fontWeight: 'bold' }]}>{p.proposerName}</Text>
+              <Text style={{ fontSize: 7.5, color: p.proposerUnitKerja ? '#4b5563' : '#9ca3af', marginTop: 1 }}>
+                Unit Kerja: {p.proposerUnitKerja || '-'}
+              </Text>
+              <Text style={{ fontSize: 7.5, color: p.proposerNik ? '#4b5563' : '#9ca3af', marginTop: 1 }}>
+                NIK: {p.proposerNik || '-'}
+              </Text>
+            </View>
           </View>
         ))}
       </View>

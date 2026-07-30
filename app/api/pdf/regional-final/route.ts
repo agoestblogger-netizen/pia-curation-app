@@ -36,6 +36,7 @@ export async function GET(req: NextRequest) {
       title: proposals.title,
       category: proposals.category,
       proposerName: proposals.proposerName,
+      proposerUnitKerja: proposals.proposerUnitKerja,
     }).from(proposals)
       .where(and(
         eq(proposals.competitionId, activeComp.id),
