@@ -226,13 +226,18 @@ export async function editScreeningAction(
 
   if (!oldResult) return { error: 'Hasil screening sebelumnya tidak ditemukan' };
 
+  const newStatus = verdict === 'lolos' ? 'curation_passed' : 'curation_rejected';
+
   await db.transaction(async (tx) => {
     await tx
       .update(screeningResults)
       .set({ verdict, notes })
       .where(eq(screeningResults.id, oldResult.id));
 
-    // Audit Log is done after transaction to use helper
+    await tx
+      .update(proposals)
+      .set({ status: newStatus, updatedAt: new Date() })
+      .where(eq(proposals.id, assignment.proposalId));
   });
 
   await createAuditLog({
