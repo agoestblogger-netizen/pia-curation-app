@@ -44,7 +44,7 @@ export async function GET(
   // Mengambil row_number untuk setiap proposal agar match dengan UI (computed on the fly untuk kompetisi ini)
   const rankedProposals = await db.execute(sql`
     WITH Ranked AS (
-      SELECT id, title, proposer_name, regional_finalist_rank, regional_finalized_by, regional_finalized_at, status, category, region_center,
+      SELECT id, title, proposer_name, proposer_unit_kerja, regional_finalist_rank, regional_finalized_by, regional_finalized_at, status, category, region_center,
              ROW_NUMBER() OVER (PARTITION BY category, region_center ORDER BY id ASC) as row_number
       FROM proposals
       WHERE competition_id = ${activeComp.id}
@@ -91,6 +91,8 @@ export async function GET(
         id: f.id,
         title: f.title,
         proposerName: f.proposer_name,
+        proposerUnitKerja: f.proposer_unit_kerja || null,
+        proposerNik: null,
         rowNumber: f.row_number,
       })),
     })

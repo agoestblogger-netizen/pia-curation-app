@@ -37,6 +37,8 @@ type ProposalRow = {
   title: string;
   category: string;
   proposerName: string;
+  proposerUnitKerja?: string | null;
+  proposerNik?: string | null;
   totalScore: string;
   rank: number | null;
   isTieBreak: boolean;
@@ -81,7 +83,7 @@ export const RegionalFinalBeritaAcara = ({
           <View style={[styles.row, styles.headerRow]} wrap={false}>
             <Text style={[styles.cell, styles.colNo]}>Rank</Text>
             <Text style={[styles.cell, styles.colTitle]}>Judul Proposal</Text>
-            <Text style={[styles.cell, styles.colCat]}>Inovator</Text>
+            <Text style={[styles.cell, styles.colCat]}>Inovator / Unit Kerja</Text>
             <Text style={[styles.cell, styles.colScore]}>Rata-rata Skor</Text>
             <Text style={[styles.cell, styles.colClass]}>Kategori</Text>
           </View>
@@ -90,7 +92,15 @@ export const RegionalFinalBeritaAcara = ({
             <View key={p.id} style={styles.row} wrap={false}>
               <Text style={[styles.cell, styles.colNo]}>{p.rank ? `${p.rank}${p.isTieBreak ? '*' : ''}` : '-'}</Text>
               <Text style={[styles.cell, styles.colTitle]}>{p.title}</Text>
-              <Text style={[styles.cell, styles.colCat]}>{p.proposerName}</Text>
+              <View style={[styles.cell, styles.colCat]}>
+                <Text style={{ fontWeight: 'bold' }}>{p.proposerName}</Text>
+                <Text style={{ fontSize: 7, color: p.proposerUnitKerja ? '#4b5563' : '#9ca3af', marginTop: 1 }}>
+                  Unit: {p.proposerUnitKerja || '-'}
+                </Text>
+                <Text style={{ fontSize: 7, color: p.proposerNik ? '#4b5563' : '#9ca3af', marginTop: 1 }}>
+                  NIK: {p.proposerNik || '-'}
+                </Text>
+              </View>
               <Text style={[styles.cell, styles.colScore]}>{p.totalScore}</Text>
               <Text style={[styles.cell, styles.colClass]}>{p.category}</Text>
             </View>
