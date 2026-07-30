@@ -16,9 +16,23 @@ export default function DriveFolderInlineView({
   const [showIframePreview, setShowIframePreview] = useState(false);
   const [iframeKey, setIframeKey] = useState(0);
 
+  // Auto-detect or default to Account Index 2 (/u/2/) for Pegadaian Google Account
+  const initialSessionIndex = folderUrl.match(/\/u\/(\d+)\//)?.[1] || '2';
+  const [sessionIndex, setSessionIndex] = useState<string>(initialSessionIndex);
+
+  const getFormattedUrl = (index: string) => {
+    if (!index || index === 'none') return folderUrl;
+    if (folderUrl.includes('/u/')) {
+      return folderUrl.replace(/\/u\/\d+\//, `/u/${index}/`);
+    }
+    return folderUrl.replace('/drive/folders/', `/drive/u/${index}/folders/`);
+  };
+
+  const currentFolderUrl = getFormattedUrl(sessionIndex);
+
   const handleGoogleLoginPopup = () => {
-    // Force Google Account Chooser so user can select/login to their @pegadaian.co.id account
-    const accountChooserUrl = `https://accounts.google.com/AccountChooser?continue=${encodeURIComponent(folderUrl)}`;
+    // Force Google Account Chooser with current formatted URL
+    const accountChooserUrl = `https://accounts.google.com/AccountChooser?continue=${encodeURIComponent(currentFolderUrl)}`;
     const popup = window.open(accountChooserUrl, 'GoogleDriveLoginPopup', 'width=850,height=650,scrollbars=yes,resizable=yes');
     if (popup) {
       const timer = setInterval(() => {
@@ -130,7 +144,7 @@ export default function DriveFolderInlineView({
               <span>{showIframePreview ? '❌ Tutup Preview' : '👁️ Pratinjau Inline (iFrame)'}</span>
             </button>
             <a
-              href={folderUrl}
+              href={currentFolderUrl}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center justify-center space-x-1 px-3 py-1.5 bg-amber-200/80 hover:bg-amber-300 text-amber-950 font-semibold text-xs rounded-lg transition shadow-2xs"
@@ -144,20 +158,35 @@ export default function DriveFolderInlineView({
           <div className="w-full bg-slate-900 rounded-lg overflow-hidden border border-amber-300 shadow-md relative pt-2">
             <div className="px-3 py-2 bg-amber-100 text-amber-950 text-[11px] font-semibold border-b border-amber-200 flex items-center justify-between gap-2 flex-wrap">
               <div className="flex items-center space-x-2 flex-wrap gap-y-1">
-                <span>💡 Jika iFrame menampilkan "You need access" / 403:</span>
+                <div className="flex items-center space-x-1.5 bg-amber-200/80 px-2 py-0.5 rounded border border-amber-300/80">
+                  <span className="text-[10px] font-bold text-amber-950">Sesi Akun Google:</span>
+                  <select
+                    value={sessionIndex}
+                    onChange={(e) => {
+                      setSessionIndex(e.target.value);
+                      setIframeKey(prev => prev + 1);
+                    }}
+                    className="bg-white text-slate-900 text-[10px] font-bold rounded px-1.5 py-0.5 border border-amber-400 focus:outline-none cursor-pointer"
+                  >
+                    <option value="0">Akun #1 (/u/0/ - Gmail Utama)</option>
+                    <option value="1">Akun #2 (/u/1/)</option>
+                    <option value="2">Akun #3 (/u/2/ - Pegadaian)</option>
+                    <option value="3">Akun #4 (/u/3/)</option>
+                  </select>
+                </div>
                 <button
                   onClick={handleGoogleLoginPopup}
                   className="px-2.5 py-1 bg-amber-200 hover:bg-amber-300 text-amber-950 font-bold rounded-md border border-amber-400/80 transition text-[11px] flex items-center space-x-1 shadow-2xs"
                   title="Buka menu ganti akun Google untuk memilih/login akun Pegadaian"
                 >
-                  <span>🔄 Ganti Akun / Login Google Pegadaian (Pop-up)</span>
+                  <span>🔄 Ganti Akun / Login Google (Pop-up)</span>
                 </button>
               </div>
               <button onClick={() => setShowIframePreview(false)} className="text-amber-800 hover:text-black font-bold text-xs">✖ Tutup</button>
             </div>
             <iframe
-              key={iframeKey}
-              src={folderData?.folderId ? `https://drive.google.com/embeddedfolderview?id=${folderData.folderId}#grid` : folderUrl}
+              key={`${iframeKey}-${sessionIndex}`}
+              src={currentFolderUrl}
               className="w-full h-[520px] bg-white border-0"
               title={folderTitle}
               loading="lazy"
