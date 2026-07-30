@@ -5,6 +5,10 @@ import { eq, and, inArray } from 'drizzle-orm';
 import { getActiveCompetition } from '@/app/actions/competitions';
 import CuratorRegionalFinalClient from './CuratorRegionalFinalClient';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+export const fetchCache = 'force-no-store';
+
 export const metadata = {
   title: 'Setup Final Regional - PIA Curation',
 };

@@ -4,6 +4,8 @@ import { getRegionalGroups } from '@/app/actions/regional-final';
 import RegionalFinalClient from './RegionalFinalClient';
 
 export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+export const fetchCache = 'force-no-store';
 
 export const metadata = {
   title: 'Kunci Finalis Regional - PIA Curation',
