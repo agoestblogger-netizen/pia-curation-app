@@ -147,9 +147,10 @@ export default function DriveFolderInlineView({
               href={currentFolderUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center justify-center space-x-1 px-3 py-1.5 bg-amber-200/80 hover:bg-amber-300 text-amber-950 font-semibold text-xs rounded-lg transition shadow-2xs"
+              className="inline-flex items-center justify-center space-x-1 px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs rounded-lg transition shadow-sm animate-pulse"
+              title="Buka folder langsung di tab baru menggunakan Akun Pegadaian (/u/2/)"
             >
-              <span>Buka Tab Baru ↗</span>
+              <span>🚀 Buka Tab Baru Akun Pegadaian (/u/{sessionIndex}) ↗</span>
             </a>
           </div>
         </div>
@@ -183,6 +184,9 @@ export default function DriveFolderInlineView({
                 </button>
               </div>
               <button onClick={() => setShowIframePreview(false)} className="text-amber-800 hover:text-black font-bold text-xs">✖ Tutup</button>
+            </div>
+            <div className="px-3 py-1.5 bg-amber-50 text-amber-950 text-[10px] border-b border-amber-200">
+              🔒 <strong>Catatan Keamanan Google</strong>: Google Drive memblokir pemuatan folder ber-akses khusus internal di dalam iFrame (HTTP 403). Silakan klik tombol hijau <strong>"🚀 Buka Tab Baru Akun Pegadaian (/u/{sessionIndex}) ↗"</strong> di atas.
             </div>
             <iframe
               key={`${iframeKey}-${sessionIndex}`}
