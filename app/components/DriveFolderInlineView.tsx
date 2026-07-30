@@ -127,12 +127,12 @@ export default function DriveFolderInlineView({
 
         {showIframePreview && (
           <div className="w-full bg-slate-900 rounded-lg overflow-hidden border border-amber-300 shadow-md relative pt-2">
-            <div className="px-3 py-1 bg-amber-100 text-amber-900 text-[10px] font-bold border-b border-amber-200 flex items-center justify-between">
-              <span>💡 Memuat iFrame Drive memanfaatkan sesi akun Google Pegadaian di browser Anda</span>
-              <button onClick={() => setShowIframePreview(false)} className="text-amber-800 hover:text-black">✖ Tutup</button>
+            <div className="px-3 py-1.5 bg-amber-100 text-amber-950 text-[11px] font-semibold border-b border-amber-200 flex items-center justify-between gap-2 flex-wrap">
+              <span>💡 Jika muncul error 403 / akses ditolak di iFrame, silakan klik tombol <strong>"Buka Tab Baru ↗"</strong> di atas.</span>
+              <button onClick={() => setShowIframePreview(false)} className="text-amber-800 hover:text-black font-bold text-xs">✖ Tutup</button>
             </div>
             <iframe
-              src={folderUrl}
+              src={folderData?.folderId ? `https://drive.google.com/embeddedfolderview?id=${folderData.folderId}#grid` : folderUrl}
               className="w-full h-[520px] bg-white border-0"
               title={folderTitle}
               loading="lazy"
