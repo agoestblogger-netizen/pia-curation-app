@@ -3,6 +3,10 @@ import { getActiveCompetition } from '@/app/actions/competitions';
 import { requireRole } from '@/lib/auth/helpers';
 import AdminRegionalFinalClient from './AdminRegionalFinalClient';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+export const fetchCache = 'force-no-store';
+
 export const metadata = {
   title: 'Kelola Final Regional - PIA Curation',
 };
