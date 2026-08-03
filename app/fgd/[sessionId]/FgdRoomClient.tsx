@@ -2,7 +2,7 @@
 
 import { useState, useTransition, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { submitFgdCommentAction, deleteFgdCommentAction, submitFgdVoteAction, lockFgdSessionAction, releaseSingleFgdProposalAction, insertCuratorNoteAsCommentAction } from '@/app/actions/fgd';
+import { submitFgdCommentAction, deleteFgdCommentAction, submitFgdVoteAction, lockFgdSessionAction, unlockFgdSessionAction, releaseSingleFgdProposalAction, insertCuratorNoteAsCommentAction } from '@/app/actions/fgd';
 import { generateFgdAiAnalysis } from '@/app/actions/aiAnalysis';
 import { getOrCacheResubmitPdfsAction, ResubmitPdfItem } from '@/app/actions/resubmitPdfCache';
 import { uploadFgdAdditionalDocument } from '@/app/actions/uploadDocument';
@@ -645,6 +645,7 @@ export default function FgdRoomClient({
   const [curatorFilter, setCuratorFilter] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [locking, setLocking] = useState(false);
+  const [unlocking, setUnlocking] = useState(false);
   const [releasing, setReleasing] = useState<Record<number, boolean>>({});
   const [selectedForFinal, setSelectedForFinal] = useState<number[]>([]);
   const [manuallyToggled, setManuallyToggled] = useState<Set<number>>(new Set());
@@ -850,6 +851,23 @@ export default function FgdRoomClient({
         setLocking(true);
         const res = await lockFgdSessionAction(fgd.id, selectedForFinal);
         setLocking(false);
+        if (res.error) {
+          alert(res.error);
+        } else {
+          refresh();
+        }
+      }
+    );
+  }
+
+  async function handleUnlock() {
+    showConfirm(
+      '🔓 Buka Kunci Sesi FGD?',
+      'Yakin ingin membuka kunci sesi FGD ini? Status sesi akan kembali Aktif. Vote & komentar yang sudah ada tetap tersimpan.',
+      async () => {
+        setUnlocking(true);
+        const res = await unlockFgdSessionAction(fgd.id);
+        setUnlocking(false);
         if (res.error) {
           alert(res.error);
         } else {
@@ -2087,8 +2105,20 @@ export default function FgdRoomClient({
             )}
 
             {fgd.status === 'locked' && (
-              <div className="mt-6 bg-green-50 border border-green-200 rounded-lg p-4 text-sm text-green-800 font-medium flex-shrink-0">
-                ✅ Sesi FGD ini sudah dikunci. Hasil penetapan sudah berlaku dan tidak bisa diubah.
+              <div className="mt-6 bg-green-50 border border-green-200 rounded-lg p-4 text-sm text-green-800 font-medium flex-shrink-0 flex items-center justify-between gap-4">
+                <div className="flex items-center gap-2">
+                  <span className="text-base">✅</span>
+                  <span>Sesi FGD ini sudah dikunci. Hasil penetapan sudah berlaku dan tidak bisa diubah.</span>
+                </div>
+                {!readOnly && (session.roles.includes('coordinator') || session.roles.includes('admin')) && (
+                  <button
+                    onClick={handleUnlock}
+                    disabled={unlocking}
+                    className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-lg text-sm transition-colors shadow-xs shrink-0 flex items-center gap-1.5 disabled:opacity-50"
+                  >
+                    {unlocking ? 'Membuka...' : '🔓 Buka Kunci Sesi'}
+                  </button>
+                )}
               </div>
             )}
           </div>

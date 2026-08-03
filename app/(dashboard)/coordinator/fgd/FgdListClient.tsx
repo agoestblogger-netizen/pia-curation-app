@@ -3,7 +3,7 @@
 import { FgdSession } from '@/lib/db/schema';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { deleteFgdSessionAction } from '@/app/actions/fgd';
+import { deleteFgdSessionAction, unlockFgdSessionAction } from '@/app/actions/fgd';
 
 import { useState, useTransition } from 'react';
 
@@ -15,6 +15,8 @@ export default function FgdListClient({ sessions, isCoordinator, roles = [] }: {
   const [isPending, startTransition] = useTransition();
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
+  const [unlockingId, setUnlockingId] = useState<number | null>(null);
+  const [confirmUnlockId, setConfirmUnlockId] = useState<number | null>(null);
 
   function confirmDelete(id: number) {
     setConfirmDeleteId(id);
@@ -29,6 +31,26 @@ export default function FgdListClient({ sessions, isCoordinator, roles = [] }: {
       const res = await deleteFgdSessionAction(id);
       if (res.error) alert(res.error);
       setDeletingId(null);
+    });
+  }
+
+  function confirmUnlock(id: number) {
+    setConfirmUnlockId(id);
+  }
+
+  async function executeUnlock() {
+    if (confirmUnlockId === null) return;
+    const id = confirmUnlockId;
+    setConfirmUnlockId(null);
+    setUnlockingId(id);
+    startTransition(async () => {
+      const res = await unlockFgdSessionAction(id);
+      if (res.error) {
+        alert(res.error);
+      } else {
+        router.refresh();
+      }
+      setUnlockingId(null);
     });
   }
 
@@ -99,6 +121,11 @@ export default function FgdListClient({ sessions, isCoordinator, roles = [] }: {
                 <div className="text-xs text-gray-500 mt-1">
                   Dibuat: {s.createdAt.toLocaleDateString('id-ID')}
                 </div>
+                {s.status === 'locked' && s.lockedAt && (
+                  <div className="text-xs text-green-600 mt-0.5">
+                    Dikunci: {s.lockedAt.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                  </div>
+                )}
               </td>
               <td className="px-6 py-4">
                 <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-blue-50 text-blue-700 uppercase">
@@ -128,6 +155,15 @@ export default function FgdListClient({ sessions, isCoordinator, roles = [] }: {
                 >
                   Masuk Ruang FGD
                 </Link>
+                {isCoordinator && s.status === 'locked' && (
+                  <button 
+                    onClick={() => confirmUnlock(s.id)}
+                    disabled={unlockingId === s.id}
+                    className="text-amber-600 font-medium hover:text-amber-800 text-sm disabled:opacity-50"
+                  >
+                    {unlockingId === s.id ? 'Membuka...' : '🔓 Buka Kunci'}
+                  </button>
+                )}
                 {isCoordinator && s.status !== 'locked' && (
                   <button 
                     onClick={() => confirmDelete(s.id)}
@@ -144,6 +180,7 @@ export default function FgdListClient({ sessions, isCoordinator, roles = [] }: {
       </table>
       )}
       
+      {/* Confirm Delete Modal */}
       {confirmDeleteId !== null && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-xs z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl shadow-xl max-w-md w-full overflow-hidden border border-gray-100">
@@ -170,6 +207,47 @@ export default function FgdListClient({ sessions, isCoordinator, roles = [] }: {
                 className="px-6 py-2 bg-red-600 hover:bg-red-700 text-white font-bold rounded-lg text-sm shadow-sm flex items-center gap-2"
               >
                 Ya, Hapus Sesi
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Confirm Unlock Modal */}
+      {confirmUnlockId !== null && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-xl max-w-md w-full overflow-hidden border border-gray-100">
+            <div className="bg-amber-500 text-white p-5">
+              <h3 className="text-lg font-bold flex items-center gap-2">
+                🔓 Buka Kunci Sesi FGD
+              </h3>
+            </div>
+            <div className="p-6 space-y-3">
+              <p className="text-gray-700 font-medium">
+                Yakin ingin membuka kunci sesi FGD ini?
+              </p>
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm text-amber-800">
+                <p className="font-semibold mb-1">⚠️ Yang terjadi setelah dibuka:</p>
+                <ul className="list-disc list-inside space-y-1 text-xs">
+                  <li>Status sesi kembali menjadi <strong>Aktif</strong></li>
+                  <li>Semua vote &amp; komentar yang sudah ada <strong>tetap tersimpan</strong></li>
+                  <li>Penetapan yang sudah dilakukan <strong>tidak otomatis dibatalkan</strong></li>
+                  <li>Kurator dapat kembali melakukan vote dan review</li>
+                </ul>
+              </div>
+            </div>
+            <div className="bg-gray-50 px-6 py-4 flex justify-end space-x-3 border-t border-gray-100">
+              <button
+                onClick={() => setConfirmUnlockId(null)}
+                className="px-4 py-2 bg-white border border-gray-300 text-gray-700 font-bold rounded-lg text-sm hover:bg-gray-100"
+              >
+                Batal
+              </button>
+              <button
+                onClick={executeUnlock}
+                className="px-6 py-2 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-lg text-sm shadow-sm flex items-center gap-2"
+              >
+                🔓 Ya, Buka Kunci
               </button>
             </div>
           </div>
