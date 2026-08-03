@@ -18,6 +18,16 @@ export default function ChangePasswordPage() {
         </div>
       </div>
 
+      <div className="bg-amber-50 border border-amber-200 text-amber-900 rounded-xl p-4 mb-6 text-sm flex items-start gap-3">
+        <span className="text-xl shrink-0">🔒</span>
+        <div>
+          <div className="font-bold mb-1">Ganti Password Wajib</div>
+          <p className="text-amber-800 text-xs leading-relaxed">
+            Demi keamanan akun Anda, silakan perbarui password sebelum melanjutkan ke aplikasi.
+          </p>
+        </div>
+      </div>
+
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
         {state?.error && (
           <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm font-medium">
