@@ -23,7 +23,7 @@ export default function ChangePasswordPage() {
         <div>
           <div className="font-bold mb-1">Ganti Password Wajib</div>
           <p className="text-amber-800 text-xs leading-relaxed">
-            Demi keamanan akun Anda, silakan perbarui password sebelum melanjutkan ke aplikasi.
+            Demi keamanan akun Anda, password default (<code className="font-mono font-semibold">gadai123</code>) harus diganti sebelum melanjutkan ke aplikasi.
           </p>
         </div>
       </div>
