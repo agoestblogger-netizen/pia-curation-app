@@ -469,3 +469,38 @@ export async function deleteFgdCommentAction(commentId: number) {
   return { success: true, commentId };
 }
 
+/**
+ * Buka Kunci Sesi FGD (Hanya Koordinator)
+ * Mengembalikan status sesi dari 'locked' ke 'active' TANPA menghapus vote dan komentar yang sudah ada.
+ */
+export async function unlockFgdSessionAction(sessionId: number) {
+  await requireRole(['coordinator']);
+
+  const [fgd] = await db
+    .select()
+    .from(fgdSessions)
+    .where(eq(fgdSessions.id, sessionId))
+    .limit(1);
+
+  if (!fgd) return { error: 'Sesi FGD tidak ditemukan.' };
+  if (fgd.status !== 'locked') return { error: 'Sesi ini tidak dalam status terkunci.' };
+
+  await db.update(fgdSessions).set({
+    status: 'active',
+    lockedAt: null,
+    lockedBy: null,
+    updatedAt: new Date(),
+  }).where(eq(fgdSessions.id, sessionId));
+
+  await createAuditLog({
+    action: 'unlock_fgd_session',
+    entity: 'fgd_session',
+    entityId: sessionId.toString(),
+    before: { status: 'locked', lockedAt: fgd.lockedAt },
+    after: { status: 'active' },
+  });
+
+  revalidatePath('/coordinator/fgd');
+  revalidatePath(`/fgd/${sessionId}`);
+  return { success: true };
+}
