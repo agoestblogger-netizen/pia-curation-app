@@ -128,12 +128,15 @@ export default function SidangClient({
     proposalTitle: string,
     targetJudgeUserId: number,
     judgeName: string,
-    currentScores: { problemFit: number; dampak: number; kelayakan: number; professional: number } | null
+    currentScores: { problemFit: number; dampak: number; kelayakan: number; professional: number; [key: string]: any } | null
   ) => {
     if (isLocked) return;
     setEditingCell({ proposalId, proposalTitle, targetJudgeUserId, judgeName });
+    // PENTING: hanya ambil 4 field skor yang relevan, abaikan avgScore/notes/dll.
     setEditScores(
-      currentScores || { problemFit: 75, dampak: 75, kelayakan: 75, professional: 75 }
+      currentScores
+        ? { problemFit: currentScores.problemFit, dampak: currentScores.dampak, kelayakan: currentScores.kelayakan, professional: currentScores.professional }
+        : { problemFit: 75, dampak: 75, kelayakan: 75, professional: 75 }
     );
     setErrorMsg('');
     setModalErrorMsg('');
