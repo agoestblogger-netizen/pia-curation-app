@@ -147,11 +147,13 @@ export default function SidangClient({
     setErrorMsg('');
     setModalErrorMsg('');
     startTransition(async () => {
+      // Destructure eksplisit 4 field — immune terhadap state yg tercemar avgScore/notes
+      const { problemFit, dampak, kelayakan, professional } = editScores;
       const res = await calibrateSidangScoreAction(
         sessionId,
         editingCell.proposalId,
         editingCell.targetJudgeUserId,
-        editScores
+        { problemFit, dampak, kelayakan, professional }
       );
 
       if (res?.error) {
@@ -536,7 +538,7 @@ export default function SidangClient({
                     min={0}
                     max={100}
                     value={editScores.problemFit}
-                    onChange={(e) => setEditScores({ ...editScores, problemFit: Number(e.target.value) })}
+                    onChange={(e) => setEditScores({ problemFit: Number(e.target.value), dampak: editScores.dampak, kelayakan: editScores.kelayakan, professional: editScores.professional })}
                     className="w-full p-2.5 border rounded-lg font-bold text-center text-gray-900 border-gray-300 focus:ring-2 focus:ring-indigo-500"
                   />
                 </div>
@@ -547,7 +549,7 @@ export default function SidangClient({
                     min={0}
                     max={100}
                     value={editScores.dampak}
-                    onChange={(e) => setEditScores({ ...editScores, dampak: Number(e.target.value) })}
+                    onChange={(e) => setEditScores({ problemFit: editScores.problemFit, dampak: Number(e.target.value), kelayakan: editScores.kelayakan, professional: editScores.professional })}
                     className="w-full p-2.5 border rounded-lg font-bold text-center text-gray-900 border-gray-300 focus:ring-2 focus:ring-indigo-500"
                   />
                 </div>
@@ -558,7 +560,7 @@ export default function SidangClient({
                     min={0}
                     max={100}
                     value={editScores.kelayakan}
-                    onChange={(e) => setEditScores({ ...editScores, kelayakan: Number(e.target.value) })}
+                    onChange={(e) => setEditScores({ problemFit: editScores.problemFit, dampak: editScores.dampak, kelayakan: Number(e.target.value), professional: editScores.professional })}
                     className="w-full p-2.5 border rounded-lg font-bold text-center text-gray-900 border-gray-300 focus:ring-2 focus:ring-indigo-500"
                   />
                 </div>
@@ -569,7 +571,7 @@ export default function SidangClient({
                     min={0}
                     max={100}
                     value={editScores.professional}
-                    onChange={(e) => setEditScores({ ...editScores, professional: Number(e.target.value) })}
+                    onChange={(e) => setEditScores({ problemFit: editScores.problemFit, dampak: editScores.dampak, kelayakan: editScores.kelayakan, professional: Number(e.target.value) })}
                     className="w-full p-2.5 border rounded-lg font-bold text-center text-gray-900 border-gray-300 focus:ring-2 focus:ring-indigo-500"
                   />
                 </div>
