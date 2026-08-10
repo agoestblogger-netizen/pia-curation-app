@@ -121,6 +121,8 @@ export default function SidangClient({
     return a.proposals[0].rank - b.proposals[0].rank;
   });
 
+  const [modalErrorMsg, setModalErrorMsg] = useState('');
+
   const openCalibrationModal = (
     proposalId: number,
     proposalTitle: string,
@@ -134,11 +136,13 @@ export default function SidangClient({
       currentScores || { problemFit: 75, dampak: 75, kelayakan: 75, professional: 75 }
     );
     setErrorMsg('');
+    setModalErrorMsg('');
   };
 
   const handleSaveCalibration = () => {
     if (!editingCell) return;
     setErrorMsg('');
+    setModalErrorMsg('');
     startTransition(async () => {
       const res = await calibrateSidangScoreAction(
         sessionId,
@@ -149,8 +153,10 @@ export default function SidangClient({
 
       if (res?.error) {
         setErrorMsg(res.error);
+        setModalErrorMsg(res.error);
       } else {
         setEditingCell(null);
+        setModalErrorMsg('');
         router.refresh();
       }
     });
@@ -570,6 +576,12 @@ export default function SidangClient({
                 <span className="text-xs font-bold text-indigo-900">Rata-Rata Hasil Kalibrasi:</span>
                 <span className="text-xl font-extrabold text-indigo-900">{editAvg.toFixed(2)}</span>
               </div>
+
+              {modalErrorMsg && (
+                <div className="p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-xs font-semibold">
+                  ⚠️ {modalErrorMsg}
+                </div>
+              )}
 
               <div className="text-[11px] text-gray-500 bg-gray-50 p-2.5 rounded-lg border border-gray-200">
                 📝 Perubahan skor ini akan langsung dicatat ke <strong>Audit Log</strong> atas nama akun Anda.

@@ -168,7 +168,7 @@ export default function RegionalAssessClient({
         router.refresh();
         setTimeout(() => setNotesSaveStatus(''), 2500);
       } else {
-        setNotesSaveStatus('Gagal menyimpan catatan');
+        setNotesSaveStatus(res.error || 'Gagal menyimpan catatan');
       }
     });
   };
@@ -223,7 +223,7 @@ export default function RegionalAssessClient({
         router.refresh();
         setTimeout(() => setSaveStatus(''), 3000);
       } else {
-        setSaveStatus('Gagal menyimpan');
+        setSaveStatus(res.error || 'Gagal menyimpan');
       }
     });
   };

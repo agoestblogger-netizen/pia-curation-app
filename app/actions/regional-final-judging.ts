@@ -289,7 +289,7 @@ export async function submitRegionalAssessmentAction(
   scores: { problemFit: number, dampak: number, kelayakan: number, professional: number },
   notes?: string
 ) {
-  const userSession = await requireRole('regional');
+  const userSession = await requireRole(['regional', 'coordinator', 'admin']);
   
   // Verify assignment
   const [judgeAssignment] = await db
@@ -301,18 +301,29 @@ export async function submitRegionalAssessmentAction(
     ))
     .limit(1);
     
-  if (!judgeAssignment) {
-    return { error: 'Akses ditolak: Anda bukan Juri untuk sesi ini.' };
+  if (!judgeAssignment && !userSession.roles.includes('admin') && !userSession.roles.includes('coordinator')) {
+    return { error: 'Akses ditolak: Anda bukan Juri yang ditugaskan untuk sesi ini.' };
   }
 
-  if (judgeAssignment.isFinalized) {
+  if (judgeAssignment?.isFinalized) {
     return { error: 'Penilaian Anda sudah difinalisasi dan tidak dapat diubah lagi.' };
   }
 
   const [session] = await db.select().from(regionalFinalSessions).where(eq(regionalFinalSessions.id, sessionId));
-  const allowedStatuses = ['penilaian_dibuka', 'sidang_penetapan'];
-  if (!session || !allowedStatuses.includes(session.status)) {
-    return { error: 'Sesi penilaian tidak aktif' };
+  if (!session) {
+    return { error: 'Sesi penilaian tidak ditemukan' };
+  }
+
+  const allowedStatuses = ['juri_ditugaskan', 'penilaian_dibuka', 'sidang_penetapan'];
+  if (!allowedStatuses.includes(session.status)) {
+    return { error: `Sesi penilaian tidak aktif (Status saat ini: ${session.status})` };
+  }
+
+  // Auto-promote status to penilaian_dibuka if still juri_ditugaskan when scoring starts
+  if (session.status === 'juri_ditugaskan') {
+    await db.update(regionalFinalSessions)
+      .set({ status: 'penilaian_dibuka', updatedAt: new Date() })
+      .where(eq(regionalFinalSessions.id, sessionId));
   }
   
   // Validation: clamp / check bounds (0 - 100)
@@ -356,7 +367,7 @@ export async function saveRegionalJudgeNotesAction(
   proposalId: number,
   notes: string
 ) {
-  const userSession = await requireRole('regional');
+  const userSession = await requireRole(['regional', 'coordinator', 'admin']);
 
   // Verify assignment
   const [judgeAssignment] = await db
@@ -368,11 +379,11 @@ export async function saveRegionalJudgeNotesAction(
     ))
     .limit(1);
 
-  if (!judgeAssignment) {
-    return { error: 'Akses ditolak: Anda bukan Juri untuk sesi ini.' };
+  if (!judgeAssignment && !userSession.roles.includes('admin') && !userSession.roles.includes('coordinator')) {
+    return { error: 'Akses ditolak: Anda bukan Juri yang ditugaskan untuk sesi ini.' };
   }
 
-  if (judgeAssignment.isFinalized) {
+  if (judgeAssignment?.isFinalized) {
     return { error: 'Penilaian Anda sudah difinalisasi dan tidak dapat diubah lagi.' };
   }
 
