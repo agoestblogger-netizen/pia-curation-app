@@ -635,8 +635,14 @@ export async function calibrateSidangScoreAction(
     return { error: 'Hasil sidang sudah dikunci secara permanen.' };
   }
 
-  // Validate values (0 - 100)
-  for (const [key, val] of Object.entries(scores)) {
+  // Validate values (0 - 100) — validasi HANYA 4 field skor yang relevan
+  const scoreFields: [string, number][] = [
+    ['problemFit', scores.problemFit],
+    ['dampak', scores.dampak],
+    ['kelayakan', scores.kelayakan],
+    ['professional', scores.professional],
+  ];
+  for (const [key, val] of scoreFields) {
     if (typeof val !== 'number' || isNaN(val) || val < 0 || val > 100) {
       return { error: `Skor ${key} harus berada di antara 0 dan 100.` };
     }
