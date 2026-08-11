@@ -224,6 +224,62 @@ export async function updateRegionalSessionStatusAction(sessionId: number, statu
   return { success: true };
 }
 
+/**
+ * Batalkan pembukaan penilaian: penilaian_dibuka → juri_ditugaskan.
+ * KHUSUS ADMIN SAJA. Skor yang sudah masuk DIPERTAHANKAN (tidak dihapus).
+ */
+export async function cancelOpenAssessmentAction(sessionId: number) {
+  const userSession = await requireRole(['admin']); // Strict: admin only
+
+  const [targetSession] = await db
+    .select()
+    .from(regionalFinalSessions)
+    .where(eq(regionalFinalSessions.id, sessionId))
+    .limit(1);
+
+  if (!targetSession) return { error: 'Sesi tidak ditemukan.' };
+
+  if (targetSession.status !== 'penilaian_dibuka') {
+    return {
+      error: `Tidak dapat membatalkan: status sesi saat ini adalah "${targetSession.status}", bukan "penilaian_dibuka".`,
+    };
+  }
+
+  // Count existing scores (for audit transparency) — scores are NOT deleted
+  const existingScores = await db
+    .select({ id: regionalFinalAssessments.id })
+    .from(regionalFinalAssessments)
+    .where(eq(regionalFinalAssessments.sessionId, sessionId));
+
+  await db
+    .update(regionalFinalSessions)
+    .set({ status: 'juri_ditugaskan', updatedAt: new Date() })
+    .where(eq(regionalFinalSessions.id, sessionId));
+
+  await createAuditLog({
+    action: 'cancel_open_assessment',
+    entity: 'regional_final_sessions',
+    entityId: sessionId.toString(),
+    before: { status: 'penilaian_dibuka' },
+    after: {
+      status: 'juri_ditugaskan',
+      region: targetSession.region,
+      adminUserId: userSession.userId,
+      adminName: userSession.name,
+      existingScoresPreserved: existingScores.length,
+      note: 'Skor yang sudah masuk dipertahankan, tidak dihapus.',
+    },
+  });
+
+  revalidatePath('/admin/regional-final');
+  revalidatePath('/curator/regional-final');
+  revalidatePath('/regional-judge', 'layout');
+  revalidatePath('/regional-dashboard');
+
+  return { success: true, existingScoresCount: existingScores.length };
+}
+
+
 export async function getRegionalFinalProposals(sessionId: number) {
   const userSession = await requireRole(['curator', 'coordinator', 'admin', 'regional']);
   

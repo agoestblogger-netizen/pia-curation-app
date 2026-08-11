@@ -12,7 +12,8 @@ export const metadata = {
 };
 
 export default async function AdminRegionalFinalPage() {
-  await requireRole(['coordinator', 'admin']);
+  const userSession = await requireRole(['coordinator', 'admin']);
+  const isAdmin = userSession.roles.includes('admin');
 
   const activeComp = await getActiveCompetition();
   if (!activeComp) {
@@ -34,7 +35,8 @@ export default async function AdminRegionalFinalPage() {
       <h1 className="text-2xl font-bold text-gray-900 mb-2">Kelola Final Regional</h1>
       <p className="text-gray-600 mb-6">Penugasan Juri Regional dan pantau status per grup (Kanwil/Pusat).</p>
 
-      <AdminRegionalFinalClient sessions={sessions} availableUsers={availableUsers} />
+      <AdminRegionalFinalClient sessions={sessions} availableUsers={availableUsers} isAdmin={isAdmin} />
     </div>
   );
 }
+
