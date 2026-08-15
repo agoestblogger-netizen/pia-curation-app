@@ -203,10 +203,10 @@ export default function SidangClient({
         </div>
 
         <div className="flex items-center gap-3 flex-wrap">
-          {isLocked ? (
+          {sessionStatus === 'hasil_terkunci' ? (
             <div className="flex items-center gap-2">
               <div className="px-4 py-2 bg-emerald-100 text-emerald-800 border border-emerald-300 font-bold rounded-lg text-sm flex items-center gap-1.5">
-                <span>✅ Hasil Sidang Ditetapkan</span>
+                <span>✅ Hasil Sidang Dikunci (Resmi)</span>
               </div>
               <a 
                 href={`/api/pdf/regional-final?sessionId=${sessionId}`} 
@@ -217,6 +217,20 @@ export default function SidangClient({
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
                 <span>Berita Acara</span>
               </a>
+            </div>
+          ) : isLocked ? (
+            <div className="flex items-center gap-2">
+              <div className="px-4 py-2 bg-amber-100 text-amber-800 border border-amber-300 font-bold rounded-lg text-sm flex items-center gap-1.5">
+                <span>✅ Hasil Sidang Ditetapkan (Menunggu Kunci Ranking Koordinator)</span>
+              </div>
+              {isOperatorPic && (
+                <Link
+                  href="/curator/regional-final"
+                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg text-sm transition-colors shadow-sm"
+                >
+                  Lanjut ke Kunci Ranking →
+                </Link>
+              )}
             </div>
           ) : (
             <button 
@@ -238,15 +252,6 @@ export default function SidangClient({
                 </>
               )}
             </button>
-          )}
-
-          {isOperatorPic && isLocked && (
-            <Link
-              href="/curator/regional-final"
-              className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg text-sm transition-colors shadow-sm"
-            >
-              Lanjut ke Kunci Ranking →
-            </Link>
           )}
         </div>
       </div>

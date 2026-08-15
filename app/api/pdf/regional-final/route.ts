@@ -27,6 +27,13 @@ export async function GET(req: NextRequest) {
     const [sessionData] = await db.select().from(regionalFinalSessions).where(eq(regionalFinalSessions.id, sessionId));
     if (!sessionData) return NextResponse.json({ error: 'Session not found' }, { status: 404 });
 
+    // Validasi backend: Berita Acara hanya boleh dibuat/diunduh jika penetapan pemenang sudah dikunci oleh Koordinator
+    if (sessionData.status !== 'hasil_terkunci') {
+      return NextResponse.json({ 
+        error: 'Akses Ditolak: Berita Acara Hasil Final Regional hanya dapat dibuat/diunduh jika penetapan pemenang telah dikunci (status: hasil_terkunci).' 
+      }, { status: 403 });
+    }
+
     // Get Regional proposals for this session
     const isPusat = sessionData.region === 'Kantor Pusat';
     const dbRegion = sessionData.region.replace(/^Kanwil /, '');
