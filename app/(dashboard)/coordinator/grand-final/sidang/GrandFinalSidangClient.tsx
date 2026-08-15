@@ -332,7 +332,7 @@ export default function GrandFinalSidangClient({
       {drawerProposalId && activeProposal && (
         <>
           <div className="fixed inset-0 bg-black/30 z-40" onClick={() => setDrawerProposalId(null)}></div>
-          <div className="fixed inset-y-0 right-0 w-[60%] bg-white z-50 shadow-2xl flex flex-col transform transition-transform duration-300 ease-in-out overflow-hidden border-l border-gray-200">
+          <div className="fixed inset-y-0 right-0 w-full md:w-[85%] lg:w-[75%] xl:w-[70%] max-w-6xl bg-white z-50 shadow-2xl flex flex-col transform transition-transform duration-300 ease-in-out overflow-hidden border-l border-gray-200">
             {/* Drawer Header */}
             <div className="p-4 border-b border-gray-100 flex justify-between items-start bg-gray-50/50 shrink-0">
               <div className="flex-1 pr-4">
@@ -365,15 +365,15 @@ export default function GrandFinalSidangClient({
               </div>
             )}
 
-            {/* Grid Area - takes remaining space, but shouldn't need scroll ideally */}
-            <div className="flex-1 p-4 overflow-y-auto bg-white">
-              <div className="border border-gray-200 rounded-lg overflow-hidden">
-                <table className="w-full text-xs text-left">
+            {/* Grid Area - takes remaining space with horizontal scroll enabled for table */}
+            <div className="flex-1 p-4 overflow-y-auto bg-white space-y-4">
+              <div className="border border-gray-200 rounded-lg overflow-x-auto shadow-xs">
+                <table className="w-full text-xs text-left min-w-max">
                   <thead className="bg-gray-50 font-semibold text-gray-700 border-b border-gray-200">
                     <tr>
-                      <th className="py-2 px-3 border-r border-gray-200 w-32 bg-gray-100/50">Parameter</th>
+                      <th className="py-2.5 px-3 border-r border-gray-200 min-w-[140px] bg-gray-100/50 sticky left-0 z-10 shadow-xs">Parameter</th>
                       {sponsors.map(s => (
-                        <th key={s.id} className="py-2 px-2 text-center border-r border-gray-200 truncate" title={s.name}>
+                        <th key={s.id} className="py-2.5 px-3 text-center border-r border-gray-200 whitespace-nowrap min-w-[120px]" title={s.name}>
                           {s.name}
                         </th>
                       ))}
@@ -382,7 +382,7 @@ export default function GrandFinalSidangClient({
                   <tbody className="divide-y divide-gray-200">
                     {/* Row P1 */}
                     <tr>
-                      <td className="py-2 px-3 border-r border-gray-200 font-medium text-gray-800 bg-gray-50" title="Problem & Solution Fit">
+                      <td className="py-2 px-3 border-r border-gray-200 font-medium text-gray-800 bg-gray-50 sticky left-0 z-10" title="Problem & Solution Fit">
                         1. Problem Fit
                       </td>
                       {sponsors.map(s => (
@@ -402,7 +402,7 @@ export default function GrandFinalSidangClient({
                     </tr>
                     {/* Row P2 */}
                     <tr>
-                      <td className="py-2 px-3 border-r border-gray-200 font-medium text-gray-800 bg-gray-50" title="Impact">
+                      <td className="py-2 px-3 border-r border-gray-200 font-medium text-gray-800 bg-gray-50 sticky left-0 z-10" title="Impact">
                         2. Impact
                       </td>
                       {sponsors.map(s => (
@@ -422,7 +422,7 @@ export default function GrandFinalSidangClient({
                     </tr>
                     {/* Row P3 */}
                     <tr>
-                      <td className="py-2 px-3 border-r border-gray-200 font-medium text-gray-800 bg-gray-50" title="Kelayakan">
+                      <td className="py-2 px-3 border-r border-gray-200 font-medium text-gray-800 bg-gray-50 sticky left-0 z-10" title="Kelayakan">
                         3. Kelayakan
                       </td>
                       {sponsors.map(s => (
@@ -442,7 +442,7 @@ export default function GrandFinalSidangClient({
                     </tr>
                     {/* Row P4 */}
                     <tr>
-                      <td className="py-2 px-3 border-r border-gray-200 font-medium text-gray-800 bg-gray-50" title="Professional Judgement">
+                      <td className="py-2 px-3 border-r border-gray-200 font-medium text-gray-800 bg-gray-50 sticky left-0 z-10" title="Professional Judgement">
                         4. PJ
                       </td>
                       {sponsors.map(s => (
@@ -462,7 +462,7 @@ export default function GrandFinalSidangClient({
                     </tr>
                     {/* Total Row */}
                     <tr className="bg-gray-100 font-bold border-t-2 border-gray-300">
-                      <td className="py-2 px-3 border-r border-gray-300 text-right">
+                      <td className="py-2 px-3 border-r border-gray-300 text-right sticky left-0 z-10 bg-gray-100">
                         Total Skor
                       </td>
                       {sponsors.map(s => {
@@ -479,7 +479,7 @@ export default function GrandFinalSidangClient({
               </div>
               
               {/* All Rubric Cards - Compact View */}
-              <div className="mt-4 flex flex-col gap-1.5 bg-white border border-gray-200 rounded-lg p-2">
+              <div className="mt-4 flex flex-col gap-1.5 bg-white border border-gray-200 rounded-lg p-2 overflow-x-auto">
                 <div className="text-[10px] font-bold text-gray-500 uppercase tracking-wider px-1 mb-1 border-b border-gray-100 pb-1">
                   Panduan Kalibrasi (Hover untuk detail)
                 </div>
