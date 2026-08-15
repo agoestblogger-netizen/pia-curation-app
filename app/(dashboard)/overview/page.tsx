@@ -2,15 +2,22 @@ import { cookies } from 'next/headers';
 import { getActiveCompetition } from '@/app/actions/competitions';
 import { getSession } from '@/lib/auth/session';
 import { db } from '@/lib/db';
-import { proposals, curatorAssignments, users, screeningResults } from '@/lib/db/schema';
-import { eq, sql, and, isNotNull, gte } from 'drizzle-orm';
+import { proposals, curatorAssignments, users, screeningResults, regionalFinalSessions, regionalFinalResults, finalResults } from '@/lib/db/schema';
+import { eq, sql, and, isNotNull, gte, inArray } from 'drizzle-orm';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import OverviewGaugeSection from './OverviewGaugeSection';
 import CuratorAssignmentTable from './CuratorAssignmentTable';
+import HasilJuaraTab from './HasilJuaraTab';
 
-export default async function OverviewDashboard() {
+export default async function OverviewDashboard({
+  searchParams,
+}: {
+  searchParams: Promise<{ tab?: string }>;
+}) {
   const session = await getSession();
+  const resolvedSearchParams = await searchParams;
+  const tabParam = resolvedSearchParams.tab;
 
   const cookieStore = await cookies();
   const activeRoleCookie = session ? cookieStore.get(`pia_active_role_${session.userId}`)?.value : null;
@@ -41,6 +48,76 @@ export default async function OverviewDashboard() {
       </div>
     );
   }
+
+  // ─── Hasil Final Queries ─────────────────────────────────────────────────
+  // Regional: sessions yang sudah hasil_terkunci
+  const lockedSessions = await db
+    .select({ id: regionalFinalSessions.id, region: regionalFinalSessions.region })
+    .from(regionalFinalSessions)
+    .where(and(
+      eq(regionalFinalSessions.competitionId, activeComp.id),
+      eq(regionalFinalSessions.status, 'hasil_terkunci')
+    ));
+
+  const hasRegionalResults = lockedSessions.length > 0;
+
+  // Get regional results rows (rank + score) for locked sessions
+  const rawRegionalResults = hasRegionalResults
+    ? await db
+        .select({
+          sessionId: regionalFinalResults.sessionId,
+          rank: regionalFinalResults.rank,
+          finalScore: regionalFinalResults.finalScore,
+          tieBreakNote: regionalFinalResults.tieBreakNote,
+          title: proposals.title,
+          proposerName: proposals.proposerName,
+        })
+        .from(regionalFinalResults)
+        .innerJoin(proposals, eq(regionalFinalResults.proposalId, proposals.id))
+        .where(inArray(regionalFinalResults.sessionId, lockedSessions.map(s => s.id)))
+    : [];
+
+  // Group by region
+  const regionalGroups = lockedSessions
+    .map(s => ({
+      region: s.region,
+      winners: rawRegionalResults
+        .filter(r => r.sessionId === s.id)
+        .sort((a, b) => (a.rank ?? 999) - (b.rank ?? 999))
+        .map(r => ({
+          rank: r.rank,
+          title: r.title,
+          proposerName: r.proposerName,
+          score: r.finalScore,
+          tieBreakNote: r.tieBreakNote,
+        })),
+    }))
+    .sort((a, b) => {
+      if (a.region === 'Kantor Pusat') return 1;
+      if (b.region === 'Kantor Pusat') return -1;
+      return a.region.localeCompare(b.region);
+    });
+
+  // National: finalResults
+  const rawNationalResults = await db
+    .select({
+      title: proposals.title,
+      proposerName: proposals.proposerName,
+      category: proposals.category,
+      medal: finalResults.resultStatus,
+      rank: finalResults.rank,
+    })
+    .from(finalResults)
+    .innerJoin(proposals, eq(finalResults.proposalId, proposals.id))
+    .where(eq(finalResults.competitionId, activeComp.id));
+
+  const hasNationalResults = rawNationalResults.length > 0;
+
+  // "Final Selesai" = ada regional terkunci ATAU ada hasil nasional
+  const finalSelesai = hasRegionalResults || hasNationalResults;
+
+  // Tab aktif: default ke 'hasil' kalau finalSelesai, kecuali user eksplisit pilih 'progress'
+  const activeTab = finalSelesai && tabParam !== 'progress' ? 'hasil' : 'progress';
 
   // Active Users count for Admin
   const isAdmin = session?.roles?.includes('admin');
@@ -251,6 +328,44 @@ export default async function OverviewDashboard() {
         )}
       </div>
 
+      {/* Tab Navigation */}
+      {finalSelesai && (
+        <div className="flex gap-1 mb-8 p-1 bg-gray-100 rounded-xl w-fit">
+          <Link
+            href="/overview?tab=hasil"
+            className={`px-5 py-2 rounded-lg text-sm font-semibold transition-all ${
+              activeTab === 'hasil'
+                ? 'bg-white text-indigo-700 shadow-sm'
+                : 'text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            🏆 Hasil Juara
+          </Link>
+          <Link
+            href="/overview?tab=progress"
+            className={`px-5 py-2 rounded-lg text-sm font-semibold transition-all ${
+              activeTab === 'progress'
+                ? 'bg-white text-indigo-700 shadow-sm'
+                : 'text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            📊 Progress Kurasi
+          </Link>
+        </div>
+      )}
+
+      {/* Tab: Hasil Juara */}
+      {finalSelesai && activeTab === 'hasil' && (
+        <HasilJuaraTab
+          regionalGroups={regionalGroups}
+          nationalResults={rawNationalResults}
+        />
+      )}
+
+      {/* Tab: Progress Kurasi */}
+      {(!finalSelesai || activeTab === 'progress') && (
+        <>
+
       {/* Stats Header */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         {/* Card 1: Total Proposal Submit */}
@@ -432,6 +547,8 @@ export default async function OverviewDashboard() {
         <CuratorAssignmentTable curatorStats={curatorStats} />
       )}
 
+      </>
+      )}
 
     </div>
   );
