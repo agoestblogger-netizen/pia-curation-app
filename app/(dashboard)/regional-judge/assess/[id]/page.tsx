@@ -7,7 +7,7 @@ import Link from 'next/link';
 import RegionalAssessClient from './RegionalAssessClient';
 import FormattedTextDisplay from '@/app/components/FormattedTextDisplay';
 import { getRegionalFinalProposals } from '@/app/actions/regional-final-judging';
-import ProposalDetailCollapsible from './ProposalDetailCollapsible';
+import ProposalDetailCollapsible from '@/app/components/ProposalDetailCollapsible';
 
 export default async function AssessPage({
   params,

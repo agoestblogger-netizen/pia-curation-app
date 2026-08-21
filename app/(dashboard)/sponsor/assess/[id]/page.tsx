@@ -1,12 +1,11 @@
 import { requireRole } from '@/lib/auth/helpers';
 import { db } from '@/lib/db';
 import { proposals, grandFinalAssessments, competitions } from '@/lib/db/schema';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, sql } from 'drizzle-orm';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import AssessClient from './AssessClient';
-import FormattedTextDisplay from '@/app/components/FormattedTextDisplay';
-import CollapsibleReview from './CollapsibleReview';
+import ProposalDetailCollapsible from '@/app/components/ProposalDetailCollapsible';
 
 export default async function AssessPage({
   params,
@@ -51,6 +50,16 @@ export default async function AssessPage({
   const prevId = currentIndex > 0 ? gfProposals[currentIndex - 1].id : null;
   const nextId = currentIndex < gfProposals.length - 1 ? gfProposals[currentIndex + 1].id : null;
 
+  // Get proposal row number (within same category) for display
+  const rnResult = await db.execute(sql`
+    SELECT rn FROM (
+      SELECT id, ROW_NUMBER() OVER (PARTITION BY category ORDER BY id ASC) as rn
+      FROM proposals
+      WHERE competition_id = ${proposal.competitionId}
+    ) sub WHERE sub.id = ${proposalId}
+  `);
+  const proposalRowNumber = rnResult.length > 0 ? Number(rnResult[0].rn) : 0;
+
   return (
     <div className="p-6 max-w-5xl mx-auto space-y-6">
       <Link href="/sponsor" className="inline-flex items-center text-sm font-medium text-indigo-600 hover:text-indigo-800 transition-colors">
@@ -76,21 +85,13 @@ export default async function AssessPage({
             <p className="text-gray-600 mt-1 font-medium">Inovator: {proposal.proposerName} <span className="text-gray-400">({proposal.proposerUnitKerja || proposal.regionCenter || proposal.division || proposal.proposerOrg || '-'})</span></p>
           </div>
         </div>
-        
-        {proposal.summary && (
-          <CollapsibleReview>
-            <FormattedTextDisplay 
-              proposalId={proposal.id}
-              fieldName="summary"
-              originalText={proposal.summary}
-              formattedText={(proposal.formattedTexts as any)?.summary}
-              canFormat={true}
-              autoFormatOnLoad={true}
-              hideFormatButton={true}
-            />
-          </CollapsibleReview>
-        )}
       </div>
+
+      {/* Detail Proposal Collapsible — default collapsed, di atas form penilaian */}
+      <ProposalDetailCollapsible
+        proposal={proposal as any}
+        proposalRowNumber={proposalRowNumber}
+      />
 
       <AssessClient 
         competitionId={activeComp.id}
