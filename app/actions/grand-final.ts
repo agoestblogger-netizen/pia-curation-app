@@ -1,7 +1,7 @@
 'use server';
 
 import { db } from '@/lib/db';
-import { competitions, grandFinalAssessments, proposals, users, finalResults, auditLogs } from '@/lib/db/schema';
+import { competitions, grandFinalAssessments, proposals, users, finalResults, auditLogs, grandFinalDrawOrder } from '@/lib/db/schema';
 import { requireRole } from '@/lib/auth/helpers';
 import { eq, and, sql, inArray } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
@@ -418,3 +418,79 @@ export async function lockGrandFinalResultsAction(
   revalidatePath('/coordinator/grand-final/sidang');
   return { success: true };
 }
+
+// ─── GRAND FINAL DRAW ORDERS ──────────────────────────────────────────────────
+export async function getGrandFinalDrawOrders(competitionId: number) {
+  await requireRole(['coordinator', 'admin', 'viewer', 'sponsor']);
+  return db
+    .select()
+    .from(grandFinalDrawOrder)
+    .where(eq(grandFinalDrawOrder.competitionId, competitionId));
+}
+
+export async function setGrandFinalDrawOrdersAction(
+  competitionId: number,
+  orders: { proposalId: number; sortOrder: number | null }[]
+): Promise<{ success: boolean; error?: string }> {
+  const session = await requireRole(['coordinator', 'admin']);
+
+  // Validasi duplicate numbers (kecuali null)
+  const nonNullOrders = orders.filter(o => o.sortOrder !== null && o.sortOrder !== undefined);
+  const orderNums = nonNullOrders.map(o => o.sortOrder as number);
+  const uniqueNums = new Set(orderNums);
+  if (orderNums.length !== uniqueNums.size) {
+    return { success: false, error: 'Terdapat nomor undian duplikat. Setiap nomor harus unik.' };
+  }
+
+  // Validasi: semua proposalId harus valid dan berstatus grand_final di kompetisi ini
+  if (orders.length > 0) {
+    const proposalIds = orders.map(o => o.proposalId);
+    const validProposals = await db
+      .select({ id: proposals.id })
+      .from(proposals)
+      .where(
+        and(
+          eq(proposals.competitionId, competitionId),
+          eq(proposals.status, 'grand_final'),
+          inArray(proposals.id, proposalIds)
+        )
+      );
+    if (validProposals.length !== proposalIds.length) {
+      return { success: false, error: 'Beberapa proposal tidak valid untuk kompetisi ini.' };
+    }
+  }
+
+  // Hapus semua draw order lama untuk kompetisi ini
+  await db
+    .delete(grandFinalDrawOrder)
+    .where(eq(grandFinalDrawOrder.competitionId, competitionId));
+
+  // Insert yang baru (hanya yang memiliki sortOrder valid)
+  const valuesToInsert = nonNullOrders.map(o => ({
+    competitionId,
+    proposalId: o.proposalId,
+    sortOrder: o.sortOrder,
+    updatedAt: new Date(),
+  }));
+
+  if (valuesToInsert.length > 0) {
+    await db.insert(grandFinalDrawOrder).values(valuesToInsert);
+  }
+
+  await createAuditLog(
+    session.userId,
+    session.name,
+    'SET_GRAND_FINAL_DRAW_ORDER',
+    'competitions',
+    competitionId.toString(),
+    null,
+    { count: valuesToInsert.length },
+    'Mengatur nomor undian Grand Final'
+  );
+
+  revalidatePath('/coordinator/grand-final/kelola');
+  revalidatePath('/sponsor');
+  revalidatePath('/sponsor/assess');
+  return { success: true };
+}
+

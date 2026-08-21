@@ -55,6 +55,7 @@ export async function createUserAction(
     email,
     passwordHash,
     roles,
+    mustChangePassword: roles.includes('regional'),
     isActive: true,
   }).returning();
 
@@ -171,6 +172,9 @@ export async function updateUserAction(
 
   if (password && password.length > 0) {
     updateData.passwordHash = await bcrypt.hash(password, 10);
+    if (roles.includes('regional')) {
+      updateData.mustChangePassword = true;
+    }
   }
 
   // Update

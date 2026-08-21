@@ -13,6 +13,7 @@ export interface SessionPayload {
   name: string;
   email: string;
   roles: string[];
+  mustChangePassword?: boolean;
 }
 
 export async function createSession(payload: SessionPayload): Promise<string> {
@@ -34,6 +35,7 @@ export async function verifySession(token: string): Promise<SessionPayload | nul
         name: payload.name as string,
         email: payload.email as string,
         roles: payload.roles as string[],
+        mustChangePassword: Boolean(payload.mustChangePassword),
       };
   } catch {
     return null;

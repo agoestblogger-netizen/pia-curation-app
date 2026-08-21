@@ -24,6 +24,7 @@ export const users = pgTable('users', {
   email: text('email').notNull().unique(),
   passwordHash: text('password_hash').notNull(),
   roles: text('roles').array().notNull().default(sql`'{"curator"}'`), // array of coordinator | curator | promoter | sponsor
+  mustChangePassword: boolean('must_change_password').notNull().default(false),
   isActive: boolean('is_active').notNull().default(true),
   deletedAt: timestamp('deleted_at', { withTimezone: true }),
   lastActiveAt: timestamp('last_active_at', { withTimezone: true }),
@@ -335,6 +336,21 @@ export const grandFinalSelections = pgTable('grand_final_selections', {
   lockedBy: integer('locked_by').references(() => users.id),
 });
 
+// ─── GRAND FINAL DRAW ORDER ─────────────────────────────────────────────────
+// Nomor urut undian Grand Final — 1 urutan gabungan BI+BC per kompetisi.
+// Pola: sama dengan grand_final_sponsors.sort_order, tapi tabel terpisah kecil
+// karena proposal tidak punya baris di grand_final_selections (langsung status update).
+// sort_order NULL = belum diundi (tampil di akhir daftar).
+export const grandFinalDrawOrder = pgTable('grand_final_draw_order', {
+  id: serial('id').primaryKey(),
+  competitionId: integer('competition_id').notNull().references(() => competitions.id),
+  proposalId: integer('proposal_id').notNull().references(() => proposals.id),
+  sortOrder: integer('sort_order'),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [
+  uniqueIndex('grand_final_draw_order_unique').on(table.competitionId, table.proposalId),
+]);
+
 // ─── GRAND FINAL ASSESSMENTS (SPONSOR SCORES) ───────────────────────────────
 export const grandFinalAssessments = pgTable('grand_final_assessments', {
   id: serial('id').primaryKey(),
@@ -589,6 +605,7 @@ export type CuratorAssignment = typeof curatorAssignments.$inferSelect;
 export type ScreeningResult = typeof screeningResults.$inferSelect;
 export type PromoterSelection = typeof promoterSelections.$inferSelect;
 export type GrandFinalSelection = typeof grandFinalSelections.$inferSelect;
+export type GrandFinalDrawOrder = typeof grandFinalDrawOrder.$inferSelect;
 export type GrandFinalSponsor = typeof grandFinalSponsors.$inferSelect;
 export type GrandFinalAssessment = typeof grandFinalAssessments.$inferSelect;
 
