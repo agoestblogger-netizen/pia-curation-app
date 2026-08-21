@@ -5,8 +5,6 @@ import { eq, and, sql } from 'drizzle-orm';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import AssessClient from './AssessClient';
-import FormattedTextDisplay from '@/app/components/FormattedTextDisplay';
-import CollapsibleReview from './CollapsibleReview';
 import ProposalDetailCollapsible from '@/app/components/ProposalDetailCollapsible';
 
 export default async function AssessPage({
@@ -87,20 +85,6 @@ export default async function AssessPage({
             <p className="text-gray-600 mt-1 font-medium">Inovator: {proposal.proposerName} <span className="text-gray-400">({proposal.proposerUnitKerja || proposal.regionCenter || proposal.division || proposal.proposerOrg || '-'})</span></p>
           </div>
         </div>
-        
-        {proposal.summary && (
-          <CollapsibleReview>
-            <FormattedTextDisplay 
-              proposalId={proposal.id}
-              fieldName="summary"
-              originalText={proposal.summary}
-              formattedText={(proposal.formattedTexts as any)?.summary}
-              canFormat={true}
-              autoFormatOnLoad={true}
-              hideFormatButton={true}
-            />
-          </CollapsibleReview>
-        )}
       </div>
 
       {/* Detail Proposal Collapsible — default collapsed, di atas form penilaian */}
