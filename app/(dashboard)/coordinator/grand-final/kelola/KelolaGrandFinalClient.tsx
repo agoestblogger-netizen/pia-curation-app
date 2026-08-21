@@ -2,12 +2,21 @@
 
 import { useState, useTransition } from 'react';
 import { assignGrandFinalSponsorsAction } from '@/app/actions/grand-final-sponsors';
+import { setGrandFinalOrderAction } from '@/app/actions/grand-final';
 import { useRouter } from 'next/navigation';
 
 type SponsorCandidate = {
   id: number;
   name: string;
   email: string | null;
+};
+
+type ProposalItem = {
+  id: number;
+  externalSubId: number | null;
+  title: string;
+  category: string;
+  grandFinalOrder: number | null;
 };
 
 export default function KelolaGrandFinalClient({
@@ -20,27 +29,76 @@ export default function KelolaGrandFinalClient({
   competitionId: number;
   candidates: SponsorCandidate[];
   initialAssigned: number[];
-  proposals: any[];
+  proposals: ProposalItem[];
   assessments: any[];
 }) {
+  const router = useRouter();
+
+  // ─── Sponsor Assignment State ─────────────────────────────────────────────
   const [selectedIds, setSelectedIds] = useState<number[]>(initialAssigned);
   const [orderMap, setOrderMap] = useState<Record<number, number>>(() => {
     const map: Record<number, number> = {};
     initialAssigned.forEach((id, idx) => {
-      map[id] = idx + 1; // Default initial order if they already exist
+      map[id] = idx + 1;
     });
     return map;
   });
-  const [isPending, startTransition] = useTransition();
-  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-  const router = useRouter();
+  const [isSponsorPending, startSponsorTransition] = useTransition();
+  const [sponsorMessage, setSponsorMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
+  // ─── Nomor Undian State ───────────────────────────────────────────────────
+  // Map proposalId → nomor undian (string agar bisa kosong di input)
+  const [lotteryMap, setLotteryMap] = useState<Record<number, string>>(() => {
+    const map: Record<number, string> = {};
+    proposals.forEach(p => {
+      map[p.id] = p.grandFinalOrder !== null && p.grandFinalOrder !== undefined
+        ? String(p.grandFinalOrder)
+        : '';
+    });
+    return map;
+  });
+  const [isLotteryPending, startLotteryTransition] = useTransition();
+  const [lotteryMessage, setLotteryMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  // Validasi duplikat nomor undian
+  const lotteryError = (() => {
+    const nums = Object.values(lotteryMap)
+      .filter(v => v !== '' && !isNaN(Number(v)))
+      .map(Number);
+    const unique = new Set(nums);
+    if (nums.length !== unique.size) return 'Ada nomor undian duplikat. Setiap nomor harus unik.';
+    return null;
+  })();
+
+  const handleLotteryChange = (proposalId: number, val: string) => {
+    setLotteryMap(prev => ({ ...prev, [proposalId]: val }));
+  };
+
+  const handleSaveLottery = () => {
+    if (lotteryError) return;
+    setLotteryMessage(null);
+    startLotteryTransition(async () => {
+      const orders = proposals.map(p => ({
+        proposalId: p.id,
+        grandFinalOrder: lotteryMap[p.id] !== '' && !isNaN(Number(lotteryMap[p.id]))
+          ? Number(lotteryMap[p.id])
+          : null,
+      }));
+      const res = await setGrandFinalOrderAction(competitionId, orders);
+      if (res.success) {
+        setLotteryMessage({ type: 'success', text: 'Nomor undian berhasil disimpan.' });
+        router.refresh();
+      } else {
+        setLotteryMessage({ type: 'error', text: res.error || 'Gagal menyimpan nomor undian.' });
+      }
+    });
+  };
+
+  // ─── Sponsor Assignment Handlers ─────────────────────────────────────────
   const handleToggle = (id: number, e?: React.MouseEvent) => {
-    // Prevent toggle if clicking on the number input
     if (e && (e.target as HTMLElement).tagName === 'INPUT' && (e.target as HTMLInputElement).type === 'number') {
       return;
     }
-    
     setSelectedIds(prev => {
       if (prev.includes(id)) {
         setOrderMap(old => {
@@ -61,16 +119,16 @@ export default function KelolaGrandFinalClient({
     setOrderMap(old => ({ ...old, [id]: isNaN(num) ? 0 : num }));
   };
 
-  const handleSave = () => {
-    setMessage(null);
-    startTransition(async () => {
+  const handleSaveSponsor = () => {
+    setSponsorMessage(null);
+    startSponsorTransition(async () => {
       const payload = selectedIds.map(id => ({ userId: id, sortOrder: orderMap[id] || 0 }));
       const res = await assignGrandFinalSponsorsAction(competitionId, payload);
       if (res.success) {
-        setMessage({ type: 'success', text: 'Penugasan Sponsor berhasil disimpan.' });
+        setSponsorMessage({ type: 'success', text: 'Penugasan Juri Nasional berhasil disimpan.' });
         router.refresh();
       } else {
-        setMessage({ type: 'error', text: 'Gagal menyimpan penugasan.' });
+        setSponsorMessage({ type: 'error', text: 'Gagal menyimpan penugasan.' });
       }
     });
   };
@@ -84,202 +142,332 @@ export default function KelolaGrandFinalClient({
   const progressPercent = totalAssessmentsNeeded > 0 ? Math.round((totalAssessmentsDone / totalAssessmentsNeeded) * 100) : 0;
   const isComplete = totalAssessmentsNeeded > 0 && totalAssessmentsDone === totalAssessmentsNeeded;
 
+  // Count proposals with/without lottery number
+  const filledCount = proposals.filter(p =>
+    lotteryMap[p.id] !== '' && !isNaN(Number(lotteryMap[p.id]))
+  ).length;
+
   return (
-    <div className="bg-white rounded-lg shadow border border-gray-200">
-      <div className="p-4 border-b border-gray-200 flex justify-between items-center">
-        <h2 className="text-lg font-semibold text-gray-800">Daftar Kandidat Sponsor</h2>
-        <div className="text-sm text-gray-600">
-          <span className="font-semibold text-indigo-600">{selectedIds.length}</span> Sponsor dipilih
-        </div>
-      </div>
-      
-      {message && (
-        <div className={`p-4 mx-4 mt-4 text-sm rounded-md ${
-          message.type === 'success' ? 'bg-green-50 text-green-800 border border-green-200' : 'bg-red-50 text-red-800 border border-red-200'
-        }`}>
-          {message.text}
-        </div>
-      )}
+    <div className="space-y-8">
 
-      <div className="p-4">
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200 border rounded-lg overflow-hidden">
-            <thead className="bg-gray-50">
-              <tr>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-16 text-center">
-                  Tugaskan
-                </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Nama Sponsor
-                </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-24">
-                  Urutan
-                </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Email
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {candidates.map((candidate) => {
-                const isSelected = selectedIds.includes(candidate.id);
-                return (
-                  <tr 
-                    key={candidate.id}
-                    className={`hover:bg-gray-50 transition-colors cursor-pointer ${isSelected ? 'bg-indigo-50/30' : ''}`}
-                    onClick={() => handleToggle(candidate.id)}
-                  >
-                    <td className="px-6 py-4 whitespace-nowrap text-center">
-                      <input
-                        type="checkbox"
-                        className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded cursor-pointer"
-                        checked={isSelected}
-                        onChange={() => {}} // handled by tr click
-                      />
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-gray-900">{candidate.name}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      {isSelected ? (
-                        <input
-                          type="number"
-                          min="1"
-                          className="w-16 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-indigo-500 focus:border-indigo-500"
-                          value={orderMap[candidate.id] || ''}
-                          onChange={(e) => handleOrderChange(candidate.id, e.target.value)}
-                        />
-                      ) : (
-                        <span className="text-gray-300">-</span>
-                      )}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-500">{candidate.email || '-'}</div>
-                    </td>
-                  </tr>
-                );
-              })}
-              {candidates.length === 0 && (
-                <tr>
-                  <td colSpan={4} className="px-6 py-4 text-center text-sm text-gray-500">
-                    Tidak ada user dengan role Sponsor.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-
-        <div className="mt-6 flex justify-end">
-          <button
-            onClick={handleSave}
-            disabled={isPending}
-            className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {isPending ? 'Menyimpan...' : 'Simpan Penugasan'}
-          </button>
-        </div>
-      </div>
-
-      {assignedSponsorsData.length > 0 && (
-        <div className="border-t border-gray-200 mt-8 pt-8">
-          <div className="p-4 border-b border-gray-200 flex justify-between items-center bg-gray-50">
-            <h2 className="text-lg font-semibold text-gray-800">Monitoring Progress Penilaian</h2>
-            <div className="flex items-center gap-4">
-              <div className="text-sm text-gray-600 text-right">
-                <div>Progress Keseluruhan</div>
-                <div className="font-semibold text-gray-900">{totalAssessmentsDone} / {totalAssessmentsNeeded} Penilaian</div>
-              </div>
-              <div className="w-32 bg-gray-200 rounded-full h-2.5">
-                <div className={`h-2.5 rounded-full ${progressPercent === 100 ? 'bg-green-600' : 'bg-indigo-600'}`} style={{ width: `${progressPercent}%` }}></div>
-              </div>
-            </div>
+      {/* ── SECTION 1: NOMOR UNDIAN ──────────────────────────────────────────── */}
+      <div className="bg-white rounded-lg shadow border border-gray-200">
+        <div className="p-4 border-b border-gray-200 flex justify-between items-center">
+          <div>
+            <h2 className="text-lg font-semibold text-gray-800">Nomor Undian Grand Final</h2>
+            <p className="text-xs text-gray-500 mt-0.5">
+              Satu urutan gabungan untuk semua finalis (BI + BC). Proposal tanpa nomor undian akan tampil di akhir daftar.
+            </p>
           </div>
+          <div className="text-sm text-gray-600">
+            <span className="font-semibold text-indigo-600">{filledCount}</span> / {proposals.length} diisi
+          </div>
+        </div>
 
-          <div className="p-4">
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200 border rounded-lg overflow-hidden">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">ID</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Proposal</th>
-                    {assignedSponsorsData.map(sponsor => (
-                      <th key={sponsor.id} className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">
-                        {sponsor.name.split(' ')[0]}
-                      </th>
-                    ))}
-                    <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Status</th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {proposals.map(p => {
-                    const pAssessments = validAssessments.filter(a => a.proposalId === p.id);
-                    const isFullyAssessed = pAssessments.length === assignedSponsorsData.length;
-                    
-                    return (
-                      <tr key={p.id} className="hover:bg-gray-50">
-                        <td className="px-4 py-3 text-sm text-gray-500">{p.externalSubId || p.id}</td>
-                        <td className="px-4 py-3 text-sm font-medium text-gray-900 line-clamp-2">{p.title}</td>
-                        {assignedSponsorsData.map(sponsor => {
-                          const assessment = pAssessments.find(a => a.sponsorId === sponsor.id);
-                          return (
-                            <td key={sponsor.id} className="px-4 py-3 text-center">
-                              {assessment ? (
-                                <span className="inline-flex flex-col items-center">
-                                  <span className="text-sm font-semibold text-gray-900">{assessment.totalScore}</span>
-                                  <span className={`text-[10px] px-1.5 rounded-full ${
-                                    assessment.classification === 'Diamond' ? 'bg-blue-100 text-blue-800' :
-                                    assessment.classification === 'Platinum' ? 'bg-gray-200 text-gray-800' :
-                                    assessment.classification === 'Gold' ? 'bg-yellow-100 text-yellow-800' :
-                                    assessment.classification === 'Silver' ? 'bg-gray-100 text-gray-600' :
-                                    'bg-orange-100 text-orange-800'
-                                  }`}>{assessment.classification}</span>
-                                </span>
-                              ) : (
-                                <span className="text-gray-300">-</span>
-                              )}
-                            </td>
-                          );
-                        })}
-                        <td className="px-4 py-3 text-center">
-                          {isFullyAssessed ? (
-                            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
-                              Selesai
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800">
-                              {pAssessments.length}/{assignedSponsorsData.length}
-                            </span>
-                          )}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                  {proposals.length === 0 && (
+        {lotteryMessage && (
+          <div className={`p-4 mx-4 mt-4 text-sm rounded-md ${
+            lotteryMessage.type === 'success'
+              ? 'bg-green-50 text-green-800 border border-green-200'
+              : 'bg-red-50 text-red-800 border border-red-200'
+          }`}>
+            {lotteryMessage.text}
+          </div>
+        )}
+
+        {lotteryError && (
+          <div className="p-4 mx-4 mt-4 text-sm rounded-md bg-red-50 text-red-800 border border-red-200">
+            ⚠ {lotteryError}
+          </div>
+        )}
+
+        <div className="p-4">
+          {proposals.length === 0 ? (
+            <p className="text-sm text-gray-500 text-center py-4">
+              Belum ada proposal Grand Final. Promosikan proposal ke status Grand Final terlebih dahulu.
+            </p>
+          ) : (
+            <>
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200 border rounded-lg overflow-hidden">
+                  <thead className="bg-gray-50">
                     <tr>
-                      <td colSpan={3 + assignedSponsorsData.length} className="px-4 py-4 text-center text-sm text-gray-500">
-                        Belum ada proposal Grand Final.
+                      <th scope="col" className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-28">
+                        No. Undian
+                      </th>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Judul Proposal
+                      </th>
+                      <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-24">
+                        Kategori
+                      </th>
+                      <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-20">
+                        ID
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {proposals.map((proposal) => {
+                      const val = lotteryMap[proposal.id] ?? '';
+                      const isDupe = val !== '' && !isNaN(Number(val)) &&
+                        Object.entries(lotteryMap).some(([pid, v]) =>
+                          Number(pid) !== proposal.id && v === val && v !== ''
+                        );
+                      return (
+                        <tr key={proposal.id} className="hover:bg-gray-50 transition-colors">
+                          <td className="px-4 py-3 text-center">
+                            <input
+                              type="number"
+                              min="1"
+                              placeholder="—"
+                              className={`w-20 px-2 py-1 text-sm border rounded focus:ring-indigo-500 focus:border-indigo-500 text-center font-semibold ${
+                                isDupe
+                                  ? 'border-red-400 bg-red-50 text-red-700'
+                                  : val !== ''
+                                    ? 'border-indigo-300 bg-indigo-50 text-indigo-800'
+                                    : 'border-gray-300'
+                              }`}
+                              value={val}
+                              onChange={(e) => handleLotteryChange(proposal.id, e.target.value)}
+                            />
+                          </td>
+                          <td className="px-6 py-3 text-sm font-medium text-gray-900">
+                            {proposal.title}
+                          </td>
+                          <td className="px-4 py-3 whitespace-nowrap">
+                            <span className={`inline-flex px-2 py-0.5 text-xs font-semibold rounded-full ${
+                              proposal.category === 'BI'
+                                ? 'bg-blue-100 text-blue-800'
+                                : 'bg-purple-100 text-purple-800'
+                            }`}>
+                              {proposal.category}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 whitespace-nowrap text-xs text-gray-400 font-mono">
+                            {proposal.externalSubId || proposal.id}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="mt-4 flex justify-end">
+                <button
+                  onClick={handleSaveLottery}
+                  disabled={isLotteryPending || !!lotteryError}
+                  className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isLotteryPending ? 'Menyimpan...' : 'Simpan Nomor Undian'}
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* ── SECTION 2: DEWAN JURI NASIONAL (SPONSOR) ────────────────────────── */}
+      <div className="bg-white rounded-lg shadow border border-gray-200">
+        <div className="p-4 border-b border-gray-200 flex justify-between items-center">
+          <h2 className="text-lg font-semibold text-gray-800">Daftar Kandidat Juri Nasional</h2>
+          <div className="text-sm text-gray-600">
+            <span className="font-semibold text-indigo-600">{selectedIds.length}</span> Juri dipilih
+          </div>
+        </div>
+
+        {sponsorMessage && (
+          <div className={`p-4 mx-4 mt-4 text-sm rounded-md ${
+            sponsorMessage.type === 'success' ? 'bg-green-50 text-green-800 border border-green-200' : 'bg-red-50 text-red-800 border border-red-200'
+          }`}>
+            {sponsorMessage.text}
+          </div>
+        )}
+
+        <div className="p-4">
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200 border rounded-lg overflow-hidden">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-16 text-center">
+                    Tugaskan
+                  </th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Nama Juri Nasional
+                  </th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-24">
+                    Urutan
+                  </th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Email
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {candidates.map((candidate) => {
+                  const isSelected = selectedIds.includes(candidate.id);
+                  return (
+                    <tr
+                      key={candidate.id}
+                      className={`hover:bg-gray-50 transition-colors cursor-pointer ${isSelected ? 'bg-indigo-50/30' : ''}`}
+                      onClick={() => handleToggle(candidate.id)}
+                    >
+                      <td className="px-6 py-4 whitespace-nowrap text-center">
+                        <input
+                          type="checkbox"
+                          className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded cursor-pointer"
+                          checked={isSelected}
+                          onChange={() => {}}
+                        />
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm font-medium text-gray-900">{candidate.name}</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        {isSelected ? (
+                          <input
+                            type="number"
+                            min="1"
+                            className="w-16 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-indigo-500 focus:border-indigo-500"
+                            value={orderMap[candidate.id] || ''}
+                            onChange={(e) => handleOrderChange(candidate.id, e.target.value)}
+                            onClick={(e) => e.stopPropagation()}
+                          />
+                        ) : (
+                          <span className="text-gray-300">-</span>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-500">{candidate.email || '-'}</div>
                       </td>
                     </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
+                  );
+                })}
+                {candidates.length === 0 && (
+                  <tr>
+                    <td colSpan={4} className="px-6 py-4 text-center text-sm text-gray-500">
+                      Tidak ada user dengan role Juri Nasional/Sponsor.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
 
-            <div className="mt-6 flex justify-end">
-              <button
-                onClick={() => router.push('/coordinator/grand-final/sidang')}
-                disabled={!isComplete}
-                className={`inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white ${
-                  isComplete ? 'bg-indigo-600 hover:bg-indigo-700' : 'bg-gray-400 cursor-not-allowed'
-                }`}
-              >
-                Lanjut ke Sidang Penetapan &rarr;
-              </button>
-            </div>
+          <div className="mt-6 flex justify-end">
+            <button
+              onClick={handleSaveSponsor}
+              disabled={isSponsorPending}
+              className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isSponsorPending ? 'Menyimpan...' : 'Simpan Penugasan'}
+            </button>
           </div>
         </div>
-      )}
+
+        {assignedSponsorsData.length > 0 && (
+          <div className="border-t border-gray-200 mt-8 pt-8">
+            <div className="p-4 border-b border-gray-200 flex justify-between items-center bg-gray-50">
+              <h2 className="text-lg font-semibold text-gray-800">Monitoring Progress Penilaian</h2>
+              <div className="flex items-center gap-4">
+                <div className="text-sm text-gray-600 text-right">
+                  <div>Progress Keseluruhan</div>
+                  <div className="font-semibold text-gray-900">{totalAssessmentsDone} / {totalAssessmentsNeeded} Penilaian</div>
+                </div>
+                <div className="w-32 bg-gray-200 rounded-full h-2.5">
+                  <div className={`h-2.5 rounded-full ${progressPercent === 100 ? 'bg-green-600' : 'bg-indigo-600'}`} style={{ width: `${progressPercent}%` }}></div>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-4">
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200 border rounded-lg overflow-hidden">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">No. Undian</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">ID</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Proposal</th>
+                      {assignedSponsorsData.map(sponsor => (
+                        <th key={sponsor.id} className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">
+                          {sponsor.name.split(' ')[0]}
+                        </th>
+                      ))}
+                      <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {proposals.map(p => {
+                      const pAssessments = validAssessments.filter(a => a.proposalId === p.id);
+                      const isFullyAssessed = pAssessments.length === assignedSponsorsData.length;
+
+                      return (
+                        <tr key={p.id} className="hover:bg-gray-50">
+                          <td className="px-4 py-3 text-sm font-semibold text-indigo-700 text-center">
+                            {p.grandFinalOrder ?? <span className="text-gray-300">—</span>}
+                          </td>
+                          <td className="px-4 py-3 text-sm text-gray-500">{p.externalSubId || p.id}</td>
+                          <td className="px-4 py-3 text-sm font-medium text-gray-900 line-clamp-2">{p.title}</td>
+                          {assignedSponsorsData.map(sponsor => {
+                            const assessment = pAssessments.find(a => a.sponsorId === sponsor.id);
+                            return (
+                              <td key={sponsor.id} className="px-4 py-3 text-center">
+                                {assessment ? (
+                                  <span className="inline-flex flex-col items-center">
+                                    <span className="text-sm font-semibold text-gray-900">{assessment.totalScore}</span>
+                                    <span className={`text-[10px] px-1.5 rounded-full ${
+                                      assessment.classification === 'Diamond' ? 'bg-blue-100 text-blue-800' :
+                                      assessment.classification === 'Platinum' ? 'bg-gray-200 text-gray-800' :
+                                      assessment.classification === 'Gold' ? 'bg-yellow-100 text-yellow-800' :
+                                      assessment.classification === 'Silver' ? 'bg-gray-100 text-gray-600' :
+                                      'bg-orange-100 text-orange-800'
+                                    }`}>{assessment.classification}</span>
+                                  </span>
+                                ) : (
+                                  <span className="text-gray-300">-</span>
+                                )}
+                              </td>
+                            );
+                          })}
+                          <td className="px-4 py-3 text-center">
+                            {isFullyAssessed ? (
+                              <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
+                                Selesai
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800">
+                                {pAssessments.length}/{assignedSponsorsData.length}
+                              </span>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                    {proposals.length === 0 && (
+                      <tr>
+                        <td colSpan={4 + assignedSponsorsData.length} className="px-4 py-4 text-center text-sm text-gray-500">
+                          Belum ada proposal Grand Final.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="mt-6 flex justify-end">
+                <button
+                  onClick={() => router.push('/coordinator/grand-final/sidang')}
+                  disabled={!isComplete}
+                  className={`inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white ${
+                    isComplete ? 'bg-indigo-600 hover:bg-indigo-700' : 'bg-gray-400 cursor-not-allowed'
+                  }`}
+                >
+                  Lanjut ke Sidang Penetapan &rarr;
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

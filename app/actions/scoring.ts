@@ -10,7 +10,7 @@ import {
   competitions,
 } from '@/lib/db/schema';
 import { requireRole } from '@/lib/auth/helpers';
-import { eq, and, count, avg, sum } from 'drizzle-orm';
+import { eq, and, count, avg, sum, asc, sql } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { audit } from '@/lib/audit';
@@ -294,5 +294,9 @@ export async function getGrandFinalProposals(competitionId: number) {
         eq(proposals.status, 'grand_final')
       )
     )
-    .orderBy(proposals.id);
+    // Sort by nomor undian (gabungan BI+BC) — NULL di akhir, lalu by id sebagai tiebreaker
+    .orderBy(
+      sql`${proposals.grandFinalOrder} ASC NULLS LAST`,
+      asc(proposals.id)
+    );
 }
