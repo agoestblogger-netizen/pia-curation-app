@@ -34,13 +34,15 @@ export default function KelolaGrandFinalClient({
 }) {
   const router = useRouter();
 
-  // ─── Nomor Undian State ───────────────────────────────────────────────────
-  const [lotteryMap, setLotteryMap] = useState<Record<number, string>>(() => {
-    const map: Record<number, string> = {};
-    proposals.forEach(p => {
-      map[p.id] = p.drawOrder !== null && p.drawOrder !== undefined
-        ? String(p.drawOrder)
-        : '';
+  // ─── Nomor Undian State (Pola sama persis seperti Juri Nasional) ───────────
+  const initialOrderedProposals = proposals.filter(p => p.drawOrder !== null && p.drawOrder !== undefined);
+  const [selectedProposalIds, setSelectedProposalIds] = useState<number[]>(() => 
+    initialOrderedProposals.map(p => p.id)
+  );
+  const [lotteryOrderMap, setLotteryOrderMap] = useState<Record<number, number>>(() => {
+    const map: Record<number, number> = {};
+    initialOrderedProposals.forEach(p => {
+      map[p.id] = p.drawOrder!;
     });
     return map;
   });
@@ -48,17 +50,40 @@ export default function KelolaGrandFinalClient({
   const [lotteryMessage, setLotteryMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   // Validasi duplikat nomor undian
-  const lotteryError = (() => {
-    const nums = Object.values(lotteryMap)
-      .filter(v => v !== '' && !isNaN(Number(v)))
-      .map(Number);
-    const unique = new Set(nums);
-    if (nums.length !== unique.size) return 'Ada nomor undian duplikat. Setiap nomor harus unik.';
-    return null;
-  })();
+  const lotteryOrderValues = selectedProposalIds.map(id => lotteryOrderMap[id]).filter(v => v !== undefined && v !== null && v > 0);
+  const uniqueLotteryOrders = new Set(lotteryOrderValues);
+  const lotteryError = lotteryOrderValues.length !== uniqueLotteryOrders.size
+    ? 'Ada nomor undian duplikat. Setiap nomor harus unik.'
+    : null;
 
-  const handleLotteryChange = (proposalId: number, val: string) => {
-    setLotteryMap(prev => ({ ...prev, [proposalId]: val }));
+  const handleToggleProposal = (id: number, e?: React.MouseEvent) => {
+    if (e && (e.target as HTMLElement).tagName === 'INPUT' && (e.target as HTMLInputElement).type === 'number') {
+      return;
+    }
+    setSelectedProposalIds(prev => {
+      if (prev.includes(id)) {
+        setLotteryOrderMap(old => {
+          const newMap = { ...old };
+          delete newMap[id];
+          return newMap;
+        });
+        return prev.filter(x => x !== id);
+      } else {
+        // Otomatis cari nomor berikutnya yang belum terpakai
+        const usedOrders = Object.values(lotteryOrderMap);
+        let nextOrder = prev.length + 1;
+        while (usedOrders.includes(nextOrder)) {
+          nextOrder++;
+        }
+        setLotteryOrderMap(old => ({ ...old, [id]: nextOrder }));
+        return [...prev, id];
+      }
+    });
+  };
+
+  const handleLotteryOrderChange = (id: number, val: string) => {
+    const num = parseInt(val, 10);
+    setLotteryOrderMap(old => ({ ...old, [id]: isNaN(num) ? 0 : num }));
   };
 
   const handleSaveLottery = () => {
@@ -67,8 +92,8 @@ export default function KelolaGrandFinalClient({
     startLotteryTransition(async () => {
       const orders = proposals.map(p => ({
         proposalId: p.id,
-        sortOrder: lotteryMap[p.id] !== '' && !isNaN(Number(lotteryMap[p.id]))
-          ? Number(lotteryMap[p.id])
+        sortOrder: selectedProposalIds.includes(p.id) && (lotteryOrderMap[p.id] || 0) > 0
+          ? lotteryOrderMap[p.id]
           : null,
       }));
       const res = await setGrandFinalDrawOrdersAction(competitionId, orders);
@@ -140,24 +165,20 @@ export default function KelolaGrandFinalClient({
   const progressPercent = totalAssessmentsNeeded > 0 ? Math.round((totalAssessmentsDone / totalAssessmentsNeeded) * 100) : 0;
   const isComplete = totalAssessmentsNeeded > 0 && totalAssessmentsDone === totalAssessmentsNeeded;
 
-  const filledCount = proposals.filter(p =>
-    lotteryMap[p.id] !== '' && !isNaN(Number(lotteryMap[p.id]))
-  ).length;
-
   return (
     <div className="space-y-8">
 
-      {/* ── SECTION 1: NOMOR UNDIAN ──────────────────────────────────────────── */}
+      {/* ── SECTION 1: NOMOR UNDIAN (Format persis seperti Dewan Juri) ─────────── */}
       <div className="bg-white rounded-lg shadow border border-gray-200">
         <div className="p-4 border-b border-gray-200 flex justify-between items-center">
           <div>
             <h2 className="text-lg font-semibold text-gray-800">Nomor Undian Grand Final</h2>
             <p className="text-xs text-gray-500 mt-0.5">
-              Satu urutan gabungan untuk semua finalis (BI + BC). Proposal tanpa nomor undian akan tampil di akhir daftar.
+              Satu urutan gabungan untuk semua finalis (BI + BC). Centang proposal dan tentukan nomor urut tampil.
             </p>
           </div>
           <div className="text-sm text-gray-600">
-            <span className="font-semibold text-indigo-600">{filledCount}</span> / {proposals.length} diisi
+            <span className="font-semibold text-indigo-600">{selectedProposalIds.length}</span> / {proposals.length} diundi
           </div>
         </div>
 
@@ -188,59 +209,68 @@ export default function KelolaGrandFinalClient({
                 <table className="min-w-full divide-y divide-gray-200 border rounded-lg overflow-hidden">
                   <thead className="bg-gray-50">
                     <tr>
-                      <th scope="col" className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-28">
-                        No. Undian
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-16 text-center">
+                        Undi
                       </th>
                       <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Judul Proposal
                       </th>
-                      <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-24">
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-24">
+                        Urutan
+                      </th>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-28">
                         Kategori
                       </th>
-                      <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-20">
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-24">
                         ID
                       </th>
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
                     {proposals.map((proposal) => {
-                      const val = lotteryMap[proposal.id] ?? '';
-                      const isDupe = val !== '' && !isNaN(Number(val)) &&
-                        Object.entries(lotteryMap).some(([pid, v]) =>
-                          Number(pid) !== proposal.id && v === val && v !== ''
-                        );
+                      const isSelected = selectedProposalIds.includes(proposal.id);
                       return (
-                        <tr key={proposal.id} className="hover:bg-gray-50 transition-colors">
-                          <td className="px-4 py-3 text-center">
+                        <tr
+                          key={proposal.id}
+                          className={`hover:bg-gray-50 transition-colors cursor-pointer ${isSelected ? 'bg-indigo-50/30' : ''}`}
+                          onClick={() => handleToggleProposal(proposal.id)}
+                        >
+                          <td className="px-6 py-4 whitespace-nowrap text-center">
                             <input
-                              type="number"
-                              min="1"
-                              placeholder="—"
-                              className={`w-20 px-2 py-1 text-sm border rounded focus:ring-indigo-500 focus:border-indigo-500 text-center font-semibold ${
-                                isDupe
-                                  ? 'border-red-400 bg-red-50 text-red-700'
-                                  : val !== ''
-                                    ? 'border-indigo-300 bg-indigo-50 text-indigo-800'
-                                    : 'border-gray-300'
-                              }`}
-                              value={val}
-                              onChange={(e) => handleLotteryChange(proposal.id, e.target.value)}
+                              type="checkbox"
+                              className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded cursor-pointer"
+                              checked={isSelected}
+                              onChange={() => {}}
                             />
                           </td>
-                          <td className="px-6 py-3 text-sm font-medium text-gray-900">
-                            {proposal.title}
+                          <td className="px-6 py-4">
+                            <div className="text-sm font-medium text-gray-900">{proposal.title}</div>
                           </td>
-                          <td className="px-4 py-3 whitespace-nowrap">
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            {isSelected ? (
+                              <input
+                                type="number"
+                                min="1"
+                                className="w-16 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-indigo-500 focus:border-indigo-500"
+                                value={lotteryOrderMap[proposal.id] || ''}
+                                onChange={(e) => handleLotteryOrderChange(proposal.id, e.target.value)}
+                                onClick={(e) => e.stopPropagation()}
+                              />
+                            ) : (
+                              <span className="text-gray-300">-</span>
+                            )}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
                             <span className={`inline-flex px-2 py-0.5 text-xs font-semibold rounded-full ${
                               proposal.category === 'BI'
                                 ? 'bg-blue-100 text-blue-800'
                                 : 'bg-purple-100 text-purple-800'
                             }`}>
-                              {proposal.category}
+                              {proposal.category === 'BC' ? 'Business Case' : proposal.category === 'BI' ? 'Breakthrough Innovation' : proposal.category}
                             </span>
                           </td>
-                          <td className="px-4 py-3 whitespace-nowrap text-xs text-gray-400 font-mono">
-                            {proposal.externalSubId || proposal.id}
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="text-xs text-gray-500 font-mono">{proposal.externalSubId || proposal.id}</div>
                           </td>
                         </tr>
                       );
@@ -249,7 +279,7 @@ export default function KelolaGrandFinalClient({
                 </table>
               </div>
 
-              <div className="mt-4 flex justify-end">
+              <div className="mt-6 flex justify-end">
                 <button
                   onClick={handleSaveLottery}
                   disabled={isLotteryPending || !!lotteryError}
