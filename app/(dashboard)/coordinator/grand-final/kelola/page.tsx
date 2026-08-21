@@ -42,23 +42,19 @@ export default async function KelolaGrandFinalPage() {
 
   const assignedSponsors = await getGrandFinalSponsors(activeComp.id);
 
-  // Fetch proposals — include grandFinalOrder for lottery ordering UI
+  // Fetch proposals
   const gfProposals = await db.select({
     id: proposals.id,
     externalSubId: proposals.externalSubId,
     title: proposals.title,
     category: proposals.category,
-    grandFinalOrder: proposals.grandFinalOrder,
   })
   .from(proposals)
   .where(and(
     eq(proposals.competitionId, activeComp.id),
     eq(proposals.status, 'grand_final')
   ))
-  .orderBy(
-    sql`${proposals.grandFinalOrder} ASC NULLS LAST`,
-    proposals.id
-  );
+  .orderBy(proposals.id);
 
   // Fetch assessments
   const gfAssessments = await db.select()
@@ -68,7 +64,7 @@ export default async function KelolaGrandFinalPage() {
   return (
     <div className="p-6">
       <h1 className="text-2xl font-bold text-gray-900 mb-2">Kelola Grand Final</h1>
-      <p className="text-gray-600 mb-6">Pengaturan nomor undian dan penugasan Juri Nasional untuk sesi Grand Final.</p>
+      <p className="text-gray-600 mb-6">Penugasan Sponsor untuk menilai sesi Grand Final.</p>
 
       <KelolaGrandFinalClient 
         competitionId={activeComp.id}

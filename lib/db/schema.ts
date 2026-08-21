@@ -24,7 +24,6 @@ export const users = pgTable('users', {
   email: text('email').notNull().unique(),
   passwordHash: text('password_hash').notNull(),
   roles: text('roles').array().notNull().default(sql`'{"curator"}'`), // array of coordinator | curator | promoter | sponsor
-  mustChangePassword: boolean('must_change_password').notNull().default(false),
   isActive: boolean('is_active').notNull().default(true),
   deletedAt: timestamp('deleted_at', { withTimezone: true }),
   lastActiveAt: timestamp('last_active_at', { withTimezone: true }),
@@ -169,11 +168,6 @@ export const proposals = pgTable('proposals', {
 
   // ─── OPTIMIZATION ─────────────────────────────────────────────────────────
   nomorUrut: integer('nomor_urut'),
-
-  // ─── GRAND FINAL ─────────────────────────────────────────────────────────
-  // Nomor urut undian Grand Final — 1 urutan gabungan untuk semua finalis (BI+BC).
-  // NULL = belum diundi (tampil di akhir urutan).
-  grandFinalOrder: integer('grand_final_order'),
 }, (table) => [
   index('proposals_competition_id_idx').on(table.competitionId),
   index('proposals_category_idx').on(table.category),
