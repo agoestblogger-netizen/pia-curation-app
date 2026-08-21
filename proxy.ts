@@ -44,6 +44,13 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
+  // Force password change for Regional role (PIC & Juri Regional) if mustChangePassword is true
+  if (session.roles.includes('regional') && session.mustChangePassword) {
+    if (pathname !== '/settings/password') {
+      return NextResponse.redirect(new URL('/settings/password', request.url));
+    }
+  }
+
   // Role-based routing: check if user is accessing a route for their role
   for (const [role, prefixes] of Object.entries(ROLE_ROUTES)) {
     for (const prefix of prefixes) {

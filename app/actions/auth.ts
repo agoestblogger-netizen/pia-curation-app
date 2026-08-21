@@ -55,9 +55,14 @@ export async function loginAction(
     name: user.name,
     email: user.email,
     roles: user.roles,
+    mustChangePassword: Boolean(user.mustChangePassword),
   });
 
   await setSessionCookie(token);
+
+  if (user.roles.includes('regional') && user.mustChangePassword) {
+    redirect('/settings/password');
+  }
 
   if (user.roles.includes('coordinator')) {
     redirect('/overview');
@@ -111,6 +116,10 @@ export async function changePasswordAction(
 
   const { oldPassword, newPassword } = parsed.data;
   
+  if (newPassword.toLowerCase() === 'gadai123') {
+    return { error: 'Password baru tidak boleh menggunakan password default (gadai123).' };
+  }
+
   if (formData.get('confirmPassword') !== newPassword) {
     return { error: 'Konfirmasi password baru tidak cocok.' };
   }
@@ -135,12 +144,23 @@ export async function changePasswordAction(
   try {
     await db.update(users).set({
       passwordHash: newHash,
+      mustChangePassword: false,
       updatedAt: new Date(),
     }).where(eq(users.id, session.userId));
   } catch (err) {
     console.error('[changePasswordAction] Database update error:', err);
     return { error: 'Gagal memperbarui password pada basis data. Silakan coba lagi.' };
   }
+
+  // Update session cookie with mustChangePassword = false
+  const updatedToken = await createSession({
+    userId: session.userId,
+    name: session.name,
+    email: session.email,
+    roles: session.roles,
+    mustChangePassword: false,
+  });
+  await setSessionCookie(updatedToken);
 
   const { createAuditLog } = await import('@/lib/audit');
   await createAuditLog({

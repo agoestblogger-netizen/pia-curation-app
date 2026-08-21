@@ -1,7 +1,7 @@
 import { requireRole } from '@/lib/auth/helpers';
 import { db } from '@/lib/db';
-import { proposals, grandFinalAssessments, competitions } from '@/lib/db/schema';
-import { eq, and, sql } from 'drizzle-orm';
+import { proposals, grandFinalAssessments, competitions, grandFinalDrawOrder } from '@/lib/db/schema';
+import { eq, and, sql, asc } from 'drizzle-orm';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import AssessClient from './AssessClient';
@@ -37,14 +37,27 @@ export default async function AssessPage({
       eq(grandFinalAssessments.sponsorId, session.userId)
     ));
 
-  // Get all GF proposals for navigation
-  const gfProposals = await db.select({ id: proposals.id })
+  // Get all GF proposals for navigation sorted by draw order (combined BI+BC)
+  const gfProposals = await db
+    .select({ id: proposals.id })
     .from(proposals)
-    .where(and(
-      eq(proposals.competitionId, activeComp.id),
-      eq(proposals.status, 'grand_final')
-    ))
-    .orderBy(proposals.id);
+    .leftJoin(
+      grandFinalDrawOrder,
+      and(
+        eq(grandFinalDrawOrder.proposalId, proposals.id),
+        eq(grandFinalDrawOrder.competitionId, activeComp.id)
+      )
+    )
+    .where(
+      and(
+        eq(proposals.competitionId, activeComp.id),
+        eq(proposals.status, 'grand_final')
+      )
+    )
+    .orderBy(
+      sql`${grandFinalDrawOrder.sortOrder} ASC NULLS LAST`,
+      asc(proposals.id)
+    );
 
   const currentIndex = gfProposals.findIndex(p => p.id === proposalId);
   const prevId = currentIndex > 0 ? gfProposals[currentIndex - 1].id : null;

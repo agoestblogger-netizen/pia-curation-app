@@ -3,9 +3,9 @@ import { requireRole } from '@/lib/auth/helpers';
 import KelolaGrandFinalClient from './KelolaGrandFinalClient';
 import { db } from '@/lib/db';
 import { users } from '@/lib/db/schema';
-import { eq, and, sql } from 'drizzle-orm';
+import { eq, and, sql, asc } from 'drizzle-orm';
 import { getGrandFinalSponsors } from '@/app/actions/grand-final-sponsors';
-import { proposals, grandFinalAssessments } from '@/lib/db/schema';
+import { proposals, grandFinalAssessments, grandFinalDrawOrder } from '@/lib/db/schema';
 
 export const metadata = {
   title: 'Kelola Grand Final - PIA Curation',
@@ -42,19 +42,33 @@ export default async function KelolaGrandFinalPage() {
 
   const assignedSponsors = await getGrandFinalSponsors(activeComp.id);
 
-  // Fetch proposals
-  const gfProposals = await db.select({
-    id: proposals.id,
-    externalSubId: proposals.externalSubId,
-    title: proposals.title,
-    category: proposals.category,
-  })
-  .from(proposals)
-  .where(and(
-    eq(proposals.competitionId, activeComp.id),
-    eq(proposals.status, 'grand_final')
-  ))
-  .orderBy(proposals.id);
+  // Fetch proposals joined with draw order
+  const gfProposals = await db
+    .select({
+      id: proposals.id,
+      externalSubId: proposals.externalSubId,
+      title: proposals.title,
+      category: proposals.category,
+      drawOrder: grandFinalDrawOrder.sortOrder,
+    })
+    .from(proposals)
+    .leftJoin(
+      grandFinalDrawOrder,
+      and(
+        eq(grandFinalDrawOrder.proposalId, proposals.id),
+        eq(grandFinalDrawOrder.competitionId, activeComp.id)
+      )
+    )
+    .where(
+      and(
+        eq(proposals.competitionId, activeComp.id),
+        eq(proposals.status, 'grand_final')
+      )
+    )
+    .orderBy(
+      sql`${grandFinalDrawOrder.sortOrder} ASC NULLS LAST`,
+      asc(proposals.id)
+    );
 
   // Fetch assessments
   const gfAssessments = await db.select()
@@ -64,7 +78,7 @@ export default async function KelolaGrandFinalPage() {
   return (
     <div className="p-6">
       <h1 className="text-2xl font-bold text-gray-900 mb-2">Kelola Grand Final</h1>
-      <p className="text-gray-600 mb-6">Penugasan Sponsor untuk menilai sesi Grand Final.</p>
+      <p className="text-gray-600 mb-6">Pengaturan nomor undian dan penugasan Juri Nasional untuk sesi Grand Final.</p>
 
       <KelolaGrandFinalClient 
         competitionId={activeComp.id}

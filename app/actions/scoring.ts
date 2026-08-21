@@ -8,9 +8,10 @@ import {
   proposals,
   users,
   competitions,
+  grandFinalDrawOrder,
 } from '@/lib/db/schema';
 import { requireRole } from '@/lib/auth/helpers';
-import { eq, and, count, avg, sum } from 'drizzle-orm';
+import { eq, and, count, avg, sum, asc, sql } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { audit } from '@/lib/audit';
@@ -285,14 +286,32 @@ export async function getSponsorScores(proposalId: number, sponsorId: number) {
 }
 
 export async function getGrandFinalProposals(competitionId: number) {
-  return db
-    .select()
+  const rows = await db
+    .select({
+      proposal: proposals,
+      drawOrder: grandFinalDrawOrder.sortOrder,
+    })
     .from(proposals)
+    .leftJoin(
+      grandFinalDrawOrder,
+      and(
+        eq(grandFinalDrawOrder.proposalId, proposals.id),
+        eq(grandFinalDrawOrder.competitionId, competitionId)
+      )
+    )
     .where(
       and(
         eq(proposals.competitionId, competitionId),
         eq(proposals.status, 'grand_final')
       )
     )
-    .orderBy(proposals.id);
+    .orderBy(
+      sql`${grandFinalDrawOrder.sortOrder} ASC NULLS LAST`,
+      asc(proposals.id)
+    );
+
+  return rows.map(r => ({
+    ...r.proposal,
+    drawOrder: r.drawOrder ?? null,
+  }));
 }
