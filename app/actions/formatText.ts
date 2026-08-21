@@ -12,14 +12,25 @@ export async function formatProposalFieldAction(
   originalText: string
 ) {
   // Verifikasi role (siapa saja yang boleh memicu format AI)
-  await requireRole(['coordinator', 'curator', 'promoter', 'sponsor', 'regional']);
+  await requireRole(['coordinator', 'curator', 'promoter', 'sponsor', 'regional', 'admin']);
 
   if (!originalText || originalText.trim() === '') {
     return { error: 'Teks asli kosong.' };
   }
 
-  // Filter out redundant metadata headers if present in resubmission document
+  // 1. Decode & normalisasi HTML entities dan whitespace tak kasat mata
   let cleanedText = originalText
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&amp;/gi, '&')
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;/gi, "'")
+    .replace(/\u200b/g, '') // zero-width space
+    .replace(/\u00a0/g, ' '); // non-breaking space
+
+  // 2. Filter out redundant metadata headers if present in resubmission document
+  cleanedText = cleanedText
     .replace(/#*\s*Proposal Resubmission\s*-\s*PIA Season \d+/gi, '')
     .replace(/#*\s*Kategori (Business Case|Breakthrough Innovation)/gi, '')
     .replace(/#*\s*Nama Inovator\s*:?\s*[^:\n#]+?\s*(?=\s*(#*\s*Departemen|#*\s*Kantor|#*\s*Anggota|#*\s*Nama Inovasi|#*\s*Sasaran))/gi, '')
@@ -28,10 +39,11 @@ export async function formatProposalFieldAction(
     .replace(/#*\s*Anggota Tim Inovasi Anda[^\n:#]*:?\s*[^:\n#]+?(?=\s*(#*\s*Nama Inovasi|#*\s*Sasaran))/gi, '')
     .trim();
 
-  // Preprocess inline bullet characters (•, ●, ▪, ∘, ○) to newlines so AI and parser format them cleanly
+  // 3. Preprocess inline bullet characters (•, ●, ▪, ·, ∘, ○) to newlines so AI and parser format them cleanly
   cleanedText = cleanedText
-    .replace(/\s*([•●▪])\s*/g, '\n- ')
-    .replace(/\s*([∘○])\s*/g, '\n  - ');
+    .replace(/\s*([•●▪·\u00b7])\s*/g, '\n- ')
+    .replace(/\s*([∘○])\s*/g, '\n  - ')
+    .replace(/(?:^|\n|\s)o\s+(?=[A-Z0-9\u200b"'])/g, '\n  - ');
 
   if (!cleanedText) {
     cleanedText = originalText;
@@ -43,16 +55,18 @@ export async function formatProposalFieldAction(
 ATURAN KETAT YANG WAJIB DIPATUHI:
 1. DILARANG KERAS mengurangi kalimat, meringkas isi, menghilangkan detail, atau mengondensasi informasi apa pun.
 2. DILARANG KERAS menambah informasi atau interpretasi baru.
-3. DILARANG KERAS mengesampingkan atau mengurai ulang kalimat (parafrase). Pertahankan seluruh isi secara persis.
-4. PENOMORAN & BULLET LIST (SANGAT WAJIB & KONSISTEN):
-   - Jika terdapat simbol bullet (seperti "•", "●", "▪", "∘", "○") atau penomoran ("1,", "1)", "1.", "a.", "a)") yang menyatu di dalam kalimat/paragraf, WAJIB DIPISAHKAN KE BARIS BARU TERSENDIRI.
-   - Ubah simbol "•", "●", "▪" menjadi bullet utama Markdown: "- Poin".
-   - Ubah simbol "∘", "○" atau sub-poin menjadi sub-bullet dengan indentasi 3 spasi: "   - Sub poin".
+3. DILARANG KERAS mengesampingkan atau mengurai ulang kalimat (parafrase). Pertahankan seluruh isi secara persis kata per kata.
+4. PEMBERSIHAN ENTITY & KARAKTER:
+   - Bersihkan semua HTML entity mentah seperti &nbsp;, &amp;, &quot;, &#39; dan zero-width space.
+5. PENOMORAN & BULLET LIST (SANGAT WAJIB & KONSISTEN):
+   - Jika terdapat simbol bullet (seperti "•", "●", "▪", "·", "∘", "○" atau "o ") atau penomoran ("1,", "1)", "1.", "a.", "a)") yang menyatu di dalam kalimat/paragraf, WAJIB DIPISAHKAN KE BARIS BARU TERSENDIRI.
+   - Ubah simbol bullet utama menjadi bullet Markdown: "- Poin".
+   - Ubah simbol sub-bullet menjadi sub-bullet dengan indentasi 2-3 spasi: "   - Sub poin".
    - Setiap poin penomoran atau bullet WAJIB berada di BARIS BARU tersendiri.
    - DILARANG KERAS menggabungkan penomoran dan bullet sekaligus (misalnya DILARANG "- 1. " atau "* 1. "). Gunakan murni "1. " untuk urutan angka atau "- " untuk bullet.
-5. TATA LETAK & PARAGRAF:
-   - Gunakan Heading Markdown (## Judul Utama atau ### Sub Judul) untuk setiap bagian/topik utama.
-   - Berikan baris kosong (\n\n) di antara setiap paragraf atau section agar tampilan sangat bersih dan rapi.
+6. TATA LETAK & PARAGRAF:
+   - Gunakan Heading Markdown (## Judul Utama atau ### Sub Judul) untuk setiap bagian/topik utama jika ada judul section.
+   - Berikan baris kosong (\\n\\n) di antara setiap paragraf atau section agar tampilan sangat bersih dan mudah dibaca.
 
 Teks yang harus Anda rapikan formatnya:
 
@@ -101,7 +115,7 @@ ${cleanedText}`;
       [fieldName]: formattedText,
     };
 
-    // Update database
+    // Update database (permanently cached in proposals.formatted_texts)
     await db
       .update(proposals)
       .set({
@@ -112,6 +126,11 @@ ${cleanedText}`;
 
     revalidatePath('/curator/proposals');
     revalidatePath(`/curator/proposals/${proposalId}`);
+    revalidatePath('/sponsor');
+    revalidatePath(`/sponsor/assess/${proposalId}`);
+    revalidatePath('/regional-judge');
+    revalidatePath(`/regional-judge/assess/${proposalId}`);
+    revalidatePath('/regional-dashboard');
 
     return { success: true, data: formattedText };
   } catch (error: any) {

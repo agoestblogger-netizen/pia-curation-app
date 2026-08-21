@@ -164,8 +164,8 @@ export default function ProposalDetailCollapsible({ proposal, proposalRowNumber 
                       fieldName="biMasalahDiselesaikan"
                       originalText={proposal.biMasalahDiselesaikan}
                       formattedText={(proposal.formattedTexts as any)?.biMasalahDiselesaikan}
-                      canFormat={false}
-                      hideFormatButton={true}
+                      canFormat={true}
+                      hideFormatButton={false}
                     />
                   </div>
                 )}
@@ -178,8 +178,8 @@ export default function ProposalDetailCollapsible({ proposal, proposalRowNumber 
                       fieldName="biInovasiDiusulkan"
                       originalText={proposal.biInovasiDiusulkan}
                       formattedText={(proposal.formattedTexts as any)?.biInovasiDiusulkan}
-                      canFormat={false}
-                      hideFormatButton={true}
+                      canFormat={true}
+                      hideFormatButton={false}
                     />
                   </div>
                 )}
@@ -192,8 +192,8 @@ export default function ProposalDetailCollapsible({ proposal, proposalRowNumber 
                       fieldName="summary"
                       originalText={proposal.summary}
                       formattedText={(proposal.formattedTexts as any)?.summary}
-                      canFormat={false}
-                      hideFormatButton={true}
+                      canFormat={true}
+                      hideFormatButton={false}
                     />
                   </div>
                 )}
@@ -212,8 +212,8 @@ export default function ProposalDetailCollapsible({ proposal, proposalRowNumber 
                       fieldName="bcKelompokDibantu"
                       originalText={proposal.bcKelompokDibantu}
                       formattedText={(proposal.formattedTexts as any)?.bcKelompokDibantu}
-                      canFormat={false}
-                      hideFormatButton={true}
+                      canFormat={true}
+                      hideFormatButton={false}
                     />
                   </div>
                 )}
@@ -226,8 +226,8 @@ export default function ProposalDetailCollapsible({ proposal, proposalRowNumber 
                       fieldName="bcAlasanMemilihMereka"
                       originalText={proposal.bcAlasanMemilihMereka}
                       formattedText={(proposal.formattedTexts as any)?.bcAlasanMemilihMereka}
-                      canFormat={false}
-                      hideFormatButton={true}
+                      canFormat={true}
+                      hideFormatButton={false}
                     />
                   </div>
                 )}
@@ -240,8 +240,8 @@ export default function ProposalDetailCollapsible({ proposal, proposalRowNumber 
                       fieldName="summary"
                       originalText={proposal.summary}
                       formattedText={(proposal.formattedTexts as any)?.summary}
-                      canFormat={false}
-                      hideFormatButton={true}
+                      canFormat={true}
+                      hideFormatButton={false}
                     />
                   </div>
                 )}
