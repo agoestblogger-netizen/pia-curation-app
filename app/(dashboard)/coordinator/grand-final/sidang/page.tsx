@@ -5,6 +5,9 @@ import { eq, and, sql, asc } from 'drizzle-orm';
 import GrandFinalSidangClient from './GrandFinalSidangClient';
 import { getActiveCompetition } from '@/app/actions/competitions';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export const metadata = {
   title: 'Sidang Penetapan Grand Final - PIA Curation',
 };
