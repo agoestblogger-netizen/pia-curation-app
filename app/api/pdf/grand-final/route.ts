@@ -54,10 +54,10 @@ export async function GET(req: NextRequest) {
       const totalAvg = (sum1 + sum2 + sum3 + sum4) / count;
 
       let classification = 'Bronze';
-      if (totalAvg >= 13.5) classification = 'Diamond';
-      else if (totalAvg >= 11.5) classification = 'Platinum';
-      else if (totalAvg >= 8.5) classification = 'Gold';
-      else if (totalAvg >= 6.5) classification = 'Silver';
+      if (totalAvg >= 17.5) classification = 'Diamond';
+      else if (totalAvg >= 13.5) classification = 'Platinum';
+      else if (totalAvg >= 9.5) classification = 'Gold';
+      else if (totalAvg >= 5.5) classification = 'Silver';
 
       return {
         ...p,

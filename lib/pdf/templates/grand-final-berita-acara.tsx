@@ -60,7 +60,7 @@ export const GrandFinalBeritaAcara = ({
         </View>
 
         <Text style={styles.paragraph}>
-          Pada hari ini, tanggal {dateStr}, telah dilaksanakan penilaian akhir (Grand Final) untuk kompetisi inovasi {fullCompName} oleh Tim Sponsor (Board of Directors). Berdasarkan hasil penilaian keempat parameter (Problem & Solution Fit, Impact, Kelayakan & Skalabilitas, serta Professional Judgement), berikut adalah hasil final urutan para pemenang:
+          Pada hari ini, tanggal {dateStr}, telah dilaksanakan penilaian akhir (Grand Final) untuk kompetisi inovasi {fullCompName} oleh Tim Sponsor (Board of Directors). Berdasarkan hasil penilaian keempat dimensi (Problem & Solution Fit, Impact & Kecepatan Realisasi, Kelayakan & Skalabilitas, serta Professional Judgement), berikut adalah hasil final urutan para pemenang:
         </Text>
 
         <View style={styles.table}>
