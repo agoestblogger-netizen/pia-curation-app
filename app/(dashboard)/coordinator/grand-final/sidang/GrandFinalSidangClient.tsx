@@ -8,45 +8,41 @@ const RUBRIC_GF = {
   1: {
     title: 'Problem & Solution Fit',
     levels: [
-      { score: 1, desc: 'Lemah: Masalah tak relevan, solusi dibuat-buat (cari-cari masalah).' },
-      { score: 2, desc: 'Cukup: Masalah umum, kaitan solusi dengan masalah terlalu longgar.' },
-      { score: 3, desc: 'Kuat: Masalah jelas & logis, solusi berdasar walau kurang inovatif.' },
-      { score: 4, desc: 'Sangat Kuat: Akar masalah valid & solusi tepat sasaran (insight data kuat).' },
+      { score: 1, label: 'Poor', desc: 'Masalah tidak jelas, tidak tervalidasi, atau tidak relevan. Solusi tidak menjawab masalah yang ada.' },
+      { score: 2, label: 'Fair', desc: 'Pemahaman masalah masih umum dan bukti mendukung terbatas. Solusi yang diusulkan parsial menjawab masalah dan hubungan keduanya belum jelas.' },
+      { score: 3, label: 'Good', desc: 'Masalah cukup jelas namun beberapa aspek penting belum tervalidasi sepenuhnya. Solusi menjawab sebagian besar masalah, tetapi keterkaitan dengan hasil validasi belum kuat.' },
+      { score: 4, label: 'Very Good', desc: 'Masalah terdefinisi spesifik dan didukung data validasi yang cukup kuat. Akar penyebab jelas. Solusi memiliki hubungan kuat dengan akar masalah dan didasarkan pada insight hasil validasi.' },
+      { score: 5, label: 'Excellent', desc: 'Memahami akar masalah secara mendalam berbasis bukti. Solusi sangat spesifik menjawab akar masalah dan terbukti relevan bagi target customer/user.' },
     ]
   },
   2: {
-    title: 'Impact',
-    levels: {
-      'BC': [
-        { score: 1, desc: 'Bukan Quick Win: Dampak buram, butuh investasi besar & >6 bulan.' },
-        { score: 2, desc: 'Taktis: Dampak kecil (<5% growth). Hanya sekadar optimasi lokal.' },
-        { score: 3, desc: 'High Impact: 5-10% growth (1-3 bln). ROI & implementasi jelas.' },
-        { score: 4, desc: 'Game-Changing: >10% growth <1 bln. Effort teknis minimal, no-brainer.' },
-      ],
-      'BI': [
-        { score: 1, desc: 'Unclear: Dampak bisnis dan sustainability tidak terukur/tidak ada.' },
-        { score: 2, desc: 'Incremental: Tambahan margin kecil (<5%). Lebih ke sisi compliance.' },
-        { score: 3, desc: 'Significant: Efisiensi biaya nyata / perkuat sumber revenue existing.' },
-        { score: 4, desc: 'Transformational: Buka revenue stream baru yg scalable & net-zero.' },
-      ]
-    }
+    title: 'Impact & Kecepatan Realisasi',
+    levels: [
+      { score: 1, label: 'Poor', desc: 'Tidak ada dampak yang berarti atau bahkan berisiko menimbulkan dampak negatif bagi bisnis/operasional.' },
+      { score: 2, label: 'Fair', desc: 'Dampak kecil dan bersifat inkremental pada area sempit. Implementasi >6 bulan dengan investasi yang cukup signifikan. Value proposition kurang jelas atau kurang menarik bagi target segmen.' },
+      { score: 3, label: 'Good', desc: 'Dampak menengah (growth 1–5%) pada segmen tertentu dan/atau efisiensi di beberapa proses/unit. Implementasi 3–6 bulan dengan kombinasi penyesuaian/investasi tambahan. Value proposition cukup jelas namun diferensiasi sedang.' },
+      { score: 4, label: 'Very Good', desc: 'Dampak besar (growth 5–10%) dari perluasan layanan/penetrasi pasar/efisiensi skala luas. Implementasi cepat (1–3 bulan) dengan mayoritas memanfaatkan infrastruktur existing, investasi terbatas dan ROI relatif cepat.' },
+      { score: 5, label: 'Excellent', desc: 'Dampak sangat besar (revenue baru signifikan dan/atau aktivasi massal, growth >10%). Hasil cepat (<1 bulan) dengan memanfaatkan aset existing, tanpa investasi baru signifikan, serta menciptakan efisiensi/keunggulan kompetitif jangka panjang.' },
+    ]
   },
   3: {
     title: 'Kelayakan & Skalabilitas',
     levels: [
-      { score: 1, desc: 'Tidak Praktis: Terbentur limitasi finansial/teknis/kultur yg berat.' },
-      { score: 2, desc: 'Kompleks: Effort signifikan, rombak sistem, butuh banyak modal.' },
-      { score: 3, desc: 'Praktis: Realistis tapi butuh sedikit penyesuaian lintas divisi.' },
-      { score: 4, desc: 'Siap & Scalable: Biaya rendah, bisa langsung diadopsi sangat luas.' },
+      { score: 1, label: 'Poor', desc: 'Tidak realistis untuk diimplementasikan dengan resource, waktu, dan kemampuan yang tersedia.' },
+      { score: 2, label: 'Fair', desc: 'Terdapat banyak kendala pada aspek teknologi, proses, kompetensi, atau biaya. Potensi scaling rendah dan membutuhkan upaya besar.' },
+      { score: 3, label: 'Good', desc: 'Dapat diimplementasikan namun membutuhkan penyesuaian yang cukup pada proses/sistem/kompetensi. Potensi scaling ada, tetapi membutuhkan effort dan investasi lebih besar.' },
+      { score: 4, label: 'Very Good', desc: 'Realistis untuk diimplementasikan dalam waktu dekat dengan resource terkendali. Ada penyesuaian proses/sistem namun tidak menjadi hambatan signifikan. Potensi scaling jelas meski perlu adaptasi.' },
+      { score: 5, label: 'Excellent', desc: 'Sangat realistis untuk segera diimplementasikan dengan resource terbatas. Mudah diadopsi dan memiliki model jelas untuk diperluas dengan incremental effort rendah.' },
     ]
   },
   4: {
     title: 'Professional Judgement',
     levels: [
-      { score: 1, desc: 'Won\'t Have: Ide ini belum sejalan dengan nilai/arah perusahaan.' },
-      { score: 2, desc: 'Could Have: Ide bagus, tapi bukan prioritas mendesak saat ini.' },
-      { score: 3, desc: 'Should Have: Cukup melengkapi proses yang sudah berjalan baik.' },
-      { score: 4, desc: 'Must Have: Prioritas top, membantu akselerasi kinerja signifikan.' },
+      { score: 1, label: 'Poor', desc: 'Tidak sejalan dengan strategi dan tidak layak untuk dipertimbangkan.' },
+      { score: 2, label: 'Fair', desc: 'Kurang relevan dengan prioritas strategis atau memberikan kontribusi yang sangat kecil terhadap tujuan perusahaan.' },
+      { score: 3, label: 'Good', desc: 'Memberikan manfaat namun bukan prioritas utama dan dapat dipertimbangkan setelah kebutuhan yang lebih penting terpenuhi.' },
+      { score: 4, label: 'Very Good', desc: 'Relevan dan mampu memperkuat, melengkapi, atau meningkatkan efektivitas program/proses strategis yang telah berjalan, tetapi bukan kebutuhan mendesak.' },
+      { score: 5, label: 'Excellent', desc: 'Ide langsung menjawab agenda strategis/critical business issue dengan urgensi tinggi dan berpotensi memberikan kontribusi signifikan terhadap sasaran strategis. Konsekuensi besar jika tidak ditangani.' },
     ]
   }
 };
@@ -103,18 +99,19 @@ export default function GrandFinalSidangClient({
   };
 
   const getMedalClass = (score: number) => {
-    if (score >= 13.5) return { label: 'Diamond', color: 'bg-blue-100 text-blue-800 border-blue-300' };
-    if (score >= 11.5) return { label: 'Platinum', color: 'bg-slate-200 text-slate-800 border-slate-400' };
-    if (score >= 8.5) return { label: 'Gold', color: 'bg-yellow-100 text-yellow-800 border-yellow-400' };
-    if (score >= 6.5) return { label: 'Silver', color: 'bg-gray-200 text-gray-700 border-gray-400' };
+    if (score >= 17.5) return { label: 'Diamond', color: 'bg-blue-100 text-blue-800 border-blue-300' };
+    if (score >= 13.5) return { label: 'Platinum', color: 'bg-slate-200 text-slate-800 border-slate-400' };
+    if (score >= 9.5) return { label: 'Gold', color: 'bg-yellow-100 text-yellow-800 border-yellow-400' };
+    if (score >= 5.5) return { label: 'Silver', color: 'bg-gray-200 text-gray-700 border-gray-400' };
     return { label: 'Bronze', color: 'bg-orange-100 text-orange-800 border-orange-300' };
   };
 
   const getColorClass = (val: number) => {
-    if (val === 4) return 'bg-blue-100 text-blue-800 border-blue-300';
-    if (val === 3) return 'bg-green-100 text-green-800 border-green-300';
-    if (val === 2) return 'bg-yellow-100 text-yellow-800 border-yellow-400';
-    if (val === 1) return 'bg-orange-100 text-orange-800 border-orange-300';
+    if (val === 5) return 'bg-blue-100 text-blue-800 border-blue-300';
+    if (val === 4) return 'bg-emerald-100 text-emerald-800 border-emerald-300';
+    if (val === 3) return 'bg-yellow-100 text-yellow-800 border-yellow-400';
+    if (val === 2) return 'bg-orange-100 text-orange-800 border-orange-300';
+    if (val === 1) return 'bg-red-100 text-red-800 border-red-300';
     return 'bg-gray-50 text-gray-400 border-gray-200';
   };
 
@@ -154,10 +151,10 @@ export default function GrandFinalSidangClient({
             const e = drawerEdits[s.id];
             const ts = e.p1 + e.p2 + e.p3 + e.p4;
             let classification = 'Bronze';
-            if (ts >= 14) classification = 'Diamond';
-            else if (ts >= 12) classification = 'Platinum';
-            else if (ts >= 9) classification = 'Gold';
-            else if (ts >= 7) classification = 'Silver';
+            if (ts >= 18) classification = 'Diamond';
+            else if (ts >= 14) classification = 'Platinum';
+            else if (ts >= 10) classification = 'Gold';
+            else if (ts >= 6) classification = 'Silver';
 
             newScores[s.id] = {
               param1: e.p1, param2: e.p2, param3: e.p3, param4: e.p4,
@@ -371,7 +368,7 @@ export default function GrandFinalSidangClient({
                 <table className="w-full text-xs text-left min-w-max">
                   <thead className="bg-gray-50 font-semibold text-gray-700 border-b border-gray-200">
                     <tr>
-                      <th className="py-2.5 px-3 border-r border-gray-200 min-w-[140px] bg-gray-100/50 sticky left-0 z-10 shadow-xs">Parameter</th>
+                      <th className="py-2.5 px-3 border-r border-gray-200 min-w-[170px] bg-gray-100/50 sticky left-0 z-10 shadow-xs">Dimensi</th>
                       {sponsors.map(s => (
                         <th key={s.id} className="py-2.5 px-3 text-center border-r border-gray-200 whitespace-nowrap min-w-[120px]" title={s.name}>
                           {s.name}
@@ -383,7 +380,7 @@ export default function GrandFinalSidangClient({
                     {/* Row P1 */}
                     <tr>
                       <td className="py-2 px-3 border-r border-gray-200 font-medium text-gray-800 bg-gray-50 sticky left-0 z-10" title="Problem & Solution Fit">
-                        1. Problem Fit
+                        1. Problem &amp; Solution Fit
                       </td>
                       {sponsors.map(s => (
                         <td key={s.id} className="p-1 border-r border-gray-200 text-center">
@@ -392,18 +389,19 @@ export default function GrandFinalSidangClient({
                             onChange={e => setDrawerEdits(prev => ({...prev, [s.id]: {...prev[s.id], p1: parseInt(e.target.value)}}))}
                             className={`w-full text-center font-bold text-xs rounded border cursor-pointer appearance-none p-1 focus:ring-2 focus:ring-indigo-500 ${getColorClass(drawerEdits[s.id]?.p1 || 1)}`}
                           >
-                            <option value={1} className="bg-white text-gray-900">1</option>
-                            <option value={2} className="bg-white text-gray-900">2</option>
-                            <option value={3} className="bg-white text-gray-900">3</option>
-                            <option value={4} className="bg-white text-gray-900">4</option>
+                            <option value={1} className="bg-white text-gray-900">1 (Poor)</option>
+                            <option value={2} className="bg-white text-gray-900">2 (Fair)</option>
+                            <option value={3} className="bg-white text-gray-900">3 (Good)</option>
+                            <option value={4} className="bg-white text-gray-900">4 (Very Good)</option>
+                            <option value={5} className="bg-white text-gray-900">5 (Excellent)</option>
                           </select>
                         </td>
                       ))}
                     </tr>
                     {/* Row P2 */}
                     <tr>
-                      <td className="py-2 px-3 border-r border-gray-200 font-medium text-gray-800 bg-gray-50 sticky left-0 z-10" title="Impact">
-                        2. Impact
+                      <td className="py-2 px-3 border-r border-gray-200 font-medium text-gray-800 bg-gray-50 sticky left-0 z-10" title="Impact & Kecepatan Realisasi">
+                        2. Impact &amp; Kecepatan
                       </td>
                       {sponsors.map(s => (
                         <td key={s.id} className="p-1 border-r border-gray-200 text-center">
@@ -412,18 +410,19 @@ export default function GrandFinalSidangClient({
                             onChange={e => setDrawerEdits(prev => ({...prev, [s.id]: {...prev[s.id], p2: parseInt(e.target.value)}}))}
                             className={`w-full text-center font-bold text-xs rounded border cursor-pointer appearance-none p-1 focus:ring-2 focus:ring-indigo-500 ${getColorClass(drawerEdits[s.id]?.p2 || 1)}`}
                           >
-                            <option value={1} className="bg-white text-gray-900">1</option>
-                            <option value={2} className="bg-white text-gray-900">2</option>
-                            <option value={3} className="bg-white text-gray-900">3</option>
-                            <option value={4} className="bg-white text-gray-900">4</option>
+                            <option value={1} className="bg-white text-gray-900">1 (Poor)</option>
+                            <option value={2} className="bg-white text-gray-900">2 (Fair)</option>
+                            <option value={3} className="bg-white text-gray-900">3 (Good)</option>
+                            <option value={4} className="bg-white text-gray-900">4 (Very Good)</option>
+                            <option value={5} className="bg-white text-gray-900">5 (Excellent)</option>
                           </select>
                         </td>
                       ))}
                     </tr>
                     {/* Row P3 */}
                     <tr>
-                      <td className="py-2 px-3 border-r border-gray-200 font-medium text-gray-800 bg-gray-50 sticky left-0 z-10" title="Kelayakan">
-                        3. Kelayakan
+                      <td className="py-2 px-3 border-r border-gray-200 font-medium text-gray-800 bg-gray-50 sticky left-0 z-10" title="Kelayakan & Skalabilitas">
+                        3. Kelayakan &amp; Skalabilitas
                       </td>
                       {sponsors.map(s => (
                         <td key={s.id} className="p-1 border-r border-gray-200 text-center">
@@ -432,10 +431,11 @@ export default function GrandFinalSidangClient({
                             onChange={e => setDrawerEdits(prev => ({...prev, [s.id]: {...prev[s.id], p3: parseInt(e.target.value)}}))}
                             className={`w-full text-center font-bold text-xs rounded border cursor-pointer appearance-none p-1 focus:ring-2 focus:ring-indigo-500 ${getColorClass(drawerEdits[s.id]?.p3 || 1)}`}
                           >
-                            <option value={1} className="bg-white text-gray-900">1</option>
-                            <option value={2} className="bg-white text-gray-900">2</option>
-                            <option value={3} className="bg-white text-gray-900">3</option>
-                            <option value={4} className="bg-white text-gray-900">4</option>
+                            <option value={1} className="bg-white text-gray-900">1 (Poor)</option>
+                            <option value={2} className="bg-white text-gray-900">2 (Fair)</option>
+                            <option value={3} className="bg-white text-gray-900">3 (Good)</option>
+                            <option value={4} className="bg-white text-gray-900">4 (Very Good)</option>
+                            <option value={5} className="bg-white text-gray-900">5 (Excellent)</option>
                           </select>
                         </td>
                       ))}
@@ -443,7 +443,7 @@ export default function GrandFinalSidangClient({
                     {/* Row P4 */}
                     <tr>
                       <td className="py-2 px-3 border-r border-gray-200 font-medium text-gray-800 bg-gray-50 sticky left-0 z-10" title="Professional Judgement">
-                        4. PJ
+                        4. Professional Judgement
                       </td>
                       {sponsors.map(s => (
                         <td key={s.id} className="p-1 border-r border-gray-200 text-center">
@@ -452,10 +452,11 @@ export default function GrandFinalSidangClient({
                             onChange={e => setDrawerEdits(prev => ({...prev, [s.id]: {...prev[s.id], p4: parseInt(e.target.value)}}))}
                             className={`w-full text-center font-bold text-xs rounded border cursor-pointer appearance-none p-1 focus:ring-2 focus:ring-indigo-500 ${getColorClass(drawerEdits[s.id]?.p4 || 1)}`}
                           >
-                            <option value={1} className="bg-white text-gray-900">1</option>
-                            <option value={2} className="bg-white text-gray-900">2</option>
-                            <option value={3} className="bg-white text-gray-900">3</option>
-                            <option value={4} className="bg-white text-gray-900">4</option>
+                            <option value={1} className="bg-white text-gray-900">1 (Poor)</option>
+                            <option value={2} className="bg-white text-gray-900">2 (Fair)</option>
+                            <option value={3} className="bg-white text-gray-900">3 (Good)</option>
+                            <option value={4} className="bg-white text-gray-900">4 (Very Good)</option>
+                            <option value={5} className="bg-white text-gray-900">5 (Excellent)</option>
                           </select>
                         </td>
                       ))}
@@ -484,35 +485,31 @@ export default function GrandFinalSidangClient({
                   Panduan Kalibrasi (Hover untuk detail)
                 </div>
                 {[1, 2, 3, 4].map(paramIdx => {
-                  const paramTitle = RUBRIC_GF[paramIdx as keyof typeof RUBRIC_GF].title;
-                  let levels: any[] = [];
-                  if (paramIdx === 2) {
-                    const cat = (activeProposal.category === 'BI' || activeProposal.category === 'BC') ? activeProposal.category : 'BC';
-                    levels = RUBRIC_GF[2].levels[cat as 'BI'|'BC'];
-                  } else {
-                    levels = RUBRIC_GF[paramIdx as 1|3|4].levels;
-                  }
+                  const paramData = RUBRIC_GF[paramIdx as 1|2|3|4];
+                  const paramTitle = paramData.title;
+                  const levels = paramData.levels;
 
                   return (
                     <div key={paramIdx} className="flex items-stretch gap-1.5">
-                      <div className="w-20 shrink-0 flex items-center justify-end px-1 border-r border-gray-100">
+                      <div className="w-24 shrink-0 flex items-center justify-end px-1 border-r border-gray-100">
                          <div className="text-[9px] font-bold text-gray-600 leading-tight text-right uppercase">
                            {paramTitle}
                          </div>
                       </div>
-                      <div className="flex-1 grid grid-cols-4 gap-1.5">
+                      <div className="flex-1 grid grid-cols-5 gap-1.5">
                         {levels.map((lvl) => {
                           const colors = [
-                            'bg-orange-50 border-orange-200 text-orange-900', // lvl 1
-                            'bg-yellow-50 border-yellow-200 text-yellow-900', // lvl 2
-                            'bg-green-50 border-green-200 text-green-900',    // lvl 3
-                            'bg-blue-50 border-blue-200 text-blue-900',       // lvl 4
+                            'bg-red-50 border-red-200 text-red-900',       // lvl 1 (Poor)
+                            'bg-orange-50 border-orange-200 text-orange-900', // lvl 2 (Fair)
+                            'bg-yellow-50 border-yellow-200 text-yellow-900', // lvl 3 (Good)
+                            'bg-emerald-50 border-emerald-200 text-emerald-900', // lvl 4 (Very Good)
+                            'bg-blue-50 border-blue-200 text-blue-900',       // lvl 5 (Excellent)
                           ];
                           const c = colors[lvl.score - 1] || colors[0];
                           return (
                             <div key={lvl.score} className={`p-1.5 rounded border ${c} flex flex-col justify-center shadow-sm cursor-help hover:opacity-80 transition-opacity`} title={lvl.desc}>
                               <div className="text-[9px] leading-tight line-clamp-2" title={lvl.desc}>
-                                <span className="font-bold opacity-75 mr-1">L{lvl.score}:</span>
+                                <span className="font-bold opacity-75 mr-1">L{lvl.score} ({lvl.label}):</span>
                                 {lvl.desc}
                               </div>
                             </div>

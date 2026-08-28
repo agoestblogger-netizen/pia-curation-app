@@ -46,10 +46,10 @@ export async function saveSponsorAssessmentAction(
 
   const totalScore = param1Score + param2Score + param3Score + param4Score;
   let classification = 'Bronze';
-  if (totalScore >= 14) classification = 'Diamond';
-  else if (totalScore >= 12) classification = 'Platinum';
-  else if (totalScore >= 9) classification = 'Gold';
-  else if (totalScore >= 7) classification = 'Silver';
+  if (totalScore >= 18) classification = 'Diamond';
+  else if (totalScore >= 14) classification = 'Platinum';
+  else if (totalScore >= 10) classification = 'Gold';
+  else if (totalScore >= 6) classification = 'Silver';
 
   await db.insert(grandFinalAssessments)
     .values({
@@ -144,10 +144,10 @@ export async function calibrateGrandFinalScoreAction(
   
   const totalScore = param1Score + param2Score + param3Score + param4Score;
   let classification = 'Bronze';
-  if (totalScore >= 14) classification = 'Diamond';
-  else if (totalScore >= 12) classification = 'Platinum';
-  else if (totalScore >= 9) classification = 'Gold';
-  else if (totalScore >= 7) classification = 'Silver';
+  if (totalScore >= 18) classification = 'Diamond';
+  else if (totalScore >= 14) classification = 'Platinum';
+  else if (totalScore >= 10) classification = 'Gold';
+  else if (totalScore >= 6) classification = 'Silver';
 
   const [existing] = await db.select()
     .from(grandFinalAssessments)
@@ -219,10 +219,10 @@ export async function batchCalibrateGrandFinalScoresAction(
   for (const item of assessmentsPayload) {
     const totalScore = item.param1Score + item.param2Score + item.param3Score + item.param4Score;
     let classification = 'Bronze';
-    if (totalScore >= 13.5) classification = 'Diamond';
-    else if (totalScore >= 11.5) classification = 'Platinum';
-    else if (totalScore >= 8.5) classification = 'Gold';
-    else if (totalScore >= 6.5) classification = 'Silver';
+    if (totalScore >= 18) classification = 'Diamond';
+    else if (totalScore >= 14) classification = 'Platinum';
+    else if (totalScore >= 10) classification = 'Gold';
+    else if (totalScore >= 6) classification = 'Silver';
 
     const [existing] = await db.select()
       .from(grandFinalAssessments)
@@ -326,19 +326,7 @@ export async function lockGrandFinalResultsAction(
   for (const cat of categories) {
     const pCat = proposalAverages.filter(p => p.category === cat).sort((a, b) => b.avgScore - a.avgScore);
     
-    // We only care about EXACT IDENTICAL scores if we want to rank them or if we are just classifying by medals?
-    // User said: "Output akhir BUKAN ranking Juara 1/2/3 — tapi SETIAP proposal dapat klasifikasi level medali... HANYA untuk skor akhir yang BENAR-BENAR IDENTIK antar proposal"
-    // Wait, if it's classification based on absolute threshold (e.g. >= 14 = Diamond), does tie matter?
-    // Diamond: 13.5 - 16, Platinum: 11.5 - 13.49, Gold: 8.5 - 11.49, Silver: 6.5 - 8.49, Bronze: 4 - 6.49
-    // If it's absolute thresholds, two identical scores will just get the same medal.
-    // Why would there be a tie-breaker? Let me check the user's prompt:
-    // "Deteksi tie: HANYA untuk skor akhir yang BENAR-BENAR IDENTIK antar proposal (bukan selisih tipis)..."
-    // "Output akhir BUKAN ranking Juara 1/2/3 — tapi SETIAP proposal dapat klasifikasi level medali"
-    // If it's medals, tie-breaking isn't strictly necessary for "winning", but maybe they still want a rank?
-    // Let's implement tie detection anyway, just in case they want a deterministic ranking for the BA.
-    // If two proposals have the EXACT same average score, we trigger a tie-break unless resolved.
-    
-    // Let's check for exact ties
+    // Check for exact ties
     for (let i = 0; i < pCat.length - 1; i++) {
       if (pCat[i].avgScore === pCat[i+1].avgScore && pCat[i].avgScore > 0) {
         if (!tieWinnerProposalId || (tieWinnerProposalId !== pCat[i].proposalId && tieWinnerProposalId !== pCat[i+1].proposalId)) {
@@ -368,10 +356,10 @@ export async function lockGrandFinalResultsAction(
 
   const resultsToInsert = proposalAverages.map(p => {
     let medal = 'Bronze';
-    if (p.avgScore >= 13.5) medal = 'Diamond';
-    else if (p.avgScore >= 11.5) medal = 'Platinum';
-    else if (p.avgScore >= 8.5) medal = 'Gold';
-    else if (p.avgScore >= 6.5) medal = 'Silver';
+    if (p.avgScore >= 17.5) medal = 'Diamond';
+    else if (p.avgScore >= 13.5) medal = 'Platinum';
+    else if (p.avgScore >= 9.5) medal = 'Gold';
+    else if (p.avgScore >= 5.5) medal = 'Silver';
     
     return {
       competitionId,
