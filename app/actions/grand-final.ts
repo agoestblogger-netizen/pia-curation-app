@@ -84,6 +84,7 @@ export async function saveSponsorAssessmentAction(
 
   revalidatePath('/sponsor/assess/[id]', 'page');
   revalidatePath('/sponsor/fgd');
+  revalidatePath('/sponsor');
   
   return { success: true, totalScore, classification };
 }
