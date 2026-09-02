@@ -369,6 +369,30 @@ export async function lockGrandFinalResultsAction(
   );
 
   revalidatePath('/coordinator/grand-final/sidang');
+  revalidatePath('/coordinator/grand-final/hasil');
+  return { success: true };
+}
+
+export async function unlockGrandFinalResultsAction(
+  competitionId: number
+): Promise<{ success: boolean; error?: string }> {
+  const session = await requireRole(['coordinator', 'admin']);
+
+  await db.delete(finalResults).where(eq(finalResults.competitionId, competitionId));
+
+  await createAuditLog(
+    session.userId,
+    session.name,
+    'UNLOCK_GRAND_FINAL',
+    'competitions',
+    competitionId.toString(),
+    null,
+    {},
+    'Membuka kunci hasil sidang penetapan Grand Final untuk revisi'
+  );
+
+  revalidatePath('/coordinator/grand-final/sidang');
+  revalidatePath('/coordinator/grand-final/hasil');
   return { success: true };
 }
 

@@ -2,6 +2,7 @@ import { requireRole } from '@/lib/auth/helpers';
 import { db } from '@/lib/db';
 import { proposals, grandFinalAssessments, users, competitions, finalResults, proposalAiAnalyses, grandFinalSponsors } from '@/lib/db/schema';
 import { eq, and, sql, asc } from 'drizzle-orm';
+import Link from 'next/link';
 import GrandFinalSidangClient from './GrandFinalSidangClient';
 import { getActiveCompetition } from '@/app/actions/competitions';
 
@@ -112,7 +113,7 @@ export default async function GrandFinalSidangPage() {
 
   return (
     <div className="p-8 max-w-7xl mx-auto space-y-6">
-      <div className="flex justify-between items-end">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-end gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 mb-1">Sidang Penetapan Grand Final</h1>
           <p className="text-sm text-gray-500">
@@ -120,8 +121,17 @@ export default async function GrandFinalSidangPage() {
           </p>
         </div>
         {isLocked && (
-          <div className="px-4 py-2 bg-green-100 text-green-800 font-bold rounded-lg text-sm border border-green-300">
-            ✓ Hasil Sidang Terkunci
+          <div className="flex items-center gap-3">
+            <span className="px-3.5 py-1.5 bg-emerald-100 text-emerald-800 font-bold rounded-lg text-sm border border-emerald-300 flex items-center gap-1.5">
+              <span>✓</span> Hasil Sidang Terkunci
+            </span>
+            <Link 
+              href="/coordinator/grand-final/hasil"
+              className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg text-sm shadow-sm transition-colors flex items-center gap-1.5"
+            >
+              <span>Lihat Hasil Akhir & PDF</span>
+              <span>→</span>
+            </Link>
           </div>
         )}
       </div>
