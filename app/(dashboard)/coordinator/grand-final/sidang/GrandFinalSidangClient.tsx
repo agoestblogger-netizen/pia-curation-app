@@ -186,23 +186,7 @@ export default function GrandFinalSidangClient({
     try {
       const res = await lockGrandFinalResultsAction(competitionId);
       if (res?.error) {
-        if (res.needsTieBreak) {
-          const tieWinnerStr = prompt(`Terdapat skor seri absolut pada rata-rata akhir!\nMasukkan ID Proposal pemenang tie-break (ID: ${res.tiedProposals?.join(' / ')}):`);
-          if (tieWinnerStr) {
-            const note = prompt('Catatan tie-break (opsional):');
-            const winnerId = parseInt(tieWinnerStr, 10);
-            if (!isNaN(winnerId)) {
-              const retryRes = await lockGrandFinalResultsAction(competitionId, winnerId, note || undefined);
-              if (retryRes?.error) {
-                setError(retryRes.error);
-              } else {
-                router.refresh();
-              }
-            }
-          }
-        } else {
-          setError(res.error);
-        }
+        setError(res.error);
       } else {
         router.refresh();
       }

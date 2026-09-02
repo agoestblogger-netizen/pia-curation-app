@@ -279,23 +279,13 @@ export async function batchCalibrateGrandFinalScoresAction(
 }
 
 export async function lockGrandFinalResultsAction(
-  competitionId: number,
-  tieWinnerProposalId?: number,
-  tieBreakNote?: string
+  competitionId: number
 ) {
   const session = await requireRole(['coordinator', 'admin']);
 
-  // Check if already locked
-  const [activeComp] = await db.select().from(competitions).where(eq(competitions.id, competitionId));
-  if (!activeComp) return { error: 'Kompetisi tidak ditemukan' };
-  
-  // Wait, Grand Final locking doesn't have a specific phase property except locking phase or we can just write to finalResults.
-  // We'll write to finalResults. Let's see if any finalResult exists.
-  const existingResults = await db.select().from(finalResults).where(eq(finalResults.competitionId, competitionId));
-  if (existingResults.length > 0 && !tieWinnerProposalId) {
-    // If it's already locked and we are not breaking a tie
-    return { error: 'Hasil Grand Final sudah terkunci.' };
-  }
+  // Get active competition
+  const [comp] = await db.select().from(competitions).where(eq(competitions.id, competitionId));
+  if (!comp) return { error: 'Kompetisi tidak ditemukan' };
 
   // Get all GF proposals
   const gfProposals = await db.select().from(proposals)
@@ -320,40 +310,7 @@ export async function lockGrandFinalResultsAction(
     };
   });
 
-  // Group by category to find ties
   const categories = ['WILAYAH', 'PUSAT', 'BI', 'BC'];
-  let tiedProposals: number[] = [];
-
-  for (const cat of categories) {
-    const pCat = proposalAverages.filter(p => p.category === cat).sort((a, b) => b.avgScore - a.avgScore);
-    
-    // Check for exact ties
-    for (let i = 0; i < pCat.length - 1; i++) {
-      if (pCat[i].avgScore === pCat[i+1].avgScore && pCat[i].avgScore > 0) {
-        if (!tieWinnerProposalId || (tieWinnerProposalId !== pCat[i].proposalId && tieWinnerProposalId !== pCat[i+1].proposalId)) {
-           tiedProposals.push(pCat[i].proposalId, pCat[i+1].proposalId);
-        }
-      }
-    }
-  }
-
-  if (tiedProposals.length > 0 && !tieWinnerProposalId) {
-    const uniqueTies = Array.from(new Set(tiedProposals));
-    return {
-      error: 'Terdapat skor seri sempurna pada rata-rata akhir.',
-      needsTieBreak: true,
-      tiedProposals: uniqueTies
-    };
-  }
-
-  // Calculate medals and ranks
-  // If we have a tie winner, we give it a tiny boost
-  if (tieWinnerProposalId) {
-    const target = proposalAverages.find(p => p.proposalId === tieWinnerProposalId);
-    if (target) {
-      target.avgScore += 0.0001; // tiny boost
-    }
-  }
 
   const resultsToInsert = proposalAverages.map(p => {
     let medal = 'Bronze';
@@ -366,28 +323,35 @@ export async function lockGrandFinalResultsAction(
       competitionId,
       proposalId: p.proposalId,
       resultStatus: medal,
-      notes: tieWinnerProposalId === p.proposalId ? (tieBreakNote || 'Menang tie-break') : null,
+      notes: null,
       lockedAt: new Date(),
       lockedBy: session.userId
     };
   });
 
-  // Calculate rank per category (even though output is medals, ranking might be useful internally)
+  // Calculate rank per category (proposals with same score share the same rank)
   for (const cat of categories) {
     const pCat = resultsToInsert.filter(p => proposalAverages.find(a => a.proposalId === p.proposalId)?.category === cat);
-    // Sort by boosted average
     pCat.sort((a, b) => {
       const aAvg = proposalAverages.find(p => p.proposalId === a.proposalId)!.avgScore;
       const bAvg = proposalAverages.find(p => p.proposalId === b.proposalId)!.avgScore;
       return bAvg - aAvg;
     });
     
+    let currentRank = 1;
     pCat.forEach((r, idx) => {
-      (r as any).rank = idx + 1;
+      if (idx > 0) {
+        const prevAvg = proposalAverages.find(p => p.proposalId === pCat[idx - 1].proposalId)!.avgScore;
+        const curAvg = proposalAverages.find(p => p.proposalId === r.proposalId)!.avgScore;
+        if (curAvg < prevAvg) {
+          currentRank = idx + 1;
+        }
+      }
+      (r as any).rank = currentRank;
     });
   }
 
-  // Delete existing (if we are retrying a tie-break that partially saved, though we shouldn't have)
+  // Delete existing
   await db.delete(finalResults).where(eq(finalResults.competitionId, competitionId));
 
   // Insert
@@ -400,7 +364,7 @@ export async function lockGrandFinalResultsAction(
     'competitions',
     competitionId.toString(),
     null,
-    { tieWinnerProposalId, tieBreakNote, count: resultsToInsert.length },
+    { count: resultsToInsert.length },
     'Mengunci hasil sidang penetapan Grand Final'
   );
 
